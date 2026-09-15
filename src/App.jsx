@@ -5,7 +5,7 @@ import SettingsPanel from './components/SettingsPanel';
 import ProfileModal from './components/ProfileModal';
 import AuthModal from './components/AuthModal';
 import ArteExplorer from './components/ArteExplorer';
-import BambiniGames from './components/BambiniGames';
+import BambiniGameExplorer from './components/BambiniGameExplorer';
 import { WORLDS, DEFAULT_WORLD_INDEX } from './data/worlds';
 import { usersForWorld } from './data/mockUsers';
 import { useSwipeWorld } from './hooks/useSwipeWorld';
@@ -22,6 +22,7 @@ import {
   CATEGORY_RESULTS as NERD_RESULTS,
   resolveCategoryQuery as resolveNerdCategoryQuery,
 } from './data/nerdCategories';
+import { BAMBINI_CATEGORIES, resolveCategoryQuery as resolveBambiniCategoryQuery } from './games/registry';
 import './App.css';
 
 const DEFAULT_FILTERS = { gender: 'Tutti', ageMin: 18, ageMax: 60 };
@@ -36,6 +37,9 @@ const DEFAULT_VISIBILITY = { nearbyVisible: false };
 const CATEGORY_WORLDS = {
   arte: { categories: ARTE_CATEGORIES, featured: ARTE_FEATURED, results: ARTE_RESULTS, resolveQuery: resolveArteCategoryQuery },
   nerd: { categories: NERD_CATEGORIES, featured: NERD_FEATURED, results: NERD_RESULTS, resolveQuery: resolveNerdCategoryQuery },
+  // Bambini non ha colonne di contenuti (featured/results): i "triangoli"
+  // sono i minigiochi stessi, aperti tramite BambiniGameExplorer.
+  bambini: { categories: BAMBINI_CATEGORIES, resolveQuery: resolveBambiniCategoryQuery },
 };
 
 // Aspetta che l'utente finisca di digitare prima di far "volare" il globo sulla città cercata.
@@ -216,7 +220,7 @@ export default function App() {
         onCategoryPositionsReady={setArteCategoryPositions}
       />
 
-      {categorySet && (
+      {categorySet && world.id !== 'bambini' && (
         <ArteExplorer
           world={world}
           categorySet={categorySet}
@@ -228,7 +232,15 @@ export default function App() {
         />
       )}
 
-      {world.id === 'bambini' && <BambiniGames world={world} onGameOpenChange={setGameplayActive} />}
+      {world.id === 'bambini' && (
+        <BambiniGameExplorer
+          world={world}
+          activeCategory={activeArteCategory}
+          onToggleCategory={toggleArteCategory}
+          onSearchCategory={flyToArteCategory}
+          onGameOpenChange={setGameplayActive}
+        />
+      )}
 
       <div className={`rb-world-tagline ${categorySet ? 'rb-world-tagline-list' : ''}`}>
         {categorySet
