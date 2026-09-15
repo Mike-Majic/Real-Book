@@ -33,22 +33,29 @@
 }
 
 .rb-world-dot {
-  width: 12px;
-  height: 12px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.45);
   cursor: pointer;
   padding: 0;
-  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.2s ease, color 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .rb-world-dot:hover {
-  transform: scale(1.2);
+  transform: scale(1.12);
+  color: var(--dot-color, #fff);
 }
 
 .rb-world-dot.active {
-  background: var(--dot-color, #fff);
+  color: var(--dot-color, #fff);
   border-color: var(--dot-color, #fff);
-  box-shadow: 0 0 10px var(--dot-color, #fff);
+  background: color-mix(in srgb, var(--dot-color, #fff) 16%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--dot-color, #fff) 70%, transparent);
+  transform: scale(1.12);
 }

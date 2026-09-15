@@ -4,7 +4,7 @@ export const WORLDS = [
   {
     id: 'social',
     label: 'Social',
-    tagline: 'Il tuo mondo, stile Instagram',
+    tagline: 'Mondo Social',
     color: '#1d9bf0',
     colorSoft: 'rgba(29, 155, 240, 0.18)',
     globeColor: '#04101f',

@@ -12,6 +12,18 @@ import './App.css';
 const DEFAULT_FILTERS = { gender: 'Tutti', ageMin: 18, ageMax: 60, city: '', distance: 100 };
 const DEFAULT_JOB_FILTERS = { city: '', distance: 150, category: '' };
 
+// Piccolo mappamondo (invece di un semplice puntino) per il selettore dei mondi:
+// cerchio esterno + meridiano + equatore, colorato con il colore del mondo.
+function MiniGlobeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.4">
+      <circle cx="12" cy="12" r="9" />
+      <ellipse cx="12" cy="12" rx="4" ry="9" />
+      <path d="M3 12h18" />
+    </svg>
+  );
+}
+
 function loadStored(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
@@ -92,7 +104,9 @@ export default function App() {
             onClick={() => setIndex(i)}
             aria-label={`Vai al mondo ${w.label}`}
             title={w.label}
-          />
+          >
+            <MiniGlobeIcon />
+          </button>
         ))}
       </nav>
 

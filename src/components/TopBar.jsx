@@ -5,7 +5,7 @@ export default function TopBar({ world, user, onOpenAuth, onLogout, onOpenSettin
     <header className="rb-topbar" style={{ '--accent': world.color }}>
       <div className="rb-topbar-brand">
         <span className="rb-logo-dot" />
-        Real Book
+        <span className="notranslate" translate="no">Real Book</span>
         <span className="rb-world-pill">{world.label}</span>
       </div>
 
