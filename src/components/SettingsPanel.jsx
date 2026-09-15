@@ -1,16 +1,20 @@
 import { JOB_CATEGORIES } from '../data/worlds';
 import { CONTINENTS, REGIONS } from '../data/geo';
+import { ARTE_CATEGORIES } from '../data/arteCategories';
 import './SettingsPanel.css';
 
 export default function SettingsPanel({
   open,
   onClose,
+  onApply,
   filters,
   setFilters,
   jobFilters,
   setJobFilters,
   locationFilters,
   setLocationFilters,
+  arteFilter,
+  setArteFilter,
   onResetFilters,
 }) {
   if (!open) return null;
@@ -18,6 +22,7 @@ export default function SettingsPanel({
   const updateFilter = (key, value) => setFilters((f) => ({ ...f, [key]: value }));
   const updateJobFilter = (key, value) => setJobFilters((f) => ({ ...f, [key]: value }));
   const updateLocation = (key, value) => setLocationFilters((f) => ({ ...f, [key]: value }));
+  const selectedArteCategory = ARTE_CATEGORIES.find((c) => c.id === arteFilter.category) ?? null;
 
   return (
     <div className="rb-settings-overlay" onClick={onClose}>
@@ -31,7 +36,7 @@ export default function SettingsPanel({
           <button type="button" className="rb-reset-filters-btn" onClick={onResetFilters}>
             Azzera tutti i filtri
           </button>
-          <button type="button" className="rb-apply-filters-btn" onClick={onClose}>
+          <button type="button" className="rb-apply-filters-btn" onClick={onApply ?? onClose}>
             Applica
           </button>
         </div>
@@ -105,6 +110,39 @@ export default function SettingsPanel({
                 onChange={(e) => updateFilter('ageMax', Math.max(Number(e.target.value), filters.ageMin))} />
             </div>
           </label>
+        </section>
+
+        <section className="rb-settings-section">
+          <h3>Arte & Musica</h3>
+          <p className="rb-settings-hint">Vai dritto a una categoria (ed eventualmente a una sottofamiglia) del mondo Arte & Musica.</p>
+
+          <label className="rb-field">
+            <span>Categoria</span>
+            <select
+              value={arteFilter.category}
+              onChange={(e) => setArteFilter({ category: e.target.value, subfamily: '' })}
+            >
+              <option value="">Nessuna categoria</option>
+              {ARTE_CATEGORIES.map((c) => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
+            </select>
+          </label>
+
+          {selectedArteCategory && (
+            <label className="rb-field">
+              <span>Sottofamiglia</span>
+              <select
+                value={arteFilter.subfamily}
+                onChange={(e) => setArteFilter({ category: arteFilter.category, subfamily: e.target.value })}
+              >
+                <option value="">Tutte</option>
+                {selectedArteCategory.subfamilies.map((sf) => (
+                  <option key={sf} value={sf}>{sf}</option>
+                ))}
+              </select>
+            </label>
+          )}
         </section>
 
         <section className="rb-settings-section">

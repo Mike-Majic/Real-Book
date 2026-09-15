@@ -15,6 +15,7 @@ import './App.css';
 const DEFAULT_FILTERS = { gender: 'Tutti', ageMin: 18, ageMax: 60 };
 const DEFAULT_JOB_FILTERS = { category: '' };
 const DEFAULT_LOCATION_FILTERS = { continent: '', region: '', city: '', distance: 150 };
+const DEFAULT_ARTE_FILTER = { category: '', subfamily: '' };
 
 // Aspetta che l'utente finisca di digitare prima di far "volare" il globo sulla città cercata.
 function useDebouncedValue(value, delayMs) {
@@ -61,6 +62,8 @@ export default function App() {
   const [locationFilters, setLocationFilters] = useState(() => loadStored('rb-location-filters', DEFAULT_LOCATION_FILTERS));
   const [activeArteCategory, setActiveArteCategory] = useState(null);
   const [arteCategoryPositions, setArteCategoryPositions] = useState({});
+  const [arteFilter, setArteFilter] = useState(() => loadStored('rb-arte-filter', DEFAULT_ARTE_FILTER));
+  const [arteInitialSubfamily, setArteInitialSubfamily] = useState('');
   const [flyTo, setFlyTo] = useState(null);
 
   // Uscendo dal mondo Arte & Musica si azzera la categoria attiva, altrimenti
@@ -77,6 +80,7 @@ export default function App() {
   useEffect(() => localStorage.setItem('rb-filters', JSON.stringify(filters)), [filters]);
   useEffect(() => localStorage.setItem('rb-job-filters', JSON.stringify(jobFilters)), [jobFilters]);
   useEffect(() => localStorage.setItem('rb-location-filters', JSON.stringify(locationFilters)), [locationFilters]);
+  useEffect(() => localStorage.setItem('rb-arte-filter', JSON.stringify(arteFilter)), [arteFilter]);
 
   const worldUsers = useMemo(() => {
     const base = usersForWorld(world.id);
@@ -121,8 +125,24 @@ export default function App() {
   // esatto), così la camera centra davvero il triangolo e non finisce ai suoi bordi.
   const flyToArteCategory = (cat) => {
     setActiveArteCategory(cat.id);
+    setArteInitialSubfamily('');
     const pos = arteCategoryPositions[cat.id] ?? cat.anchor;
     setFlyTo({ lat: pos.lat, lng: pos.lng, key: `cat-${cat.id}-${Date.now()}` });
+  };
+
+  // Applica il filtro Categoria/Sottofamiglia scelto nelle Impostazioni: passa
+  // al mondo Arte & Musica se serve, apre la categoria e pre-seleziona la
+  // sottofamiglia scelta.
+  const applyArteFilter = () => {
+    if (!arteFilter.category) return;
+    const cat = ARTE_CATEGORIES.find((c) => c.id === arteFilter.category);
+    if (!cat) return;
+    const arteIndex = WORLDS.findIndex((w) => w.id === 'arte');
+    if (arteIndex !== index) setIndex(arteIndex);
+    setActiveArteCategory(cat.id);
+    setArteInitialSubfamily(arteFilter.subfamily);
+    const pos = arteCategoryPositions[cat.id] ?? cat.anchor;
+    setFlyTo({ lat: pos.lat, lng: pos.lng, altitude: 1.3, key: `settings-cat-${cat.id}-${Date.now()}` });
   };
 
   // Selezionare una categoria (dal triangolo sul globo, o riaprendola) vola e
@@ -132,6 +152,7 @@ export default function App() {
       const next = cur === id ? null : id;
       if (next) {
         const cat = ARTE_CATEGORIES.find((c) => c.id === next);
+        setArteInitialSubfamily('');
         const pos = arteCategoryPositions[next] ?? cat?.anchor;
         if (pos) setFlyTo({ lat: pos.lat, lng: pos.lng, altitude: 1.3, key: `cat-${next}-${Date.now()}` });
       } else {
@@ -172,6 +193,7 @@ export default function App() {
           activeCategory={activeArteCategory}
           onToggleCategory={toggleArteCategory}
           onSearchCategory={flyToArteCategory}
+          initialSubfamily={arteInitialSubfamily}
         />
       )}
 
@@ -199,16 +221,23 @@ export default function App() {
       <SettingsPanel
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+        onApply={() => {
+          applyArteFilter();
+          setSettingsOpen(false);
+        }}
         filters={filters}
         setFilters={setFilters}
         jobFilters={jobFilters}
         setJobFilters={setJobFilters}
         locationFilters={locationFilters}
         setLocationFilters={setLocationFilters}
+        arteFilter={arteFilter}
+        setArteFilter={setArteFilter}
         onResetFilters={() => {
           setFilters(DEFAULT_FILTERS);
           setJobFilters(DEFAULT_JOB_FILTERS);
           setLocationFilters(DEFAULT_LOCATION_FILTERS);
+          setArteFilter(DEFAULT_ARTE_FILTER);
         }}
       />
 
