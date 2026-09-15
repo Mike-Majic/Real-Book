@@ -1,4 +1,5 @@
 import { JOB_CATEGORIES } from '../data/worlds';
+import { CONTINENTS, REGIONS } from '../data/geo';
 import './SettingsPanel.css';
 
 export default function SettingsPanel({ open, onClose, filters, setFilters, jobFilters, setJobFilters }) {
@@ -45,6 +46,26 @@ export default function SettingsPanel({ open, onClose, filters, setFilters, jobF
           </label>
 
           <label className="rb-field">
+            <span>Continente</span>
+            <select value={filters.continent} onChange={(e) => updateFilter('continent', e.target.value)}>
+              <option value="">Tutti i continenti</option>
+              {CONTINENTS.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="rb-field">
+            <span>Regione</span>
+            <select value={filters.region} onChange={(e) => updateFilter('region', e.target.value)}>
+              <option value="">Tutte le regioni</option>
+              {REGIONS.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="rb-field">
             <span>Città</span>
             <input
               type="text"
@@ -64,6 +85,26 @@ export default function SettingsPanel({ open, onClose, filters, setFilters, jobF
         <section className="rb-settings-section">
           <h3>Lavoro</h3>
           <p className="rb-settings-hint">Filtri per il mondo Lavoro (candidature e ricerca aziende).</p>
+
+          <label className="rb-field">
+            <span>Continente</span>
+            <select value={jobFilters.continent} onChange={(e) => updateJobFilter('continent', e.target.value)}>
+              <option value="">Tutti i continenti</option>
+              {CONTINENTS.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="rb-field">
+            <span>Regione</span>
+            <select value={jobFilters.region} onChange={(e) => updateJobFilter('region', e.target.value)}>
+              <option value="">Tutte le regioni</option>
+              {REGIONS.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </label>
 
           <label className="rb-field">
             <span>Città</span>

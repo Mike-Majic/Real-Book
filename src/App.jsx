@@ -7,10 +7,21 @@ import AuthModal from './components/AuthModal';
 import { WORLDS } from './data/worlds';
 import { usersForWorld } from './data/mockUsers';
 import { useSwipeWorld } from './hooks/useSwipeWorld';
+import { getCityInfo, findCityMatch } from './data/geo';
 import './App.css';
 
-const DEFAULT_FILTERS = { gender: 'Tutti', ageMin: 18, ageMax: 60, city: '', distance: 100 };
-const DEFAULT_JOB_FILTERS = { city: '', distance: 150, category: '' };
+const DEFAULT_FILTERS = { gender: 'Tutti', continent: '', region: '', ageMin: 18, ageMax: 60, city: '', distance: 100 };
+const DEFAULT_JOB_FILTERS = { continent: '', region: '', city: '', distance: 150, category: '' };
+
+// Aspetta che l'utente finisca di digitare prima di far "volare" il globo sulla città cercata.
+function useDebouncedValue(value, delayMs) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(t);
+  }, [value, delayMs]);
+  return debounced;
+}
 
 // Piccolo mappamondo (invece di un semplice puntino) per il selettore dei mondi:
 // cerchio esterno + meridiano + equatore, colorato con il colore del mondo.
@@ -61,6 +72,9 @@ export default function App() {
         if (filters.gender !== 'Tutti' && u.gender !== filters.gender.toLowerCase()) return false;
         if (u.age && (u.age < filters.ageMin || u.age > filters.ageMax)) return false;
         if (filters.city && !u.city.toLowerCase().includes(filters.city.toLowerCase())) return false;
+        const info = getCityInfo(u.city);
+        if (filters.continent && info?.continent !== filters.continent) return false;
+        if (filters.region && info?.region !== filters.region) return false;
         return true;
       });
     }
@@ -69,12 +83,23 @@ export default function App() {
       return base.filter((u) => {
         if (jobFilters.city && !u.city.toLowerCase().includes(jobFilters.city.toLowerCase())) return false;
         if (jobFilters.category && u.jobType !== jobFilters.category) return false;
+        const info = getCityInfo(u.city);
+        if (jobFilters.continent && info?.continent !== jobFilters.continent) return false;
+        if (jobFilters.region && info?.region !== jobFilters.region) return false;
         return true;
       });
     }
 
     return base;
   }, [world.id, filters, jobFilters]);
+
+  // Quando la città cercata nei filtri corrisponde a una città nota, il globo ci "vola" sopra.
+  const activeCityQuery = world.id === 'lavoro' ? jobFilters.city : filters.city;
+  const debouncedCityQuery = useDebouncedValue(activeCityQuery, 500);
+  const flyTo = useMemo(() => {
+    const match = findCityMatch(debouncedCityQuery);
+    return match ? { lat: match.lat, lng: match.lng, key: match.name } : null;
+  }, [debouncedCityQuery]);
 
   return (
     <div className="rb-app" style={{ '--accent': world.color }}>
@@ -91,6 +116,7 @@ export default function App() {
         users={worldUsers}
         onSelectUser={setSelectedUser}
         containerRef={containerRef}
+        flyTo={flyTo}
       />
 
       <div className="rb-world-tagline">{world.tagline}</div>

@@ -23,7 +23,7 @@ function makeMarkerEl(user, world, onOpen) {
   return el;
 }
 
-export default function WorldGlobe({ world, users, onSelectUser, containerRef }) {
+export default function WorldGlobe({ world, users, onSelectUser, containerRef, flyTo }) {
   const globeRef = useRef();
   const overlayRef = useRef(null);
   const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
@@ -105,6 +105,23 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef })
     g.controls().enableZoom = true;
     g.pointOfView({ altitude: 2.4 }, 0);
   }, []);
+
+  // Quando si cerca una città nota nei filtri, il globo smette di ruotare da solo
+  // e vola sopra quella città con una transizione morbida.
+  useEffect(() => {
+    const g = globeRef.current;
+    if (!g || !flyTo) return undefined;
+
+    const controls = g.controls();
+    controls.autoRotate = false;
+    g.pointOfView({ lat: flyTo.lat, lng: flyTo.lng, altitude: 1.3 }, 1800);
+
+    const resumeTimer = setTimeout(() => {
+      controls.autoRotate = true;
+    }, 4000);
+
+    return () => clearTimeout(resumeTimer);
+  }, [flyTo]);
 
   return (
     <div className="rb-globe-shell" ref={containerRef}>
