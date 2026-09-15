@@ -10,4 +10,124 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   padding: 6px 10px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.rb-link-preview-plain:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.rb-link-preview-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 360px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 6px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.rb-link-preview-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.rb-link-preview-thumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.rb-link-preview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rb-link-preview-title {
+  font-size: 13px;
+  color: rgba(245, 245, 247, 0.9);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rb-link-preview-source {
+  font-size: 11px;
+  color: rgba(245, 245, 247, 0.5);
+}
+
+.rb-link-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  pointer-events: auto;
+}
+
+.rb-link-confirm-card {
+  background: #1c1c22;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  padding: 18px;
+  max-width: 340px;
+  width: calc(100vw - 48px);
+}
+
+.rb-link-confirm-card p {
+  margin: 0 0 10px;
+  font-size: 13.5px;
+  color: rgba(245, 245, 247, 0.9);
+}
+
+.rb-link-confirm-url {
+  font-size: 11.5px !important;
+  color: rgba(245, 245, 247, 0.5) !important;
+  word-break: break-all;
+}
+
+.rb-link-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.rb-link-confirm-cancel,
+.rb-link-confirm-ok {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.rb-link-confirm-cancel {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(245, 245, 247, 0.85);
+}
+
+.rb-link-confirm-cancel:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.rb-link-confirm-ok {
+  background: #4a8fe7;
+  color: #fff;
+}
+
+.rb-link-confirm-ok:hover {
+  background: #3d7fd6;
 }
