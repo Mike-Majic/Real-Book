@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ARTE_CATEGORIES, FEATURED_SEARCHES, CATEGORY_RESULTS, resolveCategoryQuery } from '../data/arteCategories';
 import './ArteExplorer.css';
 
@@ -9,6 +9,8 @@ export default function ArteExplorer({ world, activeCategory, onToggleCategory, 
 
   const category = ARTE_CATEGORIES.find((c) => c.id === activeCategory) ?? null;
 
+  useEffect(() => setResultsQuery(''), [activeCategory]);
+
   const results = useMemo(() => {
     if (!category) return [];
     const all = CATEGORY_RESULTS[category.id] ?? [];
@@ -16,11 +18,6 @@ export default function ArteExplorer({ world, activeCategory, onToggleCategory, 
     const q = resultsQuery.trim().toLowerCase();
     return all.filter((r) => r.title.toLowerCase().includes(q) || r.creator.toLowerCase().includes(q));
   }, [category, resultsQuery]);
-
-  const handleToggle = (id) => {
-    setResultsQuery('');
-    onToggleCategory(id);
-  };
 
   const submitCategorySearch = (e) => {
     e.preventDefault();
@@ -60,18 +57,6 @@ export default function ArteExplorer({ world, activeCategory, onToggleCategory, 
             className={categoryQueryInvalid ? 'invalid' : ''}
           />
         </form>
-
-        <nav className="rb-arte-category-bar" aria-label="Categorie">
-          {ARTE_CATEGORIES.map((c) => (
-            <button
-              key={c.id}
-              className={`rb-arte-category-btn ${activeCategory === c.id ? 'active' : ''}`}
-              onClick={() => handleToggle(c.id)}
-            >
-              <span aria-hidden="true">{c.icon}</span> {c.label}
-            </button>
-          ))}
-        </nav>
       </div>
 
       {category && (
