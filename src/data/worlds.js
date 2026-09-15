@@ -1,6 +1,19 @@
 // Configurazione dei "mondi" del mappamondo interattivo.
-// L'ordine è quello dello swipe a due dita: social -> incontri -> lavoro -> arte -> (torna a social)
+// Ordine dello swipe a due dita: bambini -> social -> lavoro -> arte -> nerd -> incontri -> (torna a bambini).
+// Il mondo blu (Social) è quello principale: è il primo che si vede all'apertura dell'app.
 export const WORLDS = [
+  {
+    id: 'bambini',
+    label: 'Bambini',
+    // Mondo ancora vuoto di proposito: niente profili/posizioni di minori sulla mappa.
+    // Conterrà giochi pensati per i più piccoli, da progettare a parte.
+    tagline: 'Giochi per i più piccoli — in arrivo',
+    color: '#22c55e',
+    colorSoft: 'rgba(34, 197, 94, 0.18)',
+    globeColor: '#03130a',
+    atmosphereColor: '#22c55e',
+    textOnGlobe: '#e9fff2',
+  },
   {
     id: 'social',
     label: 'Social',
@@ -10,16 +23,6 @@ export const WORLDS = [
     globeColor: '#04101f',
     atmosphereColor: '#1d9bf0',
     textOnGlobe: '#eaf6ff',
-  },
-  {
-    id: 'incontri',
-    label: 'Incontri',
-    tagline: 'Conosci persone vicino a te',
-    color: '#ff3860',
-    colorSoft: 'rgba(255, 56, 96, 0.18)',
-    globeColor: '#1f0409',
-    atmosphereColor: '#ff3860',
-    textOnGlobe: '#ffeaf0',
   },
   {
     id: 'lavoro',
@@ -42,18 +45,6 @@ export const WORLDS = [
     textOnGlobe: '#f3ecff',
   },
   {
-    id: 'bambini',
-    label: 'Bambini',
-    // Mondo ancora vuoto di proposito: niente profili/posizioni di minori sulla mappa.
-    // Conterrà giochi pensati per i più piccoli, da progettare a parte.
-    tagline: 'Giochi per i più piccoli — in arrivo',
-    color: '#22c55e',
-    colorSoft: 'rgba(34, 197, 94, 0.18)',
-    globeColor: '#03130a',
-    atmosphereColor: '#22c55e',
-    textOnGlobe: '#e9fff2',
-  },
-  {
     id: 'nerd',
     label: 'Nerd',
     // Mondo vuoto: il contenuto (gaming? tech? fumetti?) va ancora deciso.
@@ -64,7 +55,19 @@ export const WORLDS = [
     atmosphereColor: '#d4f634',
     textOnGlobe: '#fbffe8',
   },
+  {
+    id: 'incontri',
+    label: 'Incontri',
+    tagline: 'Conosci persone vicino a te',
+    color: '#ff3860',
+    colorSoft: 'rgba(255, 56, 96, 0.18)',
+    globeColor: '#1f0409',
+    atmosphereColor: '#ff3860',
+    textOnGlobe: '#ffeaf0',
+  },
 ];
+
+export const DEFAULT_WORLD_INDEX = WORLDS.findIndex((w) => w.id === 'social');
 
 export const JOB_CATEGORIES = [
   'Elettronica',

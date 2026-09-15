@@ -4,7 +4,7 @@ import TopBar from './components/TopBar';
 import SettingsPanel from './components/SettingsPanel';
 import ProfileModal from './components/ProfileModal';
 import AuthModal from './components/AuthModal';
-import { WORLDS } from './data/worlds';
+import { WORLDS, DEFAULT_WORLD_INDEX } from './data/worlds';
 import { usersForWorld } from './data/mockUsers';
 import { useSwipeWorld } from './hooks/useSwipeWorld';
 import { getCityInfo, findCityMatch } from './data/geo';
@@ -46,7 +46,7 @@ function loadStored(key, fallback) {
 }
 
 export default function App() {
-  const { index, setIndex, containerRef } = useSwipeWorld(WORLDS.length, 0);
+  const { index, setIndex, containerRef } = useSwipeWorld(WORLDS.length, DEFAULT_WORLD_INDEX);
   const world = WORLDS[index];
 
   const [user, setUser] = useState(() => loadStored('rb-user', null));
