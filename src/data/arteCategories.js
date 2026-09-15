@@ -42,6 +42,30 @@ export const ARTE_CATEGORIES = [
     aliases: ['arte', 'art', 'pittura', 'mostra', 'galleria'],
     subfamilies: ['Pittura', 'Fotografia', 'Scultura', 'Street Art'],
   },
+  {
+    id: 'danza',
+    label: 'Danza',
+    icon: '💃',
+    anchor: { lat: 55, lng: 25 },
+    aliases: ['danza', 'dance', 'ballo', 'coreografia'],
+    subfamilies: ['Contemporanea', 'Classica', 'Hip-hop', 'Improvvisazione', 'Performance'],
+  },
+  {
+    id: 'podcast',
+    label: 'Podcast',
+    icon: '🎙️',
+    anchor: { lat: -45, lng: 145 },
+    aliases: ['podcast', 'audio', 'puntata', 'episodio'],
+    subfamilies: ['Narrativo', 'Intervista', 'True crime', 'Attualità', 'Comico'],
+  },
+  {
+    id: 'fotografia',
+    label: 'Fotografia',
+    icon: '📷',
+    anchor: { lat: 5, lng: -100 },
+    aliases: ['fotografia', 'foto', 'fotografico', 'scatto', 'photography'],
+    subfamilies: ['Ritratto', 'Reportage', 'Analogica', 'Still life', 'Paesaggio'],
+  },
 ];
 
 // Trova la categoria il cui alias combacia (anche parzialmente) con la query digitata.
@@ -59,6 +83,9 @@ export const FEATURED_SEARCHES = {
   cinema: ['Cortometraggi', "Cinema d'autore", 'Documentari', 'Registi esordienti', 'Sceneggiature originali', 'Cinema indipendente'],
   teatro: ['Teatro civile', 'Compagnie indipendenti', 'Teatro-danza', 'Testi contemporanei', 'Improvvisazione teatrale'],
   'arti-visive': ['Arte urbana', 'Fotografia analogica', 'Giovani artisti', 'Installazioni', 'Arte digitale'],
+  danza: ['Danza contemporanea', 'Coreografi emergenti', 'Hip-hop urbano', 'Performance site-specific', 'Compagnie indipendenti'],
+  podcast: ['True crime italiano', 'Interviste indipendenti', 'Podcast narrativi', 'Attualità e società', 'Podcast comici'],
+  fotografia: ['Fotografia di strada', 'Reportage sociale', 'Analogica e pellicola', 'Ritratti in bianco e nero', 'Paesaggi urbani'],
 };
 
 // Ogni contenuto ha: categoria, sottofamiglia, titolo, autore/artista, anno,
@@ -100,5 +127,26 @@ export const CATEGORY_RESULTS = {
     { id: 'arte-3', title: 'Radice', creator: 'Studio Terracotta', year: 2023, subfamily: 'Scultura', description: 'Scultura in ceramica ispirata a forme organiche e radici.', tags: ['scultura', 'ceramica'] },
     { id: 'arte-4', title: 'Voci di quartiere', creator: 'Kass', year: 2025, subfamily: 'Street Art', description: 'Murale collettivo realizzato con gli abitanti di un quartiere periferico.', tags: ['street art', 'murale'] },
     { id: 'arte-5', title: 'Interni', creator: 'Bea Lombardi', year: 2024, subfamily: 'Pittura', description: 'Piccoli dipinti a tempera su interni domestici deserti.', tags: ['pittura', 'interni'] },
+  ],
+  danza: [
+    { id: 'danza-1', title: 'Linee sospese', creator: 'Compagnia Vento Obliquo', year: 2025, subfamily: 'Contemporanea', description: 'Assolo di danza contemporanea su musica elettronica dal vivo.', tags: ['contemporanea', 'assolo'] },
+    { id: 'danza-2', title: 'Passo doppio', creator: 'Elena Marchi e Toni Russo', year: 2024, subfamily: 'Classica', description: 'Pas de deux ispirato al repertorio classico con innesti moderni.', tags: ['classica', 'duo'] },
+    { id: 'danza-3', title: 'Blocco B', creator: 'Crew Asfalto', year: 2025, subfamily: 'Hip-hop', description: 'Coreografia di crew hip-hop urbana girata in un parcheggio.', tags: ['hip-hop', 'crew'] },
+    { id: 'danza-4', title: 'Senza spartito', creator: 'Collettivo Riva', year: 2023, subfamily: 'Improvvisazione', description: 'Sessione di improvvisazione a contatto tra quattro danzatori.', tags: ['improvvisazione'] },
+    { id: 'danza-5', title: 'Cortile', creator: 'Studio Perimetro', year: 2024, subfamily: 'Performance', description: 'Performance site-specific realizzata in un cortile condominiale.', tags: ['performance', 'site-specific'] },
+  ],
+  podcast: [
+    { id: 'podcast-1', title: 'Il caso della villa chiusa', creator: 'Voci di Confine', year: 2025, subfamily: 'True crime', description: 'Serie true crime in cinque puntate su un caso irrisolto degli anni novanta.', tags: ['true crime', 'serie'] },
+    { id: 'podcast-2', title: 'Due sedie e un microfono', creator: 'Radio Bassa Voce', year: 2024, subfamily: 'Intervista', description: 'Interviste lunghe e senza fretta a persone comuni con storie fuori dal comune.', tags: ['intervista'] },
+    { id: 'podcast-3', title: 'Cronache di quartiere', creator: 'Redazione Aperta', year: 2025, subfamily: 'Attualità', description: 'Rassegna settimanale di attualità raccontata da chi vive i quartieri.', tags: ['attualità', 'settimanale'] },
+    { id: 'podcast-4', title: 'Tre minuti di ritardo', creator: 'Nico e Fede', year: 2024, subfamily: 'Comico', description: 'Podcast comico su piccoli disastri quotidiani, episodi brevi.', tags: ['comico', 'breve'] },
+    { id: 'podcast-5', title: 'La stanza accanto', creator: 'Ilaria Petrucci', year: 2023, subfamily: 'Narrativo', description: 'Fiction audio a puntate ambientata in un condominio di provincia.', tags: ['narrativo', 'fiction'] },
+  ],
+  fotografia: [
+    { id: 'foto-1', title: 'Angoli ciechi', creator: 'Renzo Ialenti', year: 2025, subfamily: 'Reportage', description: 'Reportage su mestieri quasi scomparsi nei centri storici italiani.', tags: ['reportage'] },
+    { id: 'foto-2', title: 'Controcampo', creator: 'Marika Sole', year: 2024, subfamily: 'Ritratto', description: 'Serie di ritratti in bianco e nero a giovani atleti dilettanti.', tags: ['ritratto', 'bianco e nero'] },
+    { id: 'foto-3', title: 'Rullino 14', creator: 'Filippo Marra', year: 2023, subfamily: 'Analogica', description: 'Rullino sviluppato a mano, scatti di viaggio non pianificati.', tags: ['analogica', 'viaggio'] },
+    { id: 'foto-4', title: 'Tavola imbandita', creator: 'Chiara Vezzosi', year: 2025, subfamily: 'Still life', description: 'Still life minimalisti su oggetti domestici di uso quotidiano.', tags: ['still life'] },
+    { id: 'foto-5', title: 'Linee di città', creator: 'Omar Testa', year: 2024, subfamily: 'Paesaggio', description: 'Paesaggi urbani all’alba in cinque città europee diverse.', tags: ['paesaggio', 'urbano'] },
   ],
 };
