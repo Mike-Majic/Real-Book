@@ -170,33 +170,71 @@
   }
 }
 
-/* Sotto il breakpoint mobile, le due colonne non stanno più affiancate:
-   una schermata a tutto schermo alla volta, con un pulsante per passare
-   dall'una all'altra (gestito in CategoryColumn.jsx). */
-@media (max-width: 760px) {
-  .rb-arte-panel {
-    position: fixed;
-    inset: 0;
-    top: 168px;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    border-radius: 0;
-    padding: 16px 16px calc(20px + env(safe-area-inset-bottom, 0px));
-    z-index: 40;
-  }
+/* Layout mobile (verticale, o orizzontale ma sotto i 700px): una sola colonna
+   a piena larghezza per volta (di default i risultati), con una maniglia
+   fissa sul bordo destro che fa scorrere dentro l'altra colonna. */
+.rb-arte-mobile-stage {
+  position: fixed;
+  top: 168px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: auto;
+  z-index: 40;
+}
 
-  .rb-arte-mobile-nav {
-    display: block;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #f5f5f7;
-    font-size: 12.5px;
-    font-weight: 600;
-    padding: 8px 12px;
-    border-radius: 999px;
-    margin-bottom: 14px;
-    cursor: pointer;
-  }
+.rb-arte-mobile-track {
+  display: flex;
+  width: 200%;
+  height: 100%;
+  transform: translateX(0);
+  transition: transform 0.35s ease;
+}
+
+.rb-arte-mobile-track.show-featured {
+  transform: translateX(-50%);
+}
+
+.rb-arte-mobile-slide {
+  width: 50%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: 16px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+  background: rgba(8, 6, 14, 0.92);
+  backdrop-filter: blur(10px);
+  color: #f5f5f7;
+}
+
+.rb-arte-mobile-back {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f5f5f7;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 999px;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+
+.rb-arte-edge-handle {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 60px;
+  border-radius: 12px 0 0 12px;
+  background: color-mix(in srgb, var(--accent, #8b5cf6) 50%, rgba(6, 4, 12, 0.85));
+  border: 1px solid color-mix(in srgb, var(--accent, #8b5cf6) 55%, transparent);
+  border-right: none;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 41;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.35);
 }
