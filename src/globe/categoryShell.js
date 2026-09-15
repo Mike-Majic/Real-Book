@@ -8,6 +8,17 @@ function polarToVector(lat, lng, radius = 1) {
   return new THREE.Vector3(radius * sinPhi * Math.cos(theta), radius * Math.cos(phi), radius * sinPhi * Math.sin(theta));
 }
 
+// Inversa di polarToVector: dato un vettore unitario, la lat/lng corrispondente.
+// Serve a far volare la camera esattamente sul centro del triangolo assegnato a
+// una categoria, che in genere non coincide con la sua "anchor" originale (la
+// categoria viene agganciata al triangolo più vicino, non esattamente a quel punto).
+function vectorToPolar(v) {
+  const n = v.clone().normalize();
+  const phi = Math.acos(Math.max(-1, Math.min(1, n.y)));
+  const theta = Math.atan2(n.z, n.x);
+  return { lat: 90 - (phi * 180) / Math.PI, lng: 90 - (theta * 180) / Math.PI };
+}
+
 // Più categorie ci sono, più i triangoli devono essere piccoli per farcele stare
 // tutte in modo leggibile: si passa a un icosaedro più suddiviso (più facce, più
 // piccole) man mano che il numero di categorie cresce.
@@ -83,6 +94,7 @@ export function buildCategoryShell(categories, { radius = 122, color = '#8b5cf6'
   const group = new THREE.Group();
   const faceMeshes = [];
   const triangles = [];
+  const positions = {};
   const disposables = [baseGeo];
   const usedFaces = new Set();
 
@@ -116,6 +128,7 @@ export function buildCategoryShell(categories, { radius = 122, color = '#8b5cf6'
       b: b.clone().normalize(),
       c: c.clone().normalize(),
     });
+    positions[cat.id] = vectorToPolar(normal);
 
     const triGeo = new THREE.BufferGeometry();
     triGeo.setAttribute('position', new THREE.Float32BufferAttribute([a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z], 3));
@@ -151,5 +164,5 @@ export function buildCategoryShell(categories, { radius = 122, color = '#8b5cf6'
     disposables.forEach((d) => d.dispose && d.dispose());
   }
 
-  return { group, faceMeshes, triangles, setActive, dispose };
+  return { group, faceMeshes, triangles, positions, setActive, dispose };
 }

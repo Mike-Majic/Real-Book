@@ -24,7 +24,7 @@ function makeMarkerEl(user, world, onOpen) {
   return el;
 }
 
-export default function WorldGlobe({ world, users, onSelectUser, containerRef, flyTo, categories, activeCategory, onCategorySelect }) {
+export default function WorldGlobe({ world, users, onSelectUser, containerRef, flyTo, categories, activeCategory, onCategorySelect, onCategoryPositionsReady }) {
   const globeRef = useRef();
   const overlayRef = useRef(null);
   const categoryShellRef = useRef(null);
@@ -114,6 +114,7 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
     scene.add(shell.group);
     categoryShellRef.current = shell;
     shell.setActive(activeCategory);
+    onCategoryPositionsReady?.(shell.positions);
 
     // Toglie i puntini dei continenti da dentro ai triangoli, per lasciare le
     // etichette leggibili; tornano completi appena si esce da questo mondo.

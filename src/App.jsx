@@ -60,6 +60,7 @@ export default function App() {
   const [jobFilters, setJobFilters] = useState(() => loadStored('rb-job-filters', DEFAULT_JOB_FILTERS));
   const [locationFilters, setLocationFilters] = useState(() => loadStored('rb-location-filters', DEFAULT_LOCATION_FILTERS));
   const [activeArteCategory, setActiveArteCategory] = useState(null);
+  const [arteCategoryPositions, setArteCategoryPositions] = useState({});
   const [flyTo, setFlyTo] = useState(null);
 
   // Uscendo dal mondo Arte & Musica si azzera la categoria attiva, altrimenti
@@ -115,9 +116,13 @@ export default function App() {
   }, [debouncedCityQuery]);
 
   // Cercando una categoria nel mondo Arte & Musica, il globo vola sul suo triangolo.
+  // Si usa la posizione reale del triangolo assegnato (non la "anchor" originale,
+  // perché la categoria viene agganciata al triangolo più vicino, non a quel punto
+  // esatto), così la camera centra davvero il triangolo e non finisce ai suoi bordi.
   const flyToArteCategory = (cat) => {
     setActiveArteCategory(cat.id);
-    setFlyTo({ lat: cat.anchor.lat, lng: cat.anchor.lng, key: `cat-${cat.id}-${Date.now()}` });
+    const pos = arteCategoryPositions[cat.id] ?? cat.anchor;
+    setFlyTo({ lat: pos.lat, lng: pos.lng, key: `cat-${cat.id}-${Date.now()}` });
   };
 
   const toggleArteCategory = (id) => {
@@ -143,6 +148,7 @@ export default function App() {
         categories={world.id === 'arte' ? ARTE_CATEGORIES : null}
         activeCategory={activeArteCategory}
         onCategorySelect={toggleArteCategory}
+        onCategoryPositionsReady={setArteCategoryPositions}
       />
 
       {world.id === 'arte' && (
@@ -154,7 +160,9 @@ export default function App() {
         />
       )}
 
-      <div className="rb-world-tagline">{world.tagline}</div>
+      <div className="rb-world-tagline">
+        {world.id === 'arte' ? ARTE_CATEGORIES.map((c) => c.label).join(', ') : world.tagline}
+      </div>
 
       <nav className="rb-world-dots" aria-label="Cambia mondo">
         {WORLDS.map((w, i) => (
