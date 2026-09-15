@@ -1,33 +1,3 @@
-.rb-arte-panel {
-  position: absolute;
-  top: 76px;
-  bottom: 90px;
-  width: min(420px, 34vw);
-  background: rgba(8, 6, 14, 0.72);
-  border: 1px solid color-mix(in srgb, var(--accent, #8b5cf6) 40%, transparent);
-  border-radius: 18px;
-  padding: 18px;
-  overflow-y: auto;
-  backdrop-filter: blur(10px);
-  pointer-events: auto;
-  color: #f5f5f7;
-  box-shadow: 0 0 30px color-mix(in srgb, var(--accent, #8b5cf6) 18%, transparent);
-  animation: rb-arte-slide-in 0.25s ease;
-}
-
-.rb-arte-panel-left {
-  left: 22px;
-}
-
-.rb-arte-panel-right {
-  right: 70px;
-}
-
-@keyframes rb-arte-slide-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 .rb-arte-panel-header {
   margin-bottom: 12px;
 }
@@ -41,10 +11,6 @@
   margin: 0;
   font-size: 12.5px;
   color: rgba(245, 245, 247, 0.55);
-}
-
-.rb-arte-mobile-nav {
-  display: none;
 }
 
 .rb-arte-suggestion-row {
@@ -203,50 +169,6 @@
   color: rgba(245, 245, 247, 0.45);
 }
 
-@media (max-width: 980px) {
-  .rb-arte-panel {
-    width: min(280px, 46vw);
-    padding: 14px;
-  }
-}
-
-/* Layout mobile (verticale, o orizzontale ma sotto i 700px): una sola colonna
-   a piena larghezza per volta (di default i risultati), con una maniglia
-   fissa sul bordo destro che fa scorrere dentro l'altra colonna. */
-.rb-arte-mobile-stage {
-  position: fixed;
-  top: 168px;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  overflow: hidden;
-  pointer-events: auto;
-  z-index: 40;
-}
-
-.rb-arte-mobile-track {
-  display: flex;
-  width: 200%;
-  height: 100%;
-  transform: translateX(0);
-  transition: transform 0.35s ease;
-}
-
-.rb-arte-mobile-track.show-secondary {
-  transform: translateX(-50%);
-}
-
-.rb-arte-mobile-slide {
-  width: 50%;
-  height: 100%;
-  box-sizing: border-box;
-  overflow-y: auto;
-  padding: 16px 16px calc(20px + env(safe-area-inset-bottom, 0px));
-  background: rgba(8, 6, 14, 0.92);
-  backdrop-filter: blur(10px);
-  color: #f5f5f7;
-}
-
 .rb-arte-mobile-back {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -257,24 +179,4 @@
   border-radius: 999px;
   margin-bottom: 14px;
   cursor: pointer;
-}
-
-.rb-arte-edge-handle {
-  position: fixed;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 26px;
-  height: 60px;
-  border-radius: 12px 0 0 12px;
-  background: color-mix(in srgb, var(--accent, #8b5cf6) 50%, rgba(6, 4, 12, 0.85));
-  border: 1px solid color-mix(in srgb, var(--accent, #8b5cf6) 55%, transparent);
-  border-right: none;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 41;
-  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.35);
 }

@@ -1,33 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { MOCK_USERS } from '../data/mockUsers';
 import { CONTENT_INTERACTIONS } from '../data/contentInteractions';
 import { findCityMatch, getCityInfo, distanceKm } from '../data/geo';
+import { useIsDesktopLayout } from '../hooks/useIsDesktopLayout';
+import TwoColumnSwitcher from './layout/TwoColumnSwitcher';
 import './CategoryColumn.css';
-
-// Layout desktop (due colonne affiancate) solo se ENTRAMBE le condizioni sono
-// vere: orizzontale E almeno 700px di larghezza. Una tavoletta in verticale,
-// o un telefono ruotato ma stretto, restano nel layout mobile.
-const DESKTOP_QUERY = '(orientation: landscape) and (min-width: 700px)';
-
-function useIsDesktopLayout() {
-  const [isDesktop, setIsDesktop] = useState(() => window.matchMedia(DESKTOP_QUERY).matches);
-  useEffect(() => {
-    const mq = window.matchMedia(DESKTOP_QUERY);
-    const handler = (e) => setIsDesktop(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-  return isDesktop;
-}
-
-function SwitchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8 7l-4 5 4 5" />
-      <path d="M16 7l4 5-4 5" />
-    </svg>
-  );
-}
 
 // Componente unico e parametrizzato per esplorare una categoria: riceve
 // l'oggetto categoria (nome, sottofamiglie...) più i suoi contenuti/ricerche
@@ -51,7 +28,7 @@ function SwitchIcon() {
 export default function CategoryColumn({ category, initialSubfamily = '', locationFilters = {}, featured = [], allResults = [] }) {
   const [resultsQuery, setResultsQuery] = useState('');
   const [subfamilyFilter, setSubfamilyFilter] = useState(initialSubfamily);
-  const [mobileView, setMobileView] = useState('results'); // 'results' | 'nearby'
+  const [mobileView, setMobileView] = useState('primary'); // 'primary' | 'secondary'
   const isDesktop = useIsDesktopLayout();
 
   const results = useMemo(() => {
@@ -156,7 +133,7 @@ export default function CategoryColumn({ category, initialSubfamily = '', locati
   const nearbyContent = (
     <>
       {!isDesktop && (
-        <button className="rb-arte-mobile-back" onClick={() => setMobileView('results')}>
+        <button className="rb-arte-mobile-back" onClick={() => setMobileView('primary')}>
           ← Torna a {category.label}
         </button>
       )}
@@ -192,29 +169,14 @@ export default function CategoryColumn({ category, initialSubfamily = '', locati
     </>
   );
 
-  if (isDesktop) {
-    return (
-      <>
-        <aside className="rb-arte-panel rb-arte-panel-left">{resultsContent}</aside>
-        <aside className="rb-arte-panel rb-arte-panel-right">{nearbyContent}</aside>
-      </>
-    );
-  }
-
   return (
-    <div className="rb-arte-mobile-stage">
-      <div className={`rb-arte-mobile-track ${mobileView === 'nearby' ? 'show-secondary' : ''}`}>
-        <div className="rb-arte-mobile-slide">{resultsContent}</div>
-        <div className="rb-arte-mobile-slide">{nearbyContent}</div>
-      </div>
-      <button
-        className="rb-arte-edge-handle"
-        onClick={() => setMobileView((v) => (v === 'results' ? 'nearby' : 'results'))}
-        aria-label={mobileView === 'results' ? 'Mostra persone vicine' : `Torna a ${category.label}`}
-        title={mobileView === 'results' ? 'Persone vicine' : category.label}
-      >
-        <SwitchIcon />
-      </button>
-    </div>
+    <TwoColumnSwitcher
+      primary={resultsContent}
+      secondary={nearbyContent}
+      primaryLabel={category.label}
+      secondaryLabel="Persone vicine"
+      mobileView={mobileView}
+      onMobileViewChange={setMobileView}
+    />
   );
 }

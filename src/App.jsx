@@ -6,6 +6,7 @@ import ProfileModal from './components/ProfileModal';
 import AuthModal from './components/AuthModal';
 import ArteExplorer from './components/ArteExplorer';
 import BambiniGameExplorer from './components/BambiniGameExplorer';
+import SocialFeed from './components/social/SocialFeed';
 import { WORLDS, DEFAULT_WORLD_INDEX } from './data/worlds';
 import { usersForWorld } from './data/mockUsers';
 import { useSwipeWorld } from './hooks/useSwipeWorld';
@@ -274,6 +275,10 @@ export default function App() {
           onSearchCategory={flyToArteCategory}
           onGameOpenChange={setGameplayActive}
         />
+      )}
+
+      {world.id === 'social' && (
+        <SocialFeed world={world} user={user} onOpenAuth={() => setAuthOpen(true)} />
       )}
 
       <div className={`rb-world-tagline ${categorySet ? 'rb-world-tagline-list' : ''}`}>

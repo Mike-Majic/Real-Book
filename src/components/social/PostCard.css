@@ -1,0 +1,160 @@
+.rb-post-card {
+  list-style: none;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.rb-post-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.rb-post-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid color-mix(in srgb, var(--accent, #1d9bf0) 45%, transparent);
+}
+
+.rb-post-header strong {
+  display: block;
+  font-size: 13.5px;
+}
+
+.rb-post-date {
+  font-size: 11px;
+  color: rgba(245, 245, 247, 0.45);
+}
+
+.rb-post-text {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.rb-post-gif {
+  max-width: 100%;
+  border-radius: 10px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.rb-post-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.rb-post-action-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f5f5f7;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.rb-post-action-btn:hover {
+  border-color: var(--accent, #1d9bf0);
+}
+
+.rb-post-action-btn.active {
+  background: color-mix(in srgb, #ff3860 22%, transparent);
+  border-color: #ff3860;
+}
+
+.rb-post-comments {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rb-comment-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rb-comment {
+  display: flex;
+  gap: 8px;
+}
+
+.rb-comment-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.rb-comment-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.rb-comment-bubble {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.rb-comment-bubble strong {
+  display: block;
+  font-size: 12.5px;
+}
+
+.rb-comment-bubble p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.rb-comment-gif {
+  max-width: 140px;
+  border-radius: 8px;
+  display: block;
+  margin-top: 6px;
+}
+
+.rb-comment-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding-left: 4px;
+}
+
+.rb-comment-date {
+  font-size: 10.5px;
+  color: rgba(245, 245, 247, 0.4);
+}
+
+.rb-comment-react-btn {
+  background: transparent;
+  border: none;
+  color: rgba(245, 245, 247, 0.6);
+  font-size: 11.5px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+
+.rb-comment-react-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
