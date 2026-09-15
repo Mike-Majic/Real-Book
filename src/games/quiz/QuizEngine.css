@@ -1,0 +1,72 @@
+.rb-quiz-engine {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+}
+
+.rb-quiz-topbar {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(245, 245, 247, 0.7);
+}
+
+.rb-quiz-timer {
+  color: var(--accent, #22c55e);
+}
+
+.rb-quiz-question {
+  margin: 0;
+  font-size: 19px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.rb-quiz-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.rb-quiz-option {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f5f5f7;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 14px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.rb-quiz-option:not(:disabled):hover {
+  border-color: var(--accent, #22c55e);
+  background: color-mix(in srgb, var(--accent, #22c55e) 14%, transparent);
+}
+
+.rb-quiz-option:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.rb-quiz-option:disabled {
+  cursor: default;
+}
+
+.rb-quiz-option.correct {
+  background: color-mix(in srgb, #22c55e 30%, transparent);
+  border-color: #22c55e;
+}
+
+.rb-quiz-option.wrong {
+  background: color-mix(in srgb, #ef4444 28%, transparent);
+  border-color: #ef4444;
+}
+
+@media (max-width: 480px) {
+  .rb-quiz-options {
+    grid-template-columns: 1fr;
+  }
+}

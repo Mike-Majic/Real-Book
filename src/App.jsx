@@ -5,6 +5,7 @@ import SettingsPanel from './components/SettingsPanel';
 import ProfileModal from './components/ProfileModal';
 import AuthModal from './components/AuthModal';
 import ArteExplorer from './components/ArteExplorer';
+import BambiniGames from './components/BambiniGames';
 import { WORLDS, DEFAULT_WORLD_INDEX } from './data/worlds';
 import { usersForWorld } from './data/mockUsers';
 import { useSwipeWorld } from './hooks/useSwipeWorld';
@@ -222,6 +223,8 @@ export default function App() {
           locationFilters={locationFilters}
         />
       )}
+
+      {world.id === 'bambini' && <BambiniGames world={world} />}
 
       <div className={`rb-world-tagline ${categorySet ? 'rb-world-tagline-list' : ''}`}>
         {categorySet

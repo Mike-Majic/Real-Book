@@ -5,9 +5,9 @@ export const WORLDS = [
   {
     id: 'bambini',
     label: 'Bambini',
-    // Mondo ancora vuoto di proposito: niente profili/posizioni di minori sulla mappa.
-    // Conterrà giochi pensati per i più piccoli, da progettare a parte.
-    tagline: 'Giochi per i più piccoli — in arrivo',
+    // Niente profili/posizioni di minori sulla mappa di proposito: questo
+    // mondo è fatto di minigiochi (vedi src/games/registry.js), non di persone.
+    tagline: 'Minigiochi per i più piccoli',
     color: '#22c55e',
     colorSoft: 'rgba(34, 197, 94, 0.18)',
     globeColor: '#03130a',
