@@ -1,10 +1,38 @@
 // Dati finti per le categorie del mondo Arte & Musica (Libreria, Musica, Cinema).
-// Nessun backend: servono solo a mostrare come funzionerà la ricerca a due colonne.
+// Nessun backend: servono solo a mostrare come funzionerà la ricerca a due colonne
+// e le categorie "incastonate" nel guscio del mappamondo.
 export const ARTE_CATEGORIES = [
-  { id: 'libreria', label: 'Libreria', icon: '📚' },
-  { id: 'musica', label: 'Musica', icon: '🎵' },
-  { id: 'cinema', label: 'Cinema', icon: '🎬' },
+  {
+    id: 'libreria',
+    label: 'Libreria',
+    icon: '📚',
+    anchor: { lat: 35, lng: -20 },
+    aliases: ['libreria', 'libri', 'libro', 'biblioteca', 'lettura'],
+  },
+  {
+    id: 'musica',
+    label: 'Musica',
+    icon: '🎵',
+    anchor: { lat: -15, lng: 130 },
+    aliases: ['musica', 'music', 'canzoni', 'canzone', 'brani'],
+  },
+  {
+    id: 'cinema',
+    label: 'Cinema',
+    icon: '🎬',
+    anchor: { lat: 10, lng: 40 },
+    aliases: ['cinema', 'film', 'filmato', 'movie', 'cortometraggio'],
+  },
 ];
+
+// Trova la categoria il cui alias combacia (anche parzialmente) con la query digitata.
+export function resolveCategoryQuery(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return null;
+  const exact = ARTE_CATEGORIES.find((c) => c.aliases.includes(q));
+  if (exact) return exact;
+  return ARTE_CATEGORIES.find((c) => c.aliases.some((a) => a.startsWith(q))) ?? null;
+}
 
 export const FEATURED_SEARCHES = {
   libreria: ['Fantascienza italiana', 'Poesia contemporanea', 'Saggistica storica', "Romanzi d'esordio", 'Fumetti indipendenti', 'Autori emergenti'],

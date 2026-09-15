@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { WORLDS } from '../data/worlds';
 import { loadLandDots } from '../globe/landDots';
 import { buildLandDots, buildNetworkShell } from '../globe/networkOverlay';
+import { buildCategoryShell } from '../globe/categoryShell';
 import './WorldGlobe.css';
 
 function makeMarkerEl(user, world, onOpen) {
@@ -23,9 +24,10 @@ function makeMarkerEl(user, world, onOpen) {
   return el;
 }
 
-export default function WorldGlobe({ world, users, onSelectUser, containerRef, flyTo }) {
+export default function WorldGlobe({ world, users, onSelectUser, containerRef, flyTo, categories, activeCategory, onCategorySelect }) {
   const globeRef = useRef();
   const overlayRef = useRef(null);
+  const categoryShellRef = useRef(null);
   const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
 
   useEffect(() => {
@@ -97,6 +99,68 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
   useEffect(() => {
     if (overlayRef.current) applyOverlayColor(overlayRef.current, world.atmosphereColor);
   }, [world.atmosphereColor]);
+
+  // Categorie "incastonate" nel guscio (solo dove servono, es. mondo Arte & Musica):
+  // ogni categoria riempie il triangolo più vicino alla sua posizione lat/lng, con
+  // un'etichetta sempre rivolta verso la camera (quindi sempre dritta e leggibile).
+  useEffect(() => {
+    const g = globeRef.current;
+    if (!g || !categories || categories.length === 0) return undefined;
+
+    const scene = g.scene();
+    const shell = buildCategoryShell(categories, { radius: 122, color: world.color });
+    scene.add(shell.group);
+    categoryShellRef.current = shell;
+    shell.setActive(activeCategory);
+
+    return () => {
+      scene.remove(shell.group);
+      shell.dispose();
+      categoryShellRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories, world.color]);
+
+  useEffect(() => {
+    categoryShellRef.current?.setActive(activeCategory);
+  }, [activeCategory]);
+
+  // Rileva i click sui triangoli delle categorie, distinguendoli da un trascinamento
+  // (che serve invece a ruotare il globo con OrbitControls).
+  useEffect(() => {
+    const g = globeRef.current;
+    if (!g || !categories || !onCategorySelect) return undefined;
+
+    const canvas = g.renderer().domElement;
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    let downPos = null;
+
+    const onPointerDown = (e) => {
+      downPos = { x: e.clientX, y: e.clientY };
+    };
+
+    const onPointerUp = (e) => {
+      if (!downPos) return;
+      const moved = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
+      downPos = null;
+      if (moved > 6) return;
+
+      const rect = canvas.getBoundingClientRect();
+      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, g.camera());
+      const hits = raycaster.intersectObjects(categoryShellRef.current?.faceMeshes ?? []);
+      if (hits.length > 0) onCategorySelect(hits[0].object.userData.categoryId);
+    };
+
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointerup', onPointerUp);
+    return () => {
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointerup', onPointerUp);
+    };
+  }, [categories, onCategorySelect]);
 
   useEffect(() => {
     const g = globeRef.current;

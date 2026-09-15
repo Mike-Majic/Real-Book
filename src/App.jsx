@@ -9,6 +9,7 @@ import { WORLDS, DEFAULT_WORLD_INDEX } from './data/worlds';
 import { usersForWorld } from './data/mockUsers';
 import { useSwipeWorld } from './hooks/useSwipeWorld';
 import { getCityInfo, findCityMatch } from './data/geo';
+import { ARTE_CATEGORIES } from './data/arteCategories';
 import './App.css';
 
 const DEFAULT_FILTERS = { gender: 'Tutti', ageMin: 18, ageMax: 60 };
@@ -58,6 +59,14 @@ export default function App() {
   const [filters, setFilters] = useState(() => loadStored('rb-filters', DEFAULT_FILTERS));
   const [jobFilters, setJobFilters] = useState(() => loadStored('rb-job-filters', DEFAULT_JOB_FILTERS));
   const [locationFilters, setLocationFilters] = useState(() => loadStored('rb-location-filters', DEFAULT_LOCATION_FILTERS));
+  const [activeArteCategory, setActiveArteCategory] = useState(null);
+  const [flyTo, setFlyTo] = useState(null);
+
+  // Uscendo dal mondo Arte & Musica si azzera la categoria attiva, altrimenti
+  // tornandoci si ritroverebbe un triangolo evidenziato senza pannelli aperti.
+  useEffect(() => {
+    if (world.id !== 'arte') setActiveArteCategory(null);
+  }, [world.id]);
 
   useEffect(() => {
     document.documentElement.style.setProperty('--rb-accent', world.color);
@@ -100,10 +109,20 @@ export default function App() {
   // Quando la città cercata nei filtri (globali, validi per tutti i mondi) corrisponde
   // a una città nota, il globo ci "vola" sopra.
   const debouncedCityQuery = useDebouncedValue(locationFilters.city, 500);
-  const flyTo = useMemo(() => {
+  useEffect(() => {
     const match = findCityMatch(debouncedCityQuery);
-    return match ? { lat: match.lat, lng: match.lng, key: match.name } : null;
+    if (match) setFlyTo({ lat: match.lat, lng: match.lng, key: `city-${match.name}` });
   }, [debouncedCityQuery]);
+
+  // Cercando una categoria nel mondo Arte & Musica, il globo vola sul suo triangolo.
+  const flyToArteCategory = (cat) => {
+    setActiveArteCategory(cat.id);
+    setFlyTo({ lat: cat.anchor.lat, lng: cat.anchor.lng, key: `cat-${cat.id}-${Date.now()}` });
+  };
+
+  const toggleArteCategory = (id) => {
+    setActiveArteCategory((cur) => (cur === id ? null : id));
+  };
 
   return (
     <div className="rb-app" style={{ '--accent': world.color }}>
@@ -121,9 +140,19 @@ export default function App() {
         onSelectUser={setSelectedUser}
         containerRef={containerRef}
         flyTo={flyTo}
+        categories={world.id === 'arte' ? ARTE_CATEGORIES : null}
+        activeCategory={activeArteCategory}
+        onCategorySelect={toggleArteCategory}
       />
 
-      {world.id === 'arte' && <ArteExplorer world={world} />}
+      {world.id === 'arte' && (
+        <ArteExplorer
+          world={world}
+          activeCategory={activeArteCategory}
+          onToggleCategory={toggleArteCategory}
+          onSearchCategory={flyToArteCategory}
+        />
+      )}
 
       <div className="rb-world-tagline">{world.tagline}</div>
 
