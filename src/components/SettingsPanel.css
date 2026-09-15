@@ -1,0 +1,138 @@
+.rb-settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 50;
+  display: flex;
+  justify-content: flex-end;
+  animation: rb-fade-in 0.15s ease;
+}
+
+@keyframes rb-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.rb-settings-panel {
+  width: min(380px, 92vw);
+  height: 100%;
+  background: #0f0f14;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 20px;
+  overflow-y: auto;
+  color: #f5f5f7;
+  animation: rb-slide-in 0.2s ease;
+}
+
+@keyframes rb-slide-in {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.rb-settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.rb-settings-header h2 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.rb-close-btn {
+  background: transparent;
+  border: none;
+  color: #f5f5f7;
+  font-size: 16px;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.rb-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.rb-settings-section {
+  padding: 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rb-settings-section h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.rb-settings-hint {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  color: rgba(245, 245, 247, 0.55);
+}
+
+.rb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.rb-field > span {
+  font-weight: 600;
+  color: rgba(245, 245, 247, 0.85);
+}
+
+.rb-field input[type='text'],
+.rb-field select {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #f5f5f7;
+  font-size: 14px;
+}
+
+.rb-field select option {
+  color: #111;
+}
+
+.rb-range-row {
+  display: flex;
+  gap: 10px;
+}
+
+.rb-range-row input {
+  flex: 1;
+}
+
+.rb-chip-group {
+  display: flex;
+  gap: 8px;
+}
+
+.rb-chip {
+  flex: 1;
+  padding: 8px 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #f5f5f7;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.rb-chip.active {
+  background: #1d9bf0;
+  border-color: #1d9bf0;
+  color: #06060a;
+  font-weight: 700;
+}
+
+.rb-settings-footnote {
+  font-size: 11.5px;
+  color: rgba(245, 245, 247, 0.4);
+  margin-top: 8px;
+}

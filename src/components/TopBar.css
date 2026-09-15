@@ -1,0 +1,119 @@
+.rb-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 22px;
+  background: linear-gradient(180deg, rgba(6, 6, 10, 0.75), transparent);
+  backdrop-filter: blur(6px);
+  transition: color 0.4s ease;
+}
+
+.rb-topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.2px;
+  color: #f5f5f7;
+}
+
+.rb-logo-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent, #1d9bf0);
+  box-shadow: 0 0 14px var(--accent, #1d9bf0);
+  transition: background 0.4s ease, box-shadow 0.4s ease;
+}
+
+.rb-world-pill {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--accent, #1d9bf0);
+  color: var(--accent, #1d9bf0);
+  transition: color 0.4s ease, border-color 0.4s ease;
+}
+
+.rb-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rb-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f5f5f7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.2s ease;
+}
+
+.rb-icon-btn:hover {
+  transform: rotate(25deg);
+  border-color: var(--accent, #1d9bf0);
+}
+
+.rb-btn-primary {
+  background: var(--accent, #1d9bf0);
+  color: #06060a;
+  border: none;
+  font-weight: 700;
+  padding: 10px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: filter 0.15s ease, background 0.4s ease;
+}
+
+.rb-btn-primary:hover {
+  filter: brightness(1.1);
+}
+
+.rb-btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #f5f5f7;
+  padding: 7px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.rb-btn-ghost:hover {
+  border-color: #fff;
+}
+
+.rb-user-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 5px 8px 5px 5px;
+  border-radius: 999px;
+}
+
+.rb-user-chip img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.rb-user-chip span {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f5f5f7;
+}

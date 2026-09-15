@@ -1,0 +1,136 @@
+.rb-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: rb-fade-in 0.15s ease;
+}
+
+.rb-profile-card {
+  position: relative;
+  width: min(420px, 100%);
+  max-height: 85vh;
+  overflow-y: auto;
+  background: #131318;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 24px;
+  color: #f5f5f7;
+  box-shadow: 0 0 0 1px var(--accent, #1d9bf0) inset, 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.rb-profile-card .rb-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #f5f5f7;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.rb-profile-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.rb-profile-avatar {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent, #1d9bf0);
+}
+
+.rb-profile-head h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.rb-profile-location {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: rgba(245, 245, 247, 0.6);
+}
+
+.rb-profile-tag {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, #1d9bf0) 20%, transparent);
+  color: var(--accent, #1d9bf0);
+  margin-bottom: 10px;
+}
+
+.rb-profile-bio {
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(245, 245, 247, 0.85);
+}
+
+.rb-profile-job h3 {
+  margin: 0 0 14px;
+  font-size: 17px;
+}
+
+.rb-cv-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.rb-cv-icon {
+  font-size: 26px;
+}
+
+.rb-cv-box strong {
+  display: block;
+  font-size: 13px;
+}
+
+.rb-cv-box p {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: rgba(245, 245, 247, 0.55);
+}
+
+.rb-cv-box .rb-btn-primary {
+  margin-left: auto;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.rb-cv-box .rb-btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.rb-portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.rb-portfolio-tile {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent, #8b5cf6) 0%, rgba(255, 255, 255, 0.05) 100%);
+  opacity: 0.5;
+}
