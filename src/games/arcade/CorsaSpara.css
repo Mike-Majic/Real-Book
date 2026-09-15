@@ -1,0 +1,80 @@
+.rb-corsa-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 0;
+  text-align: center;
+}
+
+.rb-corsa-intro p {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(245, 245, 247, 0.75);
+  max-width: 280px;
+}
+
+.rb-corsa-start-btn {
+  background: var(--accent, #22c55e);
+  border: 1px solid var(--accent, #22c55e);
+  color: #06210f;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 12px 28px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.rb-corsa {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.rb-corsa-topbar {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 380px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.rb-corsa-canvas {
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  max-width: 100%;
+  height: auto;
+  touch-action: none;
+}
+
+.rb-corsa-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rb-corsa-controls button {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f5f5f7;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.rb-corsa-fire {
+  width: auto !important;
+  padding: 0 18px;
+  font-size: 13px !important;
+  font-weight: 800;
+  background: color-mix(in srgb, #f87171 35%, rgba(255, 255, 255, 0.08)) !important;
+  border-color: #f87171 !important;
+}
+
+.rb-corsa-controls button:active {
+  transform: scale(0.95);
+}

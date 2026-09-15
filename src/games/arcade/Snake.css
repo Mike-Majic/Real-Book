@@ -1,0 +1,74 @@
+.rb-snake-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 0;
+  text-align: center;
+}
+
+.rb-snake-intro p {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(245, 245, 247, 0.75);
+  max-width: 260px;
+}
+
+.rb-snake-start-btn {
+  background: var(--accent, #22c55e);
+  border: 1px solid var(--accent, #22c55e);
+  color: #06210f;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 12px 28px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.rb-snake {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.rb-snake-score {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.rb-snake-canvas {
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  max-width: 100%;
+  height: auto;
+  touch-action: none;
+}
+
+.rb-snake-touch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.rb-snake-touch-row {
+  display: flex;
+  gap: 6px;
+}
+
+.rb-snake-touch button {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f5f5f7;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.rb-snake-touch button:active {
+  background: color-mix(in srgb, var(--accent, #22c55e) 25%, transparent);
+}

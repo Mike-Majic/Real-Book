@@ -1,0 +1,54 @@
+.rb-torre-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 0;
+  text-align: center;
+}
+
+.rb-torre-intro p {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(245, 245, 247, 0.75);
+  max-width: 280px;
+}
+
+.rb-torre-start-btn {
+  background: var(--accent, #22c55e);
+  border: 1px solid var(--accent, #22c55e);
+  color: #06210f;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 12px 28px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.rb-torre {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.rb-torre-score {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.rb-torre-canvas {
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  max-width: 100%;
+  height: auto;
+  touch-action: none;
+  cursor: pointer;
+}
+
+.rb-torre-hint {
+  margin: 0;
+  font-size: 11.5px;
+  color: rgba(245, 245, 247, 0.45);
+}

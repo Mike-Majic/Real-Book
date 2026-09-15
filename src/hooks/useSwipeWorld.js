@@ -4,11 +4,20 @@ import { useEffect, useRef, useState } from 'react';
 // - swipe orizzontale a due dita su touchscreen
 // - scroll orizzontale a due dita su trackpad (evento wheel con deltaX prevalente)
 // - frecce sinistra/destra da tastiera, come alternativa accessibile
-export function useSwipeWorld(count, initialIndex = 0) {
+//
+// disabled: quando true, ignora tutti questi gesti — serve per i minigiochi
+// del mondo Bambini che usano le stesse frecce/tocchi per controllare il
+// gioco (es. Snake), altrimenti ArrowLeft/ArrowRight cambierebbero mondo
+// invece di muovere il personaggio.
+export function useSwipeWorld(count, initialIndex = 0, disabled = false) {
   const [index, setIndex] = useState(initialIndex);
   const containerRef = useRef(null);
   const cooldownRef = useRef(false);
   const touchStartRef = useRef(null);
+  const disabledRef = useRef(disabled);
+  useEffect(() => {
+    disabledRef.current = disabled;
+  }, [disabled]);
 
   const goTo = (next) => {
     const clamped = ((next % count) + count) % count;
@@ -27,6 +36,7 @@ export function useSwipeWorld(count, initialIndex = 0) {
     if (!el) return undefined;
 
     const onWheel = (e) => {
+      if (disabledRef.current) return;
       // Interessano solo gli swipe orizzontali (due dita su trackpad).
       // Se il movimento verticale prevale, lasciamo l'evento allo zoom del globo.
       if (Math.abs(e.deltaX) < Math.abs(e.deltaY) * 1.3) return;
@@ -47,6 +57,7 @@ export function useSwipeWorld(count, initialIndex = 0) {
     };
 
     const onTouchMove = (e) => {
+      if (disabledRef.current) return;
       if (e.touches.length !== 2 || !touchStartRef.current) return;
       const [a, b] = e.touches;
       const x = (a.clientX + b.clientX) / 2;
@@ -65,6 +76,7 @@ export function useSwipeWorld(count, initialIndex = 0) {
     };
 
     const onKeyDown = (e) => {
+      if (disabledRef.current) return;
       if (e.key === 'ArrowRight') goTo(index + 1);
       if (e.key === 'ArrowLeft') goTo(index - 1);
     };

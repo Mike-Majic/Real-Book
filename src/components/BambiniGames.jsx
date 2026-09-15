@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MINIGAMES, MINIGAME_FAMILIES } from '../games/registry';
 import MiniGameShell from './minigames/MiniGameShell';
 import './BambiniGames.css';
@@ -8,9 +8,20 @@ import './BambiniGames.css';
 // sovrappone il wrapper comune MiniGameShell (Fase A), mai il globo stesso —
 // coerente con la scelta di non mostrare profili/posizioni di minori sulla
 // mappa: questo mondo resta fatto di giochi, non di persone.
-export default function BambiniGames({ world }) {
+//
+// onGameOpenChange avvisa App.jsx quando un gioco è aperto/chiuso, per
+// disattivare lo swipe/le frecce di cambio mondo mentre si gioca (altrimenti
+// le frecce di giochi come Snake cambierebbero mondo invece di muovere il
+// personaggio).
+export default function BambiniGames({ world, onGameOpenChange }) {
   const [activeGameId, setActiveGameId] = useState(null);
   const activeGame = MINIGAMES.find((g) => g.id === activeGameId) ?? null;
+
+  useEffect(() => {
+    onGameOpenChange?.(!!activeGameId);
+  }, [activeGameId, onGameOpenChange]);
+
+  useEffect(() => () => onGameOpenChange?.(false), [onGameOpenChange]);
 
   return (
     <div className="rb-bambini-games" style={{ '--accent': world.color }}>

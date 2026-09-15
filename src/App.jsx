@@ -70,7 +70,11 @@ function loadStored(key, fallback) {
 }
 
 export default function App() {
-  const { index, setIndex, containerRef } = useSwipeWorld(WORLDS.length, DEFAULT_WORLD_INDEX);
+  // Mentre un minigioco del mondo Bambini è aperto, lo swipe/le frecce non
+  // devono cambiare mondo: alcuni giochi (es. Snake) usano le stesse frecce
+  // per i propri controlli.
+  const [gameplayActive, setGameplayActive] = useState(false);
+  const { index, setIndex, containerRef } = useSwipeWorld(WORLDS.length, DEFAULT_WORLD_INDEX, gameplayActive);
   const world = WORLDS[index];
   const categorySet = CATEGORY_WORLDS[world.id] ?? null;
 
@@ -224,7 +228,7 @@ export default function App() {
         />
       )}
 
-      {world.id === 'bambini' && <BambiniGames world={world} />}
+      {world.id === 'bambini' && <BambiniGames world={world} onGameOpenChange={setGameplayActive} />}
 
       <div className={`rb-world-tagline ${categorySet ? 'rb-world-tagline-list' : ''}`}>
         {categorySet

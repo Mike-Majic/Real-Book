@@ -56,4 +56,28 @@ export const MINIGAMES = [
     meccanica: 'Rimetti in ordine i numeri facendo scorrere le tessere',
     Component: lazy(() => import('./logica/PuzzleScorrevole.jsx')),
   },
+  {
+    id: 'snake',
+    nome: 'Snake',
+    famiglia: 'arcade',
+    fasciaEtaMinima: 6,
+    meccanica: 'Arcade classico: mangia i frutti ed evita muri e coda',
+    Component: lazy(() => import('./arcade/Snake.jsx')),
+  },
+  {
+    id: 'corsa-spara',
+    nome: 'Corsa e spara retrò',
+    famiglia: 'arcade',
+    fasciaEtaMinima: 7,
+    meccanica: 'Cambia corsia ed elimina i droni prima che ti raggiungano',
+    Component: lazy(() => import('./arcade/CorsaSpara.jsx')),
+  },
+  {
+    id: 'torre-blocchi',
+    nome: 'Torre di blocchi',
+    famiglia: 'arcade',
+    fasciaEtaMinima: 5,
+    meccanica: 'Impila blocchi in equilibrio, un tocco alla volta',
+    Component: lazy(() => import('./arcade/TorreBlocchi.jsx')),
+  },
 ];
