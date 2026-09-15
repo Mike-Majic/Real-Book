@@ -47,8 +47,7 @@ export const WORLDS = [
   {
     id: 'nerd',
     label: 'Nerd',
-    // Mondo vuoto: il contenuto (gaming? tech? fumetti?) va ancora deciso.
-    tagline: 'Tecnologia, gaming, community — in arrivo',
+    tagline: 'Giochi da tavolo, gaming, cosplay, streaming',
     color: '#d4f634',
     colorSoft: 'rgba(212, 246, 52, 0.18)',
     globeColor: '#0c0f02',

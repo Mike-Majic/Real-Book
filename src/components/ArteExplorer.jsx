@@ -1,17 +1,21 @@
 import { useState } from 'react';
-import { ARTE_CATEGORIES, resolveCategoryQuery } from '../data/arteCategories';
 import CategoryColumn from './CategoryColumn';
 import './ArteExplorer.css';
 
-export default function ArteExplorer({ world, activeCategory, onToggleCategory, onSearchCategory, initialSubfamily, locationFilters }) {
+// Guscio di navigazione categorie, generico per qualunque mondo che abbia un
+// proprio set di categorie (categorySet = { categories, featured, results,
+// resolveQuery }, vedi CATEGORY_WORLDS in App.jsx) — usato oggi da Arte &
+// Musica e da Nerd, senza copie: la X, il campo di ricerca categoria e
+// CategoryColumn sono sempre gli stessi, cambiano solo i dati.
+export default function ArteExplorer({ world, categorySet, activeCategory, onToggleCategory, onSearchCategory, initialSubfamily, locationFilters }) {
   const [categoryQuery, setCategoryQuery] = useState('');
   const [categoryQueryInvalid, setCategoryQueryInvalid] = useState(false);
 
-  const category = ARTE_CATEGORIES.find((c) => c.id === activeCategory) ?? null;
+  const category = categorySet.categories.find((c) => c.id === activeCategory) ?? null;
 
   const submitCategorySearch = (e) => {
     e.preventDefault();
-    const found = resolveCategoryQuery(categoryQuery);
+    const found = categorySet.resolveQuery(categoryQuery);
     if (found) {
       setCategoryQueryInvalid(false);
       onSearchCategory(found);
@@ -50,7 +54,14 @@ export default function ArteExplorer({ world, activeCategory, onToggleCategory, 
             </form>
           </div>
 
-          <CategoryColumn key={category.id} category={category} initialSubfamily={initialSubfamily} locationFilters={locationFilters} />
+          <CategoryColumn
+            key={category.id}
+            category={category}
+            initialSubfamily={initialSubfamily}
+            locationFilters={locationFilters}
+            featured={categorySet.featured[category.id] ?? []}
+            allResults={categorySet.results[category.id] ?? []}
+          />
         </>
       )}
     </div>

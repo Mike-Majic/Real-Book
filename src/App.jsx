@@ -9,7 +9,18 @@ import { WORLDS, DEFAULT_WORLD_INDEX } from './data/worlds';
 import { usersForWorld } from './data/mockUsers';
 import { useSwipeWorld } from './hooks/useSwipeWorld';
 import { getCityInfo, findCityMatch } from './data/geo';
-import { ARTE_CATEGORIES } from './data/arteCategories';
+import {
+  ARTE_CATEGORIES,
+  FEATURED_SEARCHES as ARTE_FEATURED,
+  CATEGORY_RESULTS as ARTE_RESULTS,
+  resolveCategoryQuery as resolveArteCategoryQuery,
+} from './data/arteCategories';
+import {
+  NERD_CATEGORIES,
+  FEATURED_SEARCHES as NERD_FEATURED,
+  CATEGORY_RESULTS as NERD_RESULTS,
+  resolveCategoryQuery as resolveNerdCategoryQuery,
+} from './data/nerdCategories';
 import './App.css';
 
 const DEFAULT_FILTERS = { gender: 'Tutti', ageMin: 18, ageMax: 60 };
@@ -17,6 +28,14 @@ const DEFAULT_JOB_FILTERS = { category: '' };
 const DEFAULT_LOCATION_FILTERS = { continent: '', region: '', city: '', distance: 150 };
 const DEFAULT_ARTE_FILTER = { category: '', subfamily: '' };
 const DEFAULT_VISIBILITY = { nearbyVisible: false };
+
+// Mondi che hanno un proprio set di categorie esplorabili sul globo (triangoli
+// cliccabili + colonne di ricerca/persone vicine, via ArteExplorer/CategoryColumn).
+// Aggiungere un mondo qui basta a fargli usare lo stesso meccanismo, senza copie.
+const CATEGORY_WORLDS = {
+  arte: { categories: ARTE_CATEGORIES, featured: ARTE_FEATURED, results: ARTE_RESULTS, resolveQuery: resolveArteCategoryQuery },
+  nerd: { categories: NERD_CATEGORIES, featured: NERD_FEATURED, results: NERD_RESULTS, resolveQuery: resolveNerdCategoryQuery },
+};
 
 // Aspetta che l'utente finisca di digitare prima di far "volare" il globo sulla città cercata.
 function useDebouncedValue(value, delayMs) {
@@ -52,6 +71,7 @@ function loadStored(key, fallback) {
 export default function App() {
   const { index, setIndex, containerRef } = useSwipeWorld(WORLDS.length, DEFAULT_WORLD_INDEX);
   const world = WORLDS[index];
+  const categorySet = CATEGORY_WORLDS[world.id] ?? null;
 
   const [user, setUser] = useState(() => loadStored('rb-user', null));
   const [authOpen, setAuthOpen] = useState(false);
@@ -68,10 +88,11 @@ export default function App() {
   const [visibility, setVisibility] = useState(() => loadStored('rb-visibility', DEFAULT_VISIBILITY));
   const [flyTo, setFlyTo] = useState(null);
 
-  // Uscendo dal mondo Arte & Musica si azzera la categoria attiva, altrimenti
-  // tornandoci si ritroverebbe un triangolo evidenziato senza pannelli aperti.
+  // Cambiando mondo si azzera la categoria attiva (è sempre relativa al mondo
+  // da cui si esce), altrimenti tornando in un mondo con categorie ci si
+  // ritroverebbe un triangolo evidenziato senza pannelli aperti.
   useEffect(() => {
-    if (world.id !== 'arte') setActiveArteCategory(null);
+    setActiveArteCategory(null);
   }, [world.id]);
 
   useEffect(() => {
@@ -154,7 +175,7 @@ export default function App() {
     setActiveArteCategory((cur) => {
       const next = cur === id ? null : id;
       if (next) {
-        const cat = ARTE_CATEGORIES.find((c) => c.id === next);
+        const cat = categorySet?.categories.find((c) => c.id === next);
         setArteInitialSubfamily('');
         const pos = arteCategoryPositions[next] ?? cat?.anchor;
         if (pos) setFlyTo({ lat: pos.lat, lng: pos.lng, altitude: 1.3, key: `cat-${next}-${Date.now()}` });
@@ -184,15 +205,16 @@ export default function App() {
         onSelectUser={setSelectedUser}
         containerRef={containerRef}
         flyTo={flyTo}
-        categories={world.id === 'arte' ? ARTE_CATEGORIES : null}
+        categories={categorySet?.categories ?? null}
         activeCategory={activeArteCategory}
         onCategorySelect={toggleArteCategory}
         onCategoryPositionsReady={setArteCategoryPositions}
       />
 
-      {world.id === 'arte' && (
+      {categorySet && (
         <ArteExplorer
           world={world}
+          categorySet={categorySet}
           activeCategory={activeArteCategory}
           onToggleCategory={toggleArteCategory}
           onSearchCategory={flyToArteCategory}
@@ -201,9 +223,9 @@ export default function App() {
         />
       )}
 
-      <div className={`rb-world-tagline ${world.id === 'arte' ? 'rb-world-tagline-list' : ''}`}>
-        {world.id === 'arte'
-          ? ARTE_CATEGORIES.map((c) => (
+      <div className={`rb-world-tagline ${categorySet ? 'rb-world-tagline-list' : ''}`}>
+        {categorySet
+          ? categorySet.categories.map((c) => (
               <button
                 key={c.id}
                 type="button"

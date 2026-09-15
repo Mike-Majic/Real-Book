@@ -66,6 +66,14 @@ export const ARTE_CATEGORIES = [
     aliases: ['fotografia', 'foto', 'fotografico', 'scatto', 'photography'],
     subfamilies: ['Ritratto', 'Reportage', 'Analogica', 'Still life', 'Paesaggio'],
   },
+  {
+    id: 'live',
+    label: 'Live',
+    icon: '🎤',
+    anchor: { lat: -60, lng: 0 },
+    aliases: ['live', 'concerto', 'concerti', 'dal vivo', 'dj set'],
+    subfamilies: ['Concerti', 'DJ set', 'Reading dal vivo', 'Session acustiche', 'Festival'],
+  },
 ];
 
 // Trova la categoria il cui alias combacia (anche parzialmente) con la query digitata.
@@ -86,6 +94,7 @@ export const FEATURED_SEARCHES = {
   danza: ['Danza contemporanea', 'Coreografi emergenti', 'Hip-hop urbano', 'Performance site-specific', 'Compagnie indipendenti'],
   podcast: ['True crime italiano', 'Interviste indipendenti', 'Podcast narrativi', 'Attualità e società', 'Podcast comici'],
   fotografia: ['Fotografia di strada', 'Reportage sociale', 'Analogica e pellicola', 'Ritratti in bianco e nero', 'Paesaggi urbani'],
+  live: ['Concerti indipendenti', 'DJ set emergenti', 'Reading dal vivo', 'Session acustiche', 'Festival di quartiere'],
 };
 
 // Ogni contenuto ha: categoria, sottofamiglia, titolo, autore/artista, anno,
@@ -148,5 +157,12 @@ export const CATEGORY_RESULTS = {
     { id: 'foto-3', title: 'Rullino 14', creator: 'Filippo Marra', year: 2023, subfamily: 'Analogica', description: 'Rullino sviluppato a mano, scatti di viaggio non pianificati.', tags: ['analogica', 'viaggio'] },
     { id: 'foto-4', title: 'Tavola imbandita', creator: 'Chiara Vezzosi', year: 2025, subfamily: 'Still life', description: 'Still life minimalisti su oggetti domestici di uso quotidiano.', tags: ['still life'] },
     { id: 'foto-5', title: 'Linee di città', creator: 'Omar Testa', year: 2024, subfamily: 'Paesaggio', description: 'Paesaggi urbani all’alba in cinque città europee diverse.', tags: ['paesaggio', 'urbano'] },
+  ],
+  live: [
+    { id: 'live-a1', title: 'Notte al Forte', creator: 'Collettivo Suono Vivo', year: 2025, subfamily: 'Concerti', description: 'Concerto indipendente in un forte storico riadattato a spazio culturale.', tags: ['concerto', 'indipendente'] },
+    { id: 'live-a2', title: 'Deriva Set', creator: 'DJ Mara Volt', year: 2024, subfamily: 'DJ set', description: 'Set elettronico dal vivo registrato durante un festival estivo.', tags: ['dj set', 'elettronica'] },
+    { id: 'live-a3', title: 'Parole a Voce Alta', creator: 'Collettivo Inchiostro Vivo', year: 2025, subfamily: 'Reading dal vivo', description: 'Serata di reading poetico dal vivo con accompagnamento musicale.', tags: ['reading', 'poesia'] },
+    { id: 'live-a4', title: 'Acustico in Cortile', creator: 'Nina Ferraro', year: 2024, subfamily: 'Session acustiche', description: 'Session acustica intima registrata in un cortile condominiale.', tags: ['acustico', 'intimo'] },
+    { id: 'live-a5', title: 'Festival delle Piccole Etichette', creator: 'Rete Indie Records', year: 2023, subfamily: 'Festival', description: 'Festival di due giorni dedicato a etichette discografiche indipendenti.', tags: ['festival', 'indie'] },
   ],
 };

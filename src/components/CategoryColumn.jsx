@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FEATURED_SEARCHES, CATEGORY_RESULTS } from '../data/arteCategories';
 import { MOCK_USERS } from '../data/mockUsers';
 import { CONTENT_INTERACTIONS } from '../data/contentInteractions';
 import { findCityMatch, getCityInfo, distanceKm } from '../data/geo';
@@ -30,11 +29,13 @@ function SwitchIcon() {
   );
 }
 
-// Componente unico e parametrizzato per esplorare una categoria: riceve solo
-// l'oggetto categoria (nome, sottofamiglie...) e ricava da lì tema/dati/ricerche.
-// Usato per Libreria, Musica, Cinema, Teatro, Arte, Danza, Podcast, Fotografia —
-// nessuna copia per categoria. Montare con key={category.id} così lo stato di
-// ricerca/filtro riparte pulito ogni volta che cambia la categoria attiva.
+// Componente unico e parametrizzato per esplorare una categoria: riceve
+// l'oggetto categoria (nome, sottofamiglie...) più i suoi contenuti/ricerche
+// in evidenza come prop, senza importare i dati di un mondo specifico. Usato
+// da qualunque mondo con un proprio set di categorie (Arte & Musica, Nerd, e
+// futuri) — nessuna copia per categoria né per mondo. Montare con
+// key={category.id} così lo stato di ricerca/filtro riparte pulito ogni volta
+// che cambia la categoria attiva.
 //
 // Colonna principale (sinistra su desktop, prima su mobile): contenuti della
 // categoria a livello globale, ricerca + suggerimenti + lista risultati.
@@ -47,14 +48,11 @@ function SwitchIcon() {
 // Mobile (verticale, o stretto anche in orizzontale): una sola colonna a
 // piena larghezza (di default la principale), con una maniglia fissa sul
 // bordo destro che scorre per mostrare la colonna secondaria.
-export default function CategoryColumn({ category, initialSubfamily = '', locationFilters = {} }) {
+export default function CategoryColumn({ category, initialSubfamily = '', locationFilters = {}, featured = [], allResults = [] }) {
   const [resultsQuery, setResultsQuery] = useState('');
   const [subfamilyFilter, setSubfamilyFilter] = useState(initialSubfamily);
   const [mobileView, setMobileView] = useState('results'); // 'results' | 'nearby'
   const isDesktop = useIsDesktopLayout();
-
-  const allResults = CATEGORY_RESULTS[category.id] ?? [];
-  const featured = FEATURED_SEARCHES[category.id] ?? [];
 
   const results = useMemo(() => {
     return allResults.filter((r) => {
