@@ -7,6 +7,11 @@ import { buildLandDots, buildNetworkShell, buildShellNodeGeometry } from '../glo
 import { buildCategoryShell } from '../globe/categoryShell';
 import './WorldGlobe.css';
 
+// Durata dell'animazione "volo" della camera verso una categoria/città:
+// esportata così chi apre un pannello dopo il volo (App.jsx) può aspettare
+// esattamente questo tempo, invece di un numero magico duplicato altrove.
+export const CATEGORY_FLY_MS = 1800;
+
 function makeMarkerEl(user, world, onOpen) {
   const el = document.createElement('div');
   el.className = 'rb-marker';
@@ -202,7 +207,7 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
     const pov = { altitude: flyTo.altitude ?? 1.3 };
     if (flyTo.lat !== undefined) pov.lat = flyTo.lat;
     if (flyTo.lng !== undefined) pov.lng = flyTo.lng;
-    g.pointOfView(pov, 1800);
+    g.pointOfView(pov, CATEGORY_FLY_MS);
 
     const resumeTimer = setTimeout(() => {
       controls.autoRotate = true;

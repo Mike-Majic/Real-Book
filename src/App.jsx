@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import WorldGlobe from './components/WorldGlobe';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import WorldGlobe, { CATEGORY_FLY_MS } from './components/WorldGlobe';
 import TopBar from './components/TopBar';
 import SettingsPanel from './components/SettingsPanel';
 import ProfileModal from './components/ProfileModal';
@@ -96,12 +96,26 @@ export default function App() {
   const [arteInitialSubfamily, setArteInitialSubfamily] = useState('');
   const [visibility, setVisibility] = useState(() => loadStored('rb-visibility', DEFAULT_VISIBILITY));
   const [flyTo, setFlyTo] = useState(null);
+  // Timer del pannello che deve ancora aprirsi a volo finito (vedi
+  // flyToCategoryThenOpen): tenerlo in un ref per poterlo annullare se nel
+  // frattempo si sceglie un'altra categoria o si cambia mondo.
+  const pendingOpenRef = useRef(null);
 
   // Cambiando mondo si azzera la categoria attiva (è sempre relativa al mondo
   // da cui si esce), altrimenti tornando in un mondo con categorie ci si
   // ritroverebbe un triangolo evidenziato senza pannelli aperti.
   useEffect(() => {
+    if (pendingOpenRef.current) {
+      clearTimeout(pendingOpenRef.current);
+      pendingOpenRef.current = null;
+    }
     setActiveArteCategory(null);
+    return () => {
+      if (pendingOpenRef.current) {
+        clearTimeout(pendingOpenRef.current);
+        pendingOpenRef.current = null;
+      }
+    };
   }, [world.id]);
 
   useEffect(() => {
@@ -152,15 +166,31 @@ export default function App() {
     if (match) setFlyTo({ lat: match.lat, lng: match.lng, key: `city-${match.name}` });
   }, [debouncedCityQuery]);
 
+  // Fa volare la camera sulla categoria e apre il pannello solo a volo
+  // finito (stessa durata dell'animazione in WorldGlobe): prima si vede il
+  // mondo girare e centrarsi, poi si aprono le colonne — un po' di
+  // scenografia, invece del pannello che scatta subito mentre il globo si
+  // muove ancora. Vale ovunque si scelga una categoria: pulsante in basso a
+  // sinistra, triangolo sul globo, ricerca, scorciatoia da Impostazioni.
+  const flyToCategoryThenOpen = (id, pos) => {
+    if (pendingOpenRef.current) clearTimeout(pendingOpenRef.current);
+    setActiveArteCategory(null);
+    setFlyTo({ lat: pos.lat, lng: pos.lng, altitude: 1.3, key: `cat-${id}-${Date.now()}` });
+    pendingOpenRef.current = setTimeout(() => {
+      setActiveArteCategory(id);
+      pendingOpenRef.current = null;
+    }, CATEGORY_FLY_MS);
+  };
+
   // Cercando una categoria nel mondo Arte & Musica, il globo vola sul suo triangolo.
   // Si usa la posizione reale del triangolo assegnato (non la "anchor" originale,
   // perché la categoria viene agganciata al triangolo più vicino, non a quel punto
   // esatto), così la camera centra davvero il triangolo e non finisce ai suoi bordi.
   const flyToArteCategory = (cat) => {
-    setActiveArteCategory(cat.id);
     setArteInitialSubfamily('');
     const pos = arteCategoryPositions[cat.id] ?? cat.anchor;
-    setFlyTo({ lat: pos.lat, lng: pos.lng, key: `cat-${cat.id}-${Date.now()}` });
+    if (pos) flyToCategoryThenOpen(cat.id, pos);
+    else setActiveArteCategory(cat.id);
   };
 
   // Applica il filtro Categoria/Sottofamiglia scelto nelle Impostazioni: passa
@@ -172,27 +202,31 @@ export default function App() {
     if (!cat) return;
     const arteIndex = WORLDS.findIndex((w) => w.id === 'arte');
     if (arteIndex !== index) setIndex(arteIndex);
-    setActiveArteCategory(cat.id);
     setArteInitialSubfamily(arteFilter.subfamily);
     const pos = arteCategoryPositions[cat.id] ?? cat.anchor;
-    setFlyTo({ lat: pos.lat, lng: pos.lng, altitude: 1.3, key: `settings-cat-${cat.id}-${Date.now()}` });
+    if (pos) flyToCategoryThenOpen(cat.id, pos);
+    else setActiveArteCategory(cat.id);
   };
 
-  // Selezionare una categoria (dal triangolo sul globo, o riaprendola) vola e
-  // zooma su di essa come fa la ricerca; chiuderla torna alla vista larga.
+  // Selezionare una categoria (dal triangolo sul globo, o dal pulsante in
+  // basso a sinistra) vola e zooma su di essa, aprendo il pannello a volo
+  // finito; chiuderla (X, o ri-click sulla categoria già aperta) torna
+  // subito alla vista larga.
   const toggleArteCategory = (id) => {
-    setActiveArteCategory((cur) => {
-      const next = cur === id ? null : id;
-      if (next) {
-        const cat = categorySet?.categories.find((c) => c.id === next);
-        setArteInitialSubfamily('');
-        const pos = arteCategoryPositions[next] ?? cat?.anchor;
-        if (pos) setFlyTo({ lat: pos.lat, lng: pos.lng, altitude: 1.3, key: `cat-${next}-${Date.now()}` });
-      } else {
-        setFlyTo({ altitude: 2.4, key: `zoom-out-${Date.now()}` });
-      }
-      return next;
-    });
+    if (pendingOpenRef.current) {
+      clearTimeout(pendingOpenRef.current);
+      pendingOpenRef.current = null;
+    }
+    if (id === null || activeArteCategory === id) {
+      setActiveArteCategory(null);
+      setFlyTo({ altitude: 2.4, key: `zoom-out-${Date.now()}` });
+      return;
+    }
+    setArteInitialSubfamily('');
+    const cat = categorySet?.categories.find((c) => c.id === id);
+    const pos = arteCategoryPositions[id] ?? cat?.anchor;
+    if (pos) flyToCategoryThenOpen(id, pos);
+    else setActiveArteCategory(id);
   };
 
   return (
