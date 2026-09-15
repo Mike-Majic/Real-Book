@@ -53,6 +53,17 @@ export const WORLDS = [
     atmosphereColor: '#22c55e',
     textOnGlobe: '#e9fff2',
   },
+  {
+    id: 'nerd',
+    label: 'Nerd',
+    // Mondo vuoto: il contenuto (gaming? tech? fumetti?) va ancora deciso.
+    tagline: 'Tecnologia, gaming, community — in arrivo',
+    color: '#d4f634',
+    colorSoft: 'rgba(212, 246, 52, 0.18)',
+    globeColor: '#0c0f02',
+    atmosphereColor: '#d4f634',
+    textOnGlobe: '#fbffe8',
+  },
 ];
 
 export const JOB_CATEGORIES = [
