@@ -36,11 +36,18 @@ function makeMarkerEl(user, world, onOpen) {
   return el;
 }
 
-// Quando una città ha più utenti della soglia, invece di un marker per
+// Quando un gruppo ha più utenti della soglia, invece di un marker per
 // persona (che a migliaia diventerebbe illeggibile, oltre che lento) si
-// mostra un solo "grumo" col conteggio. Un click lo apre (rivela i marker
-// singoli di quella città) e centra la camera li' sopra.
-const CLUSTER_THRESHOLD = 12;
+// mostra un solo "grumo" col conteggio. Un click vola dentro e affina il
+// raggruppamento (vedi sotto): il livello di dettaglio dipende da quanto
+// sei zoomato, non da un click "ricordato" per sempre.
+const CLUSTER_THRESHOLD = 8;
+
+// Tre livelli, scelti in base all'altitudine della camera (stessa unità di
+// pointOfView: più alta = più lontano). Lontanissimo raggruppa per nazione,
+// medio raggruppa per città, vicino mostra le persone una per una.
+const ZOOM_TIER_COUNTRY = 1.4;
+const ZOOM_TIER_CITY = 0.55;
 
 function makeClusterEl(cluster, world, onExpand) {
   const el = document.createElement('div');
@@ -48,7 +55,7 @@ function makeClusterEl(cluster, world, onExpand) {
   el.style.borderColor = world.color;
   el.style.background = `color-mix(in srgb, ${world.color} 28%, rgba(0,0,0,0.55))`;
   el.innerHTML = `<span>${cluster.count}</span>`;
-  el.title = `${cluster.city} · ${cluster.count} persone`;
+  el.title = `${cluster.label} · ${cluster.count} persone`;
   el.addEventListener('click', (e) => {
     e.stopPropagation();
     onExpand(cluster);
@@ -56,21 +63,43 @@ function makeClusterEl(cluster, world, onExpand) {
   return el;
 }
 
-// Raggruppa gli utenti per città: sotto soglia restano marker singoli,
-// sopra soglia diventano un unico "grumo" (a meno che quella città non sia
-// già stata aperta con un click).
-function clusterUsers(users, expandedCities) {
-  const byCity = new Map();
+// Quanto vicino (in gradi lat/lng, molto approssimativo ma sufficiente qui)
+// deve essere il centro del gruppo al punto che la camera sta guardando,
+// perché a zoom ravvicinato quel gruppo si apra nei singoli individui.
+// Senza questo, a zoom vicino si mostrerebbero TUTTI gli individui di TUTTE
+// le città anche lontanissime dalla vista attuale: con centinaia o migliaia
+// di profili sarebbe di nuovo il problema di partenza (e anche lento).
+const NEARBY_DEGREES = 1;
+
+// Raggruppa gli utenti secondo il livello adatto all'altitudine attuale:
+// per nazione se sei molto lontano, per città a media/vicina distanza. Solo
+// il gruppo (città) su cui la camera è effettivamente centrata si apre nei
+// singoli individui quando sei abbastanza vicino — gli altri restano
+// raggruppati, anche a zoom ravvicinato, perché sono fuori vista. Zoomando
+// (rotellina/pizzico) o volando su un grumo il livello si ricalcola da
+// solo, non serve "ricordare" cosa hai aperto.
+function clusterUsers(users, view) {
+  const { altitude, lat: viewLat, lng: viewLng } = view;
+  const isCountryTier = altitude >= ZOOM_TIER_COUNTRY;
+  const groupKey = (u) => (isCountryTier ? u.country || 'Altro' : u.city || `${u.lat},${u.lng}`);
+  const targetAltitude = isCountryTier ? ZOOM_TIER_COUNTRY - 0.15 : ZOOM_TIER_CITY - 0.15;
+
+  const groups = new Map();
   for (const u of users) {
-    const key = u.city || `${u.lat},${u.lng}`;
-    if (!byCity.has(key)) byCity.set(key, []);
-    byCity.get(key).push(u);
+    const key = groupKey(u);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(u);
   }
 
   const items = [];
-  for (const [city, group] of byCity) {
-    if (group.length > CLUSTER_THRESHOLD && !expandedCities.has(city)) {
-      items.push({ kind: 'cluster', city, lat: group[0].lat, lng: group[0].lng, count: group.length });
+  for (const [key, group] of groups) {
+    const lat = group.reduce((sum, u) => sum + u.lat, 0) / group.length;
+    const lng = group.reduce((sum, u) => sum + u.lng, 0) / group.length;
+    const isNearbyAndClose =
+      !isCountryTier && altitude < ZOOM_TIER_CITY && Math.hypot(lat - viewLat, lng - viewLng) < NEARBY_DEGREES;
+
+    if (group.length > CLUSTER_THRESHOLD && !isNearbyAndClose) {
+      items.push({ kind: 'cluster', label: key, lat, lng, count: group.length, targetAltitude });
     } else {
       for (const u of group) items.push({ kind: 'user', ...u });
     }
@@ -85,19 +114,38 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
   const landPointsRef = useRef(null);
   const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [landPolygons, setLandPolygons] = useState([]);
-  const [expandedCities, setExpandedCities] = useState(() => new Set());
+  // Vista attuale della camera (altitudine + centro): guida il livello di
+  // raggruppamento dei marker (vedi clusterUsers). Non basta ascoltare
+  // l'evento "change" dei controlli: i voli programmati (pointOfView su
+  // categoria/città/grumo) non passano da li', quindi si controlla con un
+  // piccolo polling, abbastanza leggero da non pesare (legge tre numeri
+  // ogni 250ms).
+  const [view, setView] = useState({ altitude: 2.4, lat: 0, lng: 0 });
 
-  // Cambiando mondo, si riparte con tutte le città "chiuse" (raggruppate).
   useEffect(() => {
-    setExpandedCities(new Set());
-  }, [world.id]);
+    const interval = setInterval(() => {
+      const g = globeRef.current;
+      if (!g) return;
+      const pov = g.pointOfView();
+      setView((prev) => {
+        const altChanged = Math.abs(prev.altitude - pov.altitude) > 0.03;
+        // La posizione (lat/lng) conta solo a zoom ravvicinato, dove serve
+        // per capire quale città è "sotto" la camera (vedi clusterUsers).
+        // A zoom lontano/medio ignorarla evita di ricalcolare/rimontare i
+        // marker ad ogni frame solo perché il globo sta ruotando da solo.
+        const closeZoom = pov.altitude < ZOOM_TIER_CITY;
+        const posChanged = closeZoom && (Math.abs(prev.lat - pov.lat) > 0.5 || Math.abs(prev.lng - pov.lng) > 0.5);
+        return altChanged || posChanged ? { altitude: pov.altitude, lat: pov.lat, lng: pov.lng } : prev;
+      });
+    }, 250);
+    return () => clearInterval(interval);
+  }, []);
 
-  const displayItems = useMemo(() => clusterUsers(users, expandedCities), [users, expandedCities]);
+  const displayItems = useMemo(() => clusterUsers(users, view), [users, view]);
 
   const expandCluster = (cluster) => {
-    setExpandedCities((prev) => new Set(prev).add(cluster.city));
     const g = globeRef.current;
-    if (g) g.pointOfView({ lat: cluster.lat, lng: cluster.lng, altitude: 0.4 }, 1200);
+    if (g) g.pointOfView({ lat: cluster.lat, lng: cluster.lng, altitude: cluster.targetAltitude }, 1200);
   };
   // Puntatore "grezzo" (touch) = dispositivo mobile: li' il globo deve stare
   // fermo di default e muoversi solo con le dita (trascinamento/pizzico),
