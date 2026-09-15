@@ -10,8 +10,9 @@ import { useSwipeWorld } from './hooks/useSwipeWorld';
 import { getCityInfo, findCityMatch } from './data/geo';
 import './App.css';
 
-const DEFAULT_FILTERS = { gender: 'Tutti', continent: '', region: '', ageMin: 18, ageMax: 60, city: '', distance: 100 };
-const DEFAULT_JOB_FILTERS = { continent: '', region: '', city: '', distance: 150, category: '' };
+const DEFAULT_FILTERS = { gender: 'Tutti', ageMin: 18, ageMax: 60 };
+const DEFAULT_JOB_FILTERS = { category: '' };
+const DEFAULT_LOCATION_FILTERS = { continent: '', region: '', city: '', distance: 150 };
 
 // Aspetta che l'utente finisca di digitare prima di far "volare" il globo sulla città cercata.
 function useDebouncedValue(value, delayMs) {
@@ -55,6 +56,7 @@ export default function App() {
 
   const [filters, setFilters] = useState(() => loadStored('rb-filters', DEFAULT_FILTERS));
   const [jobFilters, setJobFilters] = useState(() => loadStored('rb-job-filters', DEFAULT_JOB_FILTERS));
+  const [locationFilters, setLocationFilters] = useState(() => loadStored('rb-location-filters', DEFAULT_LOCATION_FILTERS));
 
   useEffect(() => {
     document.documentElement.style.setProperty('--rb-accent', world.color);
@@ -63,39 +65,40 @@ export default function App() {
   useEffect(() => localStorage.setItem('rb-user', JSON.stringify(user)), [user]);
   useEffect(() => localStorage.setItem('rb-filters', JSON.stringify(filters)), [filters]);
   useEffect(() => localStorage.setItem('rb-job-filters', JSON.stringify(jobFilters)), [jobFilters]);
+  useEffect(() => localStorage.setItem('rb-location-filters', JSON.stringify(locationFilters)), [locationFilters]);
 
   const worldUsers = useMemo(() => {
     const base = usersForWorld(world.id);
+
+    const matchesLocation = (u) => {
+      if (locationFilters.city && !u.city.toLowerCase().includes(locationFilters.city.toLowerCase())) return false;
+      const info = getCityInfo(u.city);
+      if (locationFilters.continent && info?.continent !== locationFilters.continent) return false;
+      if (locationFilters.region && info?.region !== locationFilters.region) return false;
+      return true;
+    };
 
     if (world.id === 'incontri' || world.id === 'social') {
       return base.filter((u) => {
         if (filters.gender !== 'Tutti' && u.gender !== filters.gender.toLowerCase()) return false;
         if (u.age && (u.age < filters.ageMin || u.age > filters.ageMax)) return false;
-        if (filters.city && !u.city.toLowerCase().includes(filters.city.toLowerCase())) return false;
-        const info = getCityInfo(u.city);
-        if (filters.continent && info?.continent !== filters.continent) return false;
-        if (filters.region && info?.region !== filters.region) return false;
-        return true;
+        return matchesLocation(u);
       });
     }
 
     if (world.id === 'lavoro') {
       return base.filter((u) => {
-        if (jobFilters.city && !u.city.toLowerCase().includes(jobFilters.city.toLowerCase())) return false;
         if (jobFilters.category && u.jobType !== jobFilters.category) return false;
-        const info = getCityInfo(u.city);
-        if (jobFilters.continent && info?.continent !== jobFilters.continent) return false;
-        if (jobFilters.region && info?.region !== jobFilters.region) return false;
-        return true;
+        return matchesLocation(u);
       });
     }
 
     return base;
-  }, [world.id, filters, jobFilters]);
+  }, [world.id, filters, jobFilters, locationFilters]);
 
-  // Quando la città cercata nei filtri corrisponde a una città nota, il globo ci "vola" sopra.
-  const activeCityQuery = world.id === 'lavoro' ? jobFilters.city : filters.city;
-  const debouncedCityQuery = useDebouncedValue(activeCityQuery, 500);
+  // Quando la città cercata nei filtri (globali, validi per tutti i mondi) corrisponde
+  // a una città nota, il globo ci "vola" sopra.
+  const debouncedCityQuery = useDebouncedValue(locationFilters.city, 500);
   const flyTo = useMemo(() => {
     const match = findCityMatch(debouncedCityQuery);
     return match ? { lat: match.lat, lng: match.lng, key: match.name } : null;
@@ -143,9 +146,12 @@ export default function App() {
         setFilters={setFilters}
         jobFilters={jobFilters}
         setJobFilters={setJobFilters}
+        locationFilters={locationFilters}
+        setLocationFilters={setLocationFilters}
         onResetFilters={() => {
           setFilters(DEFAULT_FILTERS);
           setJobFilters(DEFAULT_JOB_FILTERS);
+          setLocationFilters(DEFAULT_LOCATION_FILTERS);
         }}
       />
 

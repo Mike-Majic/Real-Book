@@ -56,22 +56,41 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
-.rb-reset-filters-btn {
-  width: 100%;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #f5f5f7;
+.rb-filter-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.rb-reset-filters-btn,
+.rb-apply-filters-btn {
+  flex: 1 1 50%;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 10px;
   border-radius: 10px;
   cursor: pointer;
-  margin-bottom: 4px;
+}
+
+.rb-reset-filters-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f5f5f7;
 }
 
 .rb-reset-filters-btn:hover {
   background: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.35);
+}
+
+.rb-apply-filters-btn {
+  background: #22c55e;
+  border: 1px solid #22c55e;
+  color: #06210f;
+}
+
+.rb-apply-filters-btn:hover {
+  filter: brightness(1.08);
 }
 
 .rb-settings-section {

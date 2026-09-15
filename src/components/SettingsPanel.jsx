@@ -2,11 +2,22 @@ import { JOB_CATEGORIES } from '../data/worlds';
 import { CONTINENTS, REGIONS } from '../data/geo';
 import './SettingsPanel.css';
 
-export default function SettingsPanel({ open, onClose, filters, setFilters, jobFilters, setJobFilters, onResetFilters }) {
+export default function SettingsPanel({
+  open,
+  onClose,
+  filters,
+  setFilters,
+  jobFilters,
+  setJobFilters,
+  locationFilters,
+  setLocationFilters,
+  onResetFilters,
+}) {
   if (!open) return null;
 
   const updateFilter = (key, value) => setFilters((f) => ({ ...f, [key]: value }));
   const updateJobFilter = (key, value) => setJobFilters((f) => ({ ...f, [key]: value }));
+  const updateLocation = (key, value) => setLocationFilters((f) => ({ ...f, [key]: value }));
 
   return (
     <div className="rb-settings-overlay" onClick={onClose}>
@@ -16,9 +27,55 @@ export default function SettingsPanel({ open, onClose, filters, setFilters, jobF
           <button className="rb-close-btn" onClick={onClose} aria-label="Chiudi">✕</button>
         </div>
 
-        <button type="button" className="rb-reset-filters-btn" onClick={onResetFilters}>
-          Azzera tutti i filtri
-        </button>
+        <div className="rb-filter-actions">
+          <button type="button" className="rb-reset-filters-btn" onClick={onResetFilters}>
+            Azzera tutti i filtri
+          </button>
+          <button type="button" className="rb-apply-filters-btn" onClick={onClose}>
+            Applica
+          </button>
+        </div>
+
+        <section className="rb-settings-section">
+          <h3>Dove</h3>
+          <p className="rb-settings-hint">Filtro di posizione, valido per tutti i mondi.</p>
+
+          <label className="rb-field">
+            <span>Continente</span>
+            <select value={locationFilters.continent} onChange={(e) => updateLocation('continent', e.target.value)}>
+              <option value="">Tutti i continenti</option>
+              {CONTINENTS.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="rb-field">
+            <span>Regione</span>
+            <select value={locationFilters.region} onChange={(e) => updateLocation('region', e.target.value)}>
+              <option value="">Tutte le regioni</option>
+              {REGIONS.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="rb-field">
+            <span>Città</span>
+            <input
+              type="text"
+              placeholder="Es. Roma"
+              value={locationFilters.city}
+              onChange={(e) => updateLocation('city', e.target.value)}
+            />
+          </label>
+
+          <label className="rb-field">
+            <span>Distanza: {locationFilters.distance} km</span>
+            <input type="range" min={1} max={500} value={locationFilters.distance}
+              onChange={(e) => updateLocation('distance', Number(e.target.value))} />
+          </label>
+        </section>
 
         <section className="rb-settings-section">
           <h3>Personalizza il tuo Real Book</h3>
@@ -48,83 +105,11 @@ export default function SettingsPanel({ open, onClose, filters, setFilters, jobF
                 onChange={(e) => updateFilter('ageMax', Math.max(Number(e.target.value), filters.ageMin))} />
             </div>
           </label>
-
-          <label className="rb-field">
-            <span>Continente</span>
-            <select value={filters.continent} onChange={(e) => updateFilter('continent', e.target.value)}>
-              <option value="">Tutti i continenti</option>
-              {CONTINENTS.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="rb-field">
-            <span>Regione</span>
-            <select value={filters.region} onChange={(e) => updateFilter('region', e.target.value)}>
-              <option value="">Tutte le regioni</option>
-              {REGIONS.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="rb-field">
-            <span>Città</span>
-            <input
-              type="text"
-              placeholder="Es. Ardea"
-              value={filters.city}
-              onChange={(e) => updateFilter('city', e.target.value)}
-            />
-          </label>
-
-          <label className="rb-field">
-            <span>Distanza: {filters.distance} km</span>
-            <input type="range" min={1} max={500} value={filters.distance}
-              onChange={(e) => updateFilter('distance', Number(e.target.value))} />
-          </label>
         </section>
 
         <section className="rb-settings-section">
           <h3>Lavoro</h3>
-          <p className="rb-settings-hint">Filtri per il mondo Lavoro (candidature e ricerca aziende).</p>
-
-          <label className="rb-field">
-            <span>Continente</span>
-            <select value={jobFilters.continent} onChange={(e) => updateJobFilter('continent', e.target.value)}>
-              <option value="">Tutti i continenti</option>
-              {CONTINENTS.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="rb-field">
-            <span>Regione</span>
-            <select value={jobFilters.region} onChange={(e) => updateJobFilter('region', e.target.value)}>
-              <option value="">Tutte le regioni</option>
-              {REGIONS.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="rb-field">
-            <span>Città</span>
-            <input
-              type="text"
-              placeholder="Es. Roma"
-              value={jobFilters.city}
-              onChange={(e) => updateJobFilter('city', e.target.value)}
-            />
-          </label>
-
-          <label className="rb-field">
-            <span>Distanza: {jobFilters.distance} km</span>
-            <input type="range" min={1} max={500} value={jobFilters.distance}
-              onChange={(e) => updateJobFilter('distance', Number(e.target.value))} />
-          </label>
+          <p className="rb-settings-hint">Filtro aggiuntivo per il mondo Lavoro.</p>
 
           <label className="rb-field">
             <span>Tipologia di lavoro</span>
