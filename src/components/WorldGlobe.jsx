@@ -3,7 +3,7 @@ import Globe from 'react-globe.gl';
 import * as THREE from 'three';
 import { WORLDS } from '../data/worlds';
 import { loadLandDots } from '../globe/landDots';
-import { buildLandDots, buildNetworkShell } from '../globe/networkOverlay';
+import { buildLandDots, buildNetworkShell, buildShellNodeGeometry } from '../globe/networkOverlay';
 import { buildCategoryShell } from '../globe/categoryShell';
 import './WorldGlobe.css';
 
@@ -67,6 +67,7 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
       scene.remove(group);
       shell.icoGeometry.dispose();
       shell.edgesGeometry.dispose();
+      shell.nodes.geometry.dispose();
       shell.lineMaterial.dispose();
       shell.nodeMaterial.dispose();
       overlayRef.current = null;
@@ -116,10 +117,14 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
     shell.setActive(activeCategory);
     onCategoryPositionsReady?.(shell.positions);
 
-    // Toglie i puntini dei continenti da dentro ai triangoli, per lasciare le
-    // etichette leggibili; tornano completi appena si esce da questo mondo.
+    // Toglie i puntini dei continenti e i nodi luminosi della rete da dentro ai
+    // triangoli, per lasciare le etichette leggibili; tornano completi appena si
+    // esce da questo mondo.
     if (overlayRef.current && landPointsRef.current) {
       rebuildLandDots(overlayRef.current, landPointsRef.current, shell.triangles, world.atmosphereColor);
+    }
+    if (overlayRef.current) {
+      rebuildShellNodes(overlayRef.current, shell.triangles);
     }
 
     return () => {
@@ -128,6 +133,9 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
       categoryShellRef.current = null;
       if (overlayRef.current && landPointsRef.current) {
         rebuildLandDots(overlayRef.current, landPointsRef.current, [], world.atmosphereColor);
+      }
+      if (overlayRef.current) {
+        rebuildShellNodes(overlayRef.current, []);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -240,6 +248,14 @@ function rebuildLandDots(overlay, landPoints, excludeTriangles, color) {
   landDots.material.color.set(color);
   overlay.group.add(landDots);
   overlay.landDots = landDots;
+}
+
+// Rifà la geometria dei nodi luminosi del guscio, escludendo quelli dentro ai
+// triangoli delle categorie attive (il materiale/colore resta lo stesso).
+function rebuildShellNodes(overlay, excludeTriangles) {
+  const newGeometry = buildShellNodeGeometry(overlay.shell.icoGeometry, excludeTriangles);
+  overlay.shell.nodes.geometry.dispose();
+  overlay.shell.nodes.geometry = newGeometry;
 }
 
 export { WORLDS };
