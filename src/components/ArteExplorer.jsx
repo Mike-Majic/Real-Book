@@ -3,7 +3,7 @@ import { ARTE_CATEGORIES, resolveCategoryQuery } from '../data/arteCategories';
 import CategoryColumn from './CategoryColumn';
 import './ArteExplorer.css';
 
-export default function ArteExplorer({ world, activeCategory, onToggleCategory, onSearchCategory, initialSubfamily }) {
+export default function ArteExplorer({ world, activeCategory, onToggleCategory, onSearchCategory, initialSubfamily, locationFilters }) {
   const [categoryQuery, setCategoryQuery] = useState('');
   const [categoryQueryInvalid, setCategoryQueryInvalid] = useState(false);
 
@@ -50,7 +50,7 @@ export default function ArteExplorer({ world, activeCategory, onToggleCategory, 
             </form>
           </div>
 
-          <CategoryColumn key={category.id} category={category} initialSubfamily={initialSubfamily} />
+          <CategoryColumn key={category.id} category={category} initialSubfamily={initialSubfamily} locationFilters={locationFilters} />
         </>
       )}
     </div>

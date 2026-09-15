@@ -15,6 +15,8 @@ export default function SettingsPanel({
   setLocationFilters,
   arteFilter,
   setArteFilter,
+  visibility,
+  setVisibility,
   onResetFilters,
 }) {
   if (!open) return null;
@@ -109,6 +111,21 @@ export default function SettingsPanel({
               <input type="range" min={18} max={80} value={filters.ageMax}
                 onChange={(e) => updateFilter('ageMax', Math.max(Number(e.target.value), filters.ageMin))} />
             </div>
+          </label>
+
+          <label className="rb-toggle-row">
+            <span className="rb-toggle-text">
+              <strong>Visibile agli altri utenti vicino a te</strong>
+              <p>Se attivo, chi ti è vicino può vedere nella colonna "Persone vicine" che hai messo mi piace o parteciperò a un contenuto. Mai la posizione esatta, solo la città. Di default è spento.</p>
+            </span>
+            <span className="rb-toggle">
+              <input
+                type="checkbox"
+                checked={visibility.nearbyVisible}
+                onChange={(e) => setVisibility((v) => ({ ...v, nearbyVisible: e.target.checked }))}
+              />
+              <span className="rb-toggle-slider" />
+            </span>
           </label>
         </section>
 

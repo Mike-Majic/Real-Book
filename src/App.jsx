@@ -16,6 +16,7 @@ const DEFAULT_FILTERS = { gender: 'Tutti', ageMin: 18, ageMax: 60 };
 const DEFAULT_JOB_FILTERS = { category: '' };
 const DEFAULT_LOCATION_FILTERS = { continent: '', region: '', city: '', distance: 150 };
 const DEFAULT_ARTE_FILTER = { category: '', subfamily: '' };
+const DEFAULT_VISIBILITY = { nearbyVisible: false };
 
 // Aspetta che l'utente finisca di digitare prima di far "volare" il globo sulla città cercata.
 function useDebouncedValue(value, delayMs) {
@@ -64,6 +65,7 @@ export default function App() {
   const [arteCategoryPositions, setArteCategoryPositions] = useState({});
   const [arteFilter, setArteFilter] = useState(() => loadStored('rb-arte-filter', DEFAULT_ARTE_FILTER));
   const [arteInitialSubfamily, setArteInitialSubfamily] = useState('');
+  const [visibility, setVisibility] = useState(() => loadStored('rb-visibility', DEFAULT_VISIBILITY));
   const [flyTo, setFlyTo] = useState(null);
 
   // Uscendo dal mondo Arte & Musica si azzera la categoria attiva, altrimenti
@@ -81,6 +83,7 @@ export default function App() {
   useEffect(() => localStorage.setItem('rb-job-filters', JSON.stringify(jobFilters)), [jobFilters]);
   useEffect(() => localStorage.setItem('rb-location-filters', JSON.stringify(locationFilters)), [locationFilters]);
   useEffect(() => localStorage.setItem('rb-arte-filter', JSON.stringify(arteFilter)), [arteFilter]);
+  useEffect(() => localStorage.setItem('rb-visibility', JSON.stringify(visibility)), [visibility]);
 
   const worldUsers = useMemo(() => {
     const base = usersForWorld(world.id);
@@ -194,6 +197,7 @@ export default function App() {
           onToggleCategory={toggleArteCategory}
           onSearchCategory={flyToArteCategory}
           initialSubfamily={arteInitialSubfamily}
+          locationFilters={locationFilters}
         />
       )}
 
@@ -233,11 +237,14 @@ export default function App() {
         setLocationFilters={setLocationFilters}
         arteFilter={arteFilter}
         setArteFilter={setArteFilter}
+        visibility={visibility}
+        setVisibility={setVisibility}
         onResetFilters={() => {
           setFilters(DEFAULT_FILTERS);
           setJobFilters(DEFAULT_JOB_FILTERS);
           setLocationFilters(DEFAULT_LOCATION_FILTERS);
           setArteFilter(DEFAULT_ARTE_FILTER);
+          setVisibility(DEFAULT_VISIBILITY);
         }}
       />
 

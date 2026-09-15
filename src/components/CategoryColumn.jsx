@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { FEATURED_SEARCHES, CATEGORY_RESULTS } from '../data/arteCategories';
+import { MOCK_USERS } from '../data/mockUsers';
+import { CONTENT_INTERACTIONS } from '../data/contentInteractions';
+import { findCityMatch, getCityInfo, distanceKm } from '../data/geo';
 import './CategoryColumn.css';
 
 // Layout desktop (due colonne affiancate) solo se ENTRAMBE le condizioni sono
@@ -29,18 +32,25 @@ function SwitchIcon() {
 
 // Componente unico e parametrizzato per esplorare una categoria: riceve solo
 // l'oggetto categoria (nome, sottofamiglie...) e ricava da lì tema/dati/ricerche.
-// Usato per Libreria, Musica, Cinema, Teatro, Arte — nessuna copia per categoria.
-// Montare con key={category.id} così lo stato di ricerca/filtro riparte pulito
-// ogni volta che cambia la categoria attiva.
+// Usato per Libreria, Musica, Cinema, Teatro, Arte, Danza, Podcast, Fotografia —
+// nessuna copia per categoria. Montare con key={category.id} così lo stato di
+// ricerca/filtro riparte pulito ogni volta che cambia la categoria attiva.
+//
+// Colonna principale (sinistra su desktop, prima su mobile): contenuti della
+// categoria a livello globale, ricerca + suggerimenti + lista risultati.
+// Colonna secondaria (destra su desktop, raggiungibile con lo switch su
+// mobile): persone vicine (secondo il filtro Distanza di Impostazioni) che
+// hanno messo mi piace o parteciperò a un contenuto della categoria — solo
+// chi ha attivato "Visibile agli altri utenti vicino a te".
 //
 // Desktop (orizzontale + largo): due colonne affiancate, come prima.
 // Mobile (verticale, o stretto anche in orizzontale): una sola colonna a
-// piena larghezza (di default i risultati, non le ricerche in evidenza), con
-// una maniglia fissa sul bordo destro che scorre per mostrare l'altra colonna.
-export default function CategoryColumn({ category, initialSubfamily = '' }) {
+// piena larghezza (di default la principale), con una maniglia fissa sul
+// bordo destro che scorre per mostrare la colonna secondaria.
+export default function CategoryColumn({ category, initialSubfamily = '', locationFilters = {} }) {
   const [resultsQuery, setResultsQuery] = useState('');
   const [subfamilyFilter, setSubfamilyFilter] = useState(initialSubfamily);
-  const [mobileView, setMobileView] = useState('results'); // 'results' | 'featured'
+  const [mobileView, setMobileView] = useState('results'); // 'results' | 'nearby'
   const isDesktop = useIsDesktopLayout();
 
   const allResults = CATEGORY_RESULTS[category.id] ?? [];
@@ -60,40 +70,47 @@ export default function CategoryColumn({ category, initialSubfamily = '' }) {
     });
   }, [allResults, resultsQuery, subfamilyFilter]);
 
-  const featuredContent = (
-    <>
-      {!isDesktop && (
-        <button className="rb-arte-mobile-back" onClick={() => setMobileView('results')}>
-          ← Torna a {category.label}
-        </button>
-      )}
-      <div className="rb-arte-panel-header">
-        <h3>Ricerche in evidenza</h3>
-        <p>Cosa cerca la community in {category.label}</p>
-      </div>
-      <ul className="rb-arte-featured-list">
-        {featured.map((term) => (
-          <li key={term}>
-            <button
-              className="rb-arte-featured-chip"
-              onClick={() => {
-                setResultsQuery(term);
-                if (!isDesktop) setMobileView('results');
-              }}
-            >
-              {term}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </>
-  );
+  // La "tua posizione" per il calcolo delle vicinanze è la città impostata nel
+  // filtro "Dove" di Impostazioni (lo stesso usato altrove per gli altri
+  // mondi). Senza una città impostata non c'è un punto di riferimento, quindi
+  // la colonna mostra un suggerimento invece di una lista finta di "vicini".
+  const myCity = useMemo(() => findCityMatch(locationFilters?.city ?? ''), [locationFilters?.city]);
+  const maxDistanceKm = locationFilters?.distance ?? 150;
+
+  const nearbyPeople = useMemo(() => {
+    if (!myCity) return [];
+    return CONTENT_INTERACTIONS
+      .filter((it) => it.categoryId === category.id)
+      .map((it) => {
+        const person = MOCK_USERS.find((u) => u.id === it.userId);
+        const content = allResults.find((r) => r.id === it.contentId);
+        return person && content ? { ...it, person, content } : null;
+      })
+      .filter(Boolean)
+      .filter(({ person }) => person.visibleNearby)
+      .filter(({ person }) => {
+        const info = getCityInfo(person.city);
+        if (!info) return false;
+        return distanceKm(myCity.lat, myCity.lng, info.lat, info.lng) <= maxDistanceKm;
+      })
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  }, [category.id, allResults, myCity, maxDistanceKm]);
 
   const resultsContent = (
     <>
       <div className="rb-arte-panel-header">
         <h3>{category.label}</h3>
       </div>
+
+      {featured.length > 0 && (
+        <div className="rb-arte-suggestion-row">
+          {featured.map((term) => (
+            <button key={term} className="rb-arte-suggestion-chip" onClick={() => setResultsQuery(term)}>
+              {term}
+            </button>
+          ))}
+        </div>
+      )}
 
       <input
         type="text"
@@ -138,26 +155,65 @@ export default function CategoryColumn({ category, initialSubfamily = '' }) {
     </>
   );
 
+  const nearbyContent = (
+    <>
+      {!isDesktop && (
+        <button className="rb-arte-mobile-back" onClick={() => setMobileView('results')}>
+          ← Torna a {category.label}
+        </button>
+      )}
+      <div className="rb-arte-panel-header">
+        <h3>Persone vicine</h3>
+        <p>Chi, vicino a te, segue {category.label}</p>
+      </div>
+
+      {!myCity && (
+        <p className="rb-arte-no-results">
+          Imposta la tua città nel filtro "Dove" di Impostazioni per vedere chi è nelle vicinanze.
+        </p>
+      )}
+
+      {myCity && nearbyPeople.length === 0 && (
+        <p className="rb-arte-no-results">Nessuno nelle vicinanze per ora, in questa categoria.</p>
+      )}
+
+      {myCity && nearbyPeople.length > 0 && (
+        <ul className="rb-arte-nearby-list">
+          {nearbyPeople.map(({ id, person, content, type }) => (
+            <li key={id} className="rb-arte-nearby-card">
+              <img className="rb-arte-nearby-avatar" src={person.avatar} alt={person.name} />
+              <div>
+                <strong>{person.name}</strong>
+                <p>{type === 'parteciperò' ? `Parteciperà a ${content.title}` : `Gli piace ${content.title}`}</p>
+                <span>{person.city}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+
   if (isDesktop) {
     return (
       <>
-        <aside className="rb-arte-panel rb-arte-panel-left">{featuredContent}</aside>
-        <aside className="rb-arte-panel rb-arte-panel-right">{resultsContent}</aside>
+        <aside className="rb-arte-panel rb-arte-panel-left">{resultsContent}</aside>
+        <aside className="rb-arte-panel rb-arte-panel-right">{nearbyContent}</aside>
       </>
     );
   }
 
   return (
     <div className="rb-arte-mobile-stage">
-      <div className={`rb-arte-mobile-track ${mobileView === 'featured' ? 'show-featured' : ''}`}>
+      <div className={`rb-arte-mobile-track ${mobileView === 'nearby' ? 'show-secondary' : ''}`}>
         <div className="rb-arte-mobile-slide">{resultsContent}</div>
-        <div className="rb-arte-mobile-slide">{featuredContent}</div>
+        <div className="rb-arte-mobile-slide">{nearbyContent}</div>
       </div>
       <button
         className="rb-arte-edge-handle"
-        onClick={() => setMobileView((v) => (v === 'results' ? 'featured' : 'results'))}
-        aria-label={mobileView === 'results' ? 'Mostra ricerche in evidenza' : `Torna a ${category.label}`}
-        title={mobileView === 'results' ? 'Ricerche in evidenza' : category.label}
+        onClick={() => setMobileView((v) => (v === 'results' ? 'nearby' : 'results'))}
+        aria-label={mobileView === 'results' ? 'Mostra persone vicine' : `Torna a ${category.label}`}
+        title={mobileView === 'results' ? 'Persone vicine' : category.label}
       >
         <SwitchIcon />
       </button>
