@@ -29,6 +29,30 @@
   gap: 2px;
   border-radius: 14px;
   line-height: 1.5;
+  pointer-events: auto;
+}
+
+.rb-tagline-cat-btn {
+  background: transparent;
+  border: none;
+  padding: 3px 6px;
+  margin: 0 -6px;
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.rb-tagline-cat-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.rb-tagline-cat-btn.active {
+  background: color-mix(in srgb, var(--accent, #1d9bf0) 35%, transparent);
+  color: #fff;
 }
 
 .rb-world-dots {

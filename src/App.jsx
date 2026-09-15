@@ -203,7 +203,16 @@ export default function App() {
 
       <div className={`rb-world-tagline ${world.id === 'arte' ? 'rb-world-tagline-list' : ''}`}>
         {world.id === 'arte'
-          ? ARTE_CATEGORIES.map((c) => <span key={c.id}>{c.label}</span>)
+          ? ARTE_CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className={`rb-tagline-cat-btn ${activeArteCategory === c.id ? 'active' : ''}`}
+                onClick={() => toggleArteCategory(c.id)}
+              >
+                {c.label}
+              </button>
+            ))
           : world.tagline}
       </div>
 

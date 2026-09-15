@@ -28,6 +28,15 @@ function pickDetailLevel(categoryCount) {
   return 2; // 320 facce
 }
 
+// Rimpicciolisce ogni vertice verso il centro (raw, non normalizzato) del suo
+// triangolo e lo riproietta sulla sfera: così i triangoli restano staccati tra
+// loro (si vede il reticolo/i puntini nello spazio in mezzo) anche quando le
+// facce dell'icosaedro di partenza sono adiacenti.
+const TRIANGLE_SHRINK = 0.8;
+function shrinkVertex(v, rawCentroid, radius) {
+  return v.clone().sub(rawCentroid).multiplyScalar(TRIANGLE_SHRINK).add(rawCentroid).normalize().multiplyScalar(radius);
+}
+
 // Etichetta come sprite: tenendo il testo su un piano che guarda sempre la camera,
 // resta dritto e leggibile a prescindere da come ruota il mondo. Uno sfondo scuro
 // dietro al testo garantisce contrasto anche sopra ai puntini dei continenti.
@@ -122,16 +131,20 @@ export function buildCategoryShell(categories, { radius = 122, color = '#8b5cf6'
     centroid.copy(a).add(b).add(c).divideScalar(3);
     const normal = centroid.clone().normalize();
 
+    const sa = shrinkVertex(a, centroid, radius);
+    const sb = shrinkVertex(b, centroid, radius);
+    const sc = shrinkVertex(c, centroid, radius);
+
     triangles.push({
       id: cat.id,
-      a: a.clone().normalize(),
-      b: b.clone().normalize(),
-      c: c.clone().normalize(),
+      a: sa.clone().normalize(),
+      b: sb.clone().normalize(),
+      c: sc.clone().normalize(),
     });
     positions[cat.id] = vectorToPolar(normal);
 
     const triGeo = new THREE.BufferGeometry();
-    triGeo.setAttribute('position', new THREE.Float32BufferAttribute([a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z], 3));
+    triGeo.setAttribute('position', new THREE.Float32BufferAttribute([sa.x, sa.y, sa.z, sb.x, sb.y, sb.z, sc.x, sc.y, sc.z], 3));
     triGeo.computeVertexNormals();
 
     const material = new THREE.MeshBasicMaterial({
