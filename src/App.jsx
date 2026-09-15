@@ -4,6 +4,7 @@ import TopBar from './components/TopBar';
 import SettingsPanel from './components/SettingsPanel';
 import ProfileModal from './components/ProfileModal';
 import AuthModal from './components/AuthModal';
+import ArteExplorer from './components/ArteExplorer';
 import { WORLDS, DEFAULT_WORLD_INDEX } from './data/worlds';
 import { usersForWorld } from './data/mockUsers';
 import { useSwipeWorld } from './hooks/useSwipeWorld';
@@ -121,6 +122,8 @@ export default function App() {
         containerRef={containerRef}
         flyTo={flyTo}
       />
+
+      {world.id === 'arte' && <ArteExplorer world={world} />}
 
       <div className="rb-world-tagline">{world.tagline}</div>
 

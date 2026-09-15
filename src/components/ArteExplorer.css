@@ -1,0 +1,193 @@
+.rb-arte-explorer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 15;
+}
+
+.rb-arte-category-bar {
+  position: absolute;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.rb-arte-category-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent, #8b5cf6) 45%, transparent);
+  background: color-mix(in srgb, var(--accent, #8b5cf6) 10%, rgba(0, 0, 0, 0.4));
+  color: #f5f5f7;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.rb-arte-category-btn:hover {
+  transform: translateY(-1px);
+}
+
+.rb-arte-category-btn.active {
+  background: var(--accent, #8b5cf6);
+  border-color: var(--accent, #8b5cf6);
+  color: #0d0714;
+}
+
+.rb-arte-panel {
+  position: absolute;
+  top: 130px;
+  bottom: 90px;
+  width: min(300px, 26vw);
+  background: rgba(8, 6, 14, 0.72);
+  border: 1px solid color-mix(in srgb, var(--accent, #8b5cf6) 40%, transparent);
+  border-radius: 18px;
+  padding: 16px;
+  overflow-y: auto;
+  backdrop-filter: blur(10px);
+  pointer-events: auto;
+  color: #f5f5f7;
+  box-shadow: 0 0 30px color-mix(in srgb, var(--accent, #8b5cf6) 18%, transparent);
+  animation: rb-arte-slide-in 0.25s ease;
+}
+
+.rb-arte-panel-left {
+  left: 22px;
+}
+
+.rb-arte-panel-right {
+  right: 70px;
+}
+
+@keyframes rb-arte-slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rb-arte-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.rb-arte-panel-header h3 {
+  margin: 0 0 2px;
+  font-size: 15px;
+}
+
+.rb-arte-panel-header p {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(245, 245, 247, 0.55);
+}
+
+.rb-arte-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #f5f5f7;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.rb-arte-featured-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rb-arte-featured-chip {
+  width: 100%;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f5f5f7;
+  font-size: 12.5px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.rb-arte-featured-chip:hover {
+  border-color: var(--accent, #8b5cf6);
+  background: color-mix(in srgb, var(--accent, #8b5cf6) 14%, transparent);
+}
+
+.rb-arte-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  padding: 9px 12px;
+  color: #f5f5f7;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.rb-arte-results-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rb-arte-result-card {
+  display: flex;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.rb-arte-result-thumb {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent, #8b5cf6), rgba(255, 255, 255, 0.08));
+}
+
+.rb-arte-result-card strong {
+  display: block;
+  font-size: 13px;
+}
+
+.rb-arte-result-card p {
+  margin: 2px 0;
+  font-size: 12px;
+  color: rgba(245, 245, 247, 0.7);
+}
+
+.rb-arte-result-card span {
+  font-size: 11px;
+  color: rgba(245, 245, 247, 0.45);
+}
+
+.rb-arte-no-results {
+  font-size: 12.5px;
+  color: rgba(245, 245, 247, 0.5);
+}
+
+@media (max-width: 860px) {
+  .rb-arte-panel {
+    width: min(240px, 42vw);
+    padding: 12px;
+  }
+}
