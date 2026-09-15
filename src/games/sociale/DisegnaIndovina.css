@@ -1,0 +1,116 @@
+.rb-disegna-phase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  text-align: center;
+}
+
+.rb-disegna-big {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(245, 245, 247, 0.6);
+}
+
+.rb-disegna-artist {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--accent, #22c55e);
+}
+
+.rb-disegna-word {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  padding: 10px 20px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent, #22c55e) 20%, transparent);
+  border: 1px solid var(--accent, #22c55e);
+}
+
+.rb-disegna-hint {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(245, 245, 247, 0.65);
+  max-width: 260px;
+}
+
+.rb-disegna-btn {
+  background: var(--accent, #22c55e);
+  border: 1px solid var(--accent, #22c55e);
+  color: #06210f;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 12px 22px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.rb-disegna-drawing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.rb-disegna-topbar {
+  display: flex;
+  justify-content: space-between;
+  width: 280px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.rb-disegna-timer {
+  color: var(--accent, #22c55e);
+}
+
+.rb-disegna-canvas {
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  touch-action: none;
+  background: #fff;
+}
+
+.rb-disegna-drawing-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.rb-disegna-drawing-actions button:first-child {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f5f5f7;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.rb-disegna-guess-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  max-width: 280px;
+}
+
+.rb-disegna-guess-chip {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f5f5f7;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.rb-disegna-guess-chip.active {
+  background: var(--accent, #22c55e);
+  border-color: var(--accent, #22c55e);
+  color: #06210f;
+}

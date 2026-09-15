@@ -1,0 +1,80 @@
+.rb-player-setup {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+.rb-player-setup > p {
+  margin: 0 0 4px;
+  font-size: 13px;
+  text-align: center;
+  color: rgba(245, 245, 247, 0.7);
+}
+
+.rb-player-setup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rb-player-setup-row {
+  display: flex;
+  gap: 6px;
+}
+
+.rb-player-setup-row input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #f5f5f7;
+  font-size: 14px;
+}
+
+.rb-player-setup-row button {
+  width: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f5f5f7;
+  cursor: pointer;
+}
+
+.rb-player-setup-add {
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.3);
+  color: rgba(245, 245, 247, 0.7);
+  font-size: 13px;
+  padding: 8px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.rb-player-setup-warning {
+  margin: 0;
+  font-size: 12px;
+  color: #f87171;
+  text-align: center;
+}
+
+.rb-player-setup-start {
+  margin-top: 8px;
+  background: var(--accent, #22c55e);
+  border: 1px solid var(--accent, #22c55e);
+  color: #06210f;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.rb-player-setup-start:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

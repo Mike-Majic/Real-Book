@@ -80,4 +80,20 @@ export const MINIGAMES = [
     meccanica: 'Impila blocchi in equilibrio, un tocco alla volta',
     Component: lazy(() => import('./arcade/TorreBlocchi.jsx')),
   },
+  {
+    id: 'disegna-indovina',
+    nome: 'Disegna e indovina',
+    famiglia: 'sociale',
+    fasciaEtaMinima: 6,
+    meccanica: 'A turni, uno disegna una parola e gli altri indovinano a voce',
+    Component: lazy(() => import('./sociale/DisegnaIndovina.jsx')),
+  },
+  {
+    id: 'chi-e-piu-probabile',
+    nome: 'Chi è più probabile che...',
+    famiglia: 'sociale',
+    fasciaEtaMinima: 6,
+    meccanica: 'Party game di votazione a rotazione, passando il dispositivo',
+    Component: lazy(() => import('./sociale/ChiEPiuProbabile.jsx')),
+  },
 ];
