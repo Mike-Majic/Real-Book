@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { getDotTexture } from './dotTexture';
+import { pointInAnyTriangle } from './sphereGeometry';
 
 const GLOBE_RADIUS = 100; // stesso valore usato internamente da three-globe
 
@@ -12,9 +13,19 @@ function polarToVector(lat, lng, radius) {
   return new THREE.Vector3(radius * sinPhi * Math.cos(theta), radius * Math.cos(phi), radius * sinPhi * Math.sin(theta));
 }
 
-export function buildLandDots(landPoints) {
-  const positions = new Float32Array(landPoints.length * 3);
-  landPoints.forEach(([lat, lng], i) => {
+// excludeTriangles: punti dentro ai triangoli delle categorie (vedi categoryShell.js)
+// vengono saltati, per lasciare l'interno del triangolo pulito e la scritta leggibile.
+export function buildLandDots(landPoints, excludeTriangles = []) {
+  const unit = new THREE.Vector3();
+  const kept = excludeTriangles.length === 0
+    ? landPoints
+    : landPoints.filter(([lat, lng]) => {
+        unit.copy(polarToVector(lat, lng, 1));
+        return !pointInAnyTriangle(unit, excludeTriangles);
+      });
+
+  const positions = new Float32Array(kept.length * 3);
+  kept.forEach(([lat, lng], i) => {
     const v = polarToVector(lat, lng, GLOBE_RADIUS * 1.02);
     positions[i * 3] = v.x;
     positions[i * 3 + 1] = v.y;

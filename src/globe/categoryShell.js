@@ -8,39 +8,72 @@ function polarToVector(lat, lng, radius = 1) {
   return new THREE.Vector3(radius * sinPhi * Math.cos(theta), radius * Math.cos(phi), radius * sinPhi * Math.sin(theta));
 }
 
+// Più categorie ci sono, più i triangoli devono essere piccoli per farcele stare
+// tutte in modo leggibile: si passa a un icosaedro più suddiviso (più facce, più
+// piccole) man mano che il numero di categorie cresce.
+function pickDetailLevel(categoryCount) {
+  if (categoryCount <= 6) return 0; // 20 facce
+  if (categoryCount <= 20) return 1; // 80 facce
+  return 2; // 320 facce
+}
+
 // Etichetta come sprite: tenendo il testo su un piano che guarda sempre la camera,
-// resta dritto e leggibile a prescindere da come ruota il mondo.
-function makeLabelSprite(text, color) {
-  const scale = 4;
+// resta dritto e leggibile a prescindere da come ruota il mondo. Uno sfondo scuro
+// dietro al testo garantisce contrasto anche sopra ai puntini dei continenti.
+function makeLabelSprite(text, spriteScale) {
+  const canvasScale = 4;
   const canvas = document.createElement('canvas');
-  canvas.width = 220 * scale;
-  canvas.height = 56 * scale;
+  canvas.width = 240 * canvasScale;
+  canvas.height = 64 * canvasScale;
   const ctx = canvas.getContext('2d');
-  ctx.scale(scale, scale);
-  ctx.font = '700 26px system-ui, -apple-system, sans-serif';
+  ctx.scale(canvasScale, canvasScale);
+
+  ctx.font = '800 32px system-ui, -apple-system, sans-serif';
+  const metrics = ctx.measureText(text);
+  const padX = 14;
+  const padY = 8;
+  const boxW = metrics.width + padX * 2;
+  const boxH = 32 + padY * 2;
+  const boxX = 120 - boxW / 2;
+  const boxY = 32 - boxH / 2;
+  const radius = 10;
+
+  ctx.beginPath();
+  ctx.moveTo(boxX + radius, boxY);
+  ctx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + boxH, radius);
+  ctx.arcTo(boxX + boxW, boxY + boxH, boxX, boxY + boxH, radius);
+  ctx.arcTo(boxX, boxY + boxH, boxX, boxY, radius);
+  ctx.arcTo(boxX, boxY, boxX + boxW, boxY, radius);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(6, 4, 12, 0.78)';
+  ctx.fill();
+
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.shadowColor = 'rgba(0,0,0,0.9)';
-  ctx.shadowBlur = 10;
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(text, 110, 28);
+  ctx.fillText(text, 120, 33);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearFilter;
   const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
   const sprite = new THREE.Sprite(material);
-  sprite.scale.set(26, 6.6, 1);
+  const aspect = canvas.width / canvas.height;
+  sprite.scale.set(spriteScale * aspect, spriteScale, 1);
   return { sprite, material, texture };
 }
 
-// Incastona una categoria per ogni triangolo del guscio (icosaedro a bassa risoluzione,
-// 20 facce grandi e ben visibili): la riempie di colore semi-trasparente e ci mette sopra
-// l'etichetta. Ogni categoria viene agganciata al triangolo più vicino alla sua posizione
-// lat/lng "anchor", così la stessa coordinata può essere riusata per centrare la camera.
+// Incastona una categoria per ogni triangolo del guscio: lo riempie di colore
+// semi-trasparente e ci mette sopra l'etichetta. Ogni categoria viene agganciata
+// al triangolo più vicino alla sua posizione lat/lng "anchor", così la stessa
+// coordinata può essere riusata per centrare la camera (vedi App.jsx).
 export function buildCategoryShell(categories, { radius = 122, color = '#8b5cf6' } = {}) {
-  const baseGeo = new THREE.IcosahedronGeometry(radius, 0).toNonIndexed();
+  const detail = pickDetailLevel(categories.length);
+  const baseGeo = new THREE.IcosahedronGeometry(radius, detail).toNonIndexed();
   const pos = baseGeo.getAttribute('position');
   const faceCount = pos.count / 3;
+
+  // Le etichette si rimpiccioliscono quando i triangoli sono più piccoli (più categorie).
+  const labelScale = detail === 0 ? 15 : detail === 1 ? 9 : 5.5;
 
   const a = new THREE.Vector3();
   const b = new THREE.Vector3();
@@ -49,6 +82,7 @@ export function buildCategoryShell(categories, { radius = 122, color = '#8b5cf6'
 
   const group = new THREE.Group();
   const faceMeshes = [];
+  const triangles = [];
   const disposables = [baseGeo];
   const usedFaces = new Set();
 
@@ -76,6 +110,13 @@ export function buildCategoryShell(categories, { radius = 122, color = '#8b5cf6'
     centroid.copy(a).add(b).add(c).divideScalar(3);
     const normal = centroid.clone().normalize();
 
+    triangles.push({
+      id: cat.id,
+      a: a.clone().normalize(),
+      b: b.clone().normalize(),
+      c: c.clone().normalize(),
+    });
+
     const triGeo = new THREE.BufferGeometry();
     triGeo.setAttribute('position', new THREE.Float32BufferAttribute([a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z], 3));
     triGeo.computeVertexNormals();
@@ -93,7 +134,7 @@ export function buildCategoryShell(categories, { radius = 122, color = '#8b5cf6'
     faceMeshes.push(mesh);
     disposables.push(triGeo, material);
 
-    const { sprite, material: labelMat, texture } = makeLabelSprite(cat.label, color);
+    const { sprite, material: labelMat, texture } = makeLabelSprite(cat.label, labelScale);
     sprite.position.copy(normal).multiplyScalar(radius + 3);
     sprite.userData.categoryId = cat.id;
     group.add(sprite);
@@ -110,5 +151,5 @@ export function buildCategoryShell(categories, { radius = 122, color = '#8b5cf6'
     disposables.forEach((d) => d.dispose && d.dispose());
   }
 
-  return { group, faceMeshes, setActive, dispose };
+  return { group, faceMeshes, triangles, setActive, dispose };
 }

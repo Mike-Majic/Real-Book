@@ -28,6 +28,7 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
   const globeRef = useRef();
   const overlayRef = useRef(null);
   const categoryShellRef = useRef(null);
+  const landPointsRef = useRef(null);
   const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
 
   useEffect(() => {
@@ -81,10 +82,8 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
     loadLandDots()
       .then((landPoints) => {
         if (cancelled || !overlayRef.current) return;
-        const landDots = buildLandDots(landPoints);
-        overlayRef.current.group.add(landDots);
-        overlayRef.current.landDots = landDots;
-        applyOverlayColor(overlayRef.current, world.atmosphereColor);
+        landPointsRef.current = landPoints;
+        rebuildLandDots(overlayRef.current, landPoints, categoryShellRef.current?.triangles ?? [], world.atmosphereColor);
       })
       .catch((err) => {
         console.error('Impossibile caricare la mappa dei continenti', err);
@@ -105,7 +104,10 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
   // un'etichetta sempre rivolta verso la camera (quindi sempre dritta e leggibile).
   useEffect(() => {
     const g = globeRef.current;
-    if (!g || !categories || categories.length === 0) return undefined;
+    if (!g || !categories || categories.length === 0) {
+      categoryShellRef.current = null;
+      return undefined;
+    }
 
     const scene = g.scene();
     const shell = buildCategoryShell(categories, { radius: 122, color: world.color });
@@ -113,10 +115,19 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
     categoryShellRef.current = shell;
     shell.setActive(activeCategory);
 
+    // Toglie i puntini dei continenti da dentro ai triangoli, per lasciare le
+    // etichette leggibili; tornano completi appena si esce da questo mondo.
+    if (overlayRef.current && landPointsRef.current) {
+      rebuildLandDots(overlayRef.current, landPointsRef.current, shell.triangles, world.atmosphereColor);
+    }
+
     return () => {
       scene.remove(shell.group);
       shell.dispose();
       categoryShellRef.current = null;
+      if (overlayRef.current && landPointsRef.current) {
+        rebuildLandDots(overlayRef.current, landPointsRef.current, [], world.atmosphereColor);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categories, world.color]);
@@ -213,6 +224,21 @@ function applyOverlayColor(overlay, color) {
   if (overlay.landDots) overlay.landDots.material.color.set(color);
   overlay.shell.lineMaterial.color.set(color);
   overlay.shell.nodeMaterial.color.set(color);
+}
+
+// Ricostruisce i puntini dei continenti, escludendo (o meno) quelli dentro ai
+// triangoli delle categorie attive.
+function rebuildLandDots(overlay, landPoints, excludeTriangles, color) {
+  const old = overlay.landDots;
+  if (old) {
+    overlay.group.remove(old);
+    old.geometry.dispose();
+    old.material.dispose();
+  }
+  const landDots = buildLandDots(landPoints, excludeTriangles);
+  landDots.material.color.set(color);
+  overlay.group.add(landDots);
+  overlay.landDots = landDots;
 }
 
 export { WORLDS };
