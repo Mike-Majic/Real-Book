@@ -34,7 +34,6 @@ export default function App() {
   const [jobFilters, setJobFilters] = useState(() => loadStored('rb-job-filters', DEFAULT_JOB_FILTERS));
 
   useEffect(() => {
-    document.body.style.background = world.id === 'lavoro' ? '#e9ebf0' : '#05050a';
     document.documentElement.style.setProperty('--rb-accent', world.color);
   }, [world]);
 
