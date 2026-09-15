@@ -34,33 +34,33 @@ export default function ArteExplorer({ world, activeCategory, onToggleCategory, 
 
   return (
     <div className="rb-arte-explorer" style={{ '--accent': world.color }}>
-      <div className="rb-arte-top-controls">
-        <button
-          type="button"
-          className="rb-arte-close-all-btn"
-          onClick={() => onToggleCategory(null)}
-          aria-label="Chiudi le colonne"
-          title="Chiudi le colonne"
-        >
-          ✕
-        </button>
-
-        <form className="rb-arte-category-search" onSubmit={submitCategorySearch}>
-          <input
-            type="text"
-            placeholder="Cerca una categoria (es. film)..."
-            value={categoryQuery}
-            onChange={(e) => {
-              setCategoryQuery(e.target.value);
-              setCategoryQueryInvalid(false);
-            }}
-            className={categoryQueryInvalid ? 'invalid' : ''}
-          />
-        </form>
-      </div>
-
       {category && (
         <>
+          <div className="rb-arte-top-controls">
+            <button
+              type="button"
+              className="rb-arte-close-all-btn"
+              onClick={() => onToggleCategory(null)}
+              aria-label="Chiudi le colonne"
+              title="Chiudi le colonne"
+            >
+              ✕
+            </button>
+
+            <form className="rb-arte-category-search" onSubmit={submitCategorySearch}>
+              <input
+                type="text"
+                placeholder="Cerca una categoria (es. film)..."
+                value={categoryQuery}
+                onChange={(e) => {
+                  setCategoryQuery(e.target.value);
+                  setCategoryQueryInvalid(false);
+                }}
+                className={categoryQueryInvalid ? 'invalid' : ''}
+              />
+            </form>
+          </div>
+
           <aside className="rb-arte-panel rb-arte-panel-left">
             <div className="rb-arte-panel-header">
               <h3>Ricerche in evidenza</h3>
