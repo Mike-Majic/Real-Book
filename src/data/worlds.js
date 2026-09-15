@@ -41,6 +41,18 @@ export const WORLDS = [
     atmosphereColor: '#8b5cf6',
     textOnGlobe: '#f3ecff',
   },
+  {
+    id: 'bambini',
+    label: 'Bambini',
+    // Mondo ancora vuoto di proposito: niente profili/posizioni di minori sulla mappa.
+    // Conterrà giochi pensati per i più piccoli, da progettare a parte.
+    tagline: 'Giochi per i più piccoli — in arrivo',
+    color: '#22c55e',
+    colorSoft: 'rgba(34, 197, 94, 0.18)',
+    globeColor: '#03130a',
+    atmosphereColor: '#22c55e',
+    textOnGlobe: '#e9fff2',
+  },
 ];
 
 export const JOB_CATEGORIES = [

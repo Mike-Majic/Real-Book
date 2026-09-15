@@ -15,7 +15,7 @@ function polarToVector(lat, lng, radius) {
 export function buildLandDots(landPoints) {
   const positions = new Float32Array(landPoints.length * 3);
   landPoints.forEach(([lat, lng], i) => {
-    const v = polarToVector(lat, lng, GLOBE_RADIUS * 1.004);
+    const v = polarToVector(lat, lng, GLOBE_RADIUS * 1.02);
     positions[i * 3] = v.x;
     positions[i * 3 + 1] = v.y;
     positions[i * 3 + 2] = v.z;

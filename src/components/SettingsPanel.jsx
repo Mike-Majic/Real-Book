@@ -2,7 +2,7 @@ import { JOB_CATEGORIES } from '../data/worlds';
 import { CONTINENTS, REGIONS } from '../data/geo';
 import './SettingsPanel.css';
 
-export default function SettingsPanel({ open, onClose, filters, setFilters, jobFilters, setJobFilters }) {
+export default function SettingsPanel({ open, onClose, filters, setFilters, jobFilters, setJobFilters, onResetFilters }) {
   if (!open) return null;
 
   const updateFilter = (key, value) => setFilters((f) => ({ ...f, [key]: value }));
@@ -15,6 +15,10 @@ export default function SettingsPanel({ open, onClose, filters, setFilters, jobF
           <h2>Impostazioni</h2>
           <button className="rb-close-btn" onClick={onClose} aria-label="Chiudi">✕</button>
         </div>
+
+        <button type="button" className="rb-reset-filters-btn" onClick={onResetFilters}>
+          Azzera tutti i filtri
+        </button>
 
         <section className="rb-settings-section">
           <h3>Personalizza il tuo Real Book</h3>

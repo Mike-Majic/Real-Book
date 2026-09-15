@@ -34,12 +34,13 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // Materiale opaco (non trasparente): evitiamo che il globo finisca nel canale di
+  // rendering "trasparente" insieme ai puntini, che causava sfarfallio/z-fighting
+  // durante la rotazione o lo zoom.
   const globeMaterial = useMemo(
     () =>
       new THREE.MeshPhongMaterial({
         color: '#050508',
-        transparent: true,
-        opacity: 0.85,
         shininess: 6,
       }),
     []

@@ -143,6 +143,10 @@ export default function App() {
         setFilters={setFilters}
         jobFilters={jobFilters}
         setJobFilters={setJobFilters}
+        onResetFilters={() => {
+          setFilters(DEFAULT_FILTERS);
+          setJobFilters(DEFAULT_JOB_FILTERS);
+        }}
       />
 
       <ProfileModal user={selectedUser} world={world} onClose={() => setSelectedUser(null)} />
