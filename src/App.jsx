@@ -24,7 +24,17 @@ import {
   resolveCategoryQuery as resolveNerdCategoryQuery,
 } from './data/nerdCategories';
 import { BAMBINI_CATEGORIES, resolveCategoryQuery as resolveBambiniCategoryQuery } from './games/registry';
+import { INCONTRI_CATEGORIES, resolveCategoryQuery as resolveIncontriCategoryQuery } from './data/incontriCategories';
+import { FAKE_PROFILES } from './data/fakeProfiles';
+import IncontriLiveExplorer from './components/incontri/IncontriLiveExplorer';
+import AdultGate from './components/incontri/AdultGate';
 import './App.css';
+
+// Test di scala richiesto dall'utente: nel mondo Incontri aggiunge ~1800
+// profili finti oltre ai 20 curati a mano, per vedere come si comporta il
+// globo (e il clustering) con molti più utenti. Da togliere a fine
+// progetto: basta rimettere questa a false.
+const SHOW_FAKE_PROFILES_SCALE_TEST = true;
 
 const DEFAULT_FILTERS = { gender: 'Tutti', ageMin: 18, ageMax: 60 };
 const DEFAULT_JOB_FILTERS = { category: '' };
@@ -41,6 +51,8 @@ const CATEGORY_WORLDS = {
   // Bambini non ha colonne di contenuti (featured/results): i "triangoli"
   // sono i minigiochi stessi, aperti tramite BambiniGameExplorer.
   bambini: { categories: BAMBINI_CATEGORIES, resolveQuery: resolveBambiniCategoryQuery },
+  // Incontri: solo "Live" per ora, apre la chat invece di colonne di contenuti.
+  incontri: { categories: INCONTRI_CATEGORIES, resolveQuery: resolveIncontriCategoryQuery },
 };
 
 // Aspetta che l'utente finisca di digitare prima di far "volare" il globo sulla città cercata.
@@ -96,6 +108,7 @@ export default function App() {
   const [arteFilter, setArteFilter] = useState(() => loadStored('rb-arte-filter', DEFAULT_ARTE_FILTER));
   const [arteInitialSubfamily, setArteInitialSubfamily] = useState('');
   const [visibility, setVisibility] = useState(() => loadStored('rb-visibility', DEFAULT_VISIBILITY));
+  const [adultGateOk, setAdultGateOk] = useState(() => loadStored('rb-adult-gate-ok', false));
   const [flyTo, setFlyTo] = useState(null);
   // Timer del pannello che deve ancora aprirsi a volo finito (vedi
   // flyToCategoryThenOpen): tenerlo in un ref per poterlo annullare se nel
@@ -131,7 +144,10 @@ export default function App() {
   useEffect(() => localStorage.setItem('rb-visibility', JSON.stringify(visibility)), [visibility]);
 
   const worldUsers = useMemo(() => {
-    const base = usersForWorld(world.id);
+    const base =
+      SHOW_FAKE_PROFILES_SCALE_TEST && world.id === 'incontri'
+        ? [...usersForWorld(world.id), ...FAKE_PROFILES]
+        : usersForWorld(world.id);
 
     const matchesLocation = (u) => {
       if (locationFilters.city && !u.city.toLowerCase().includes(locationFilters.city.toLowerCase())) return false;
@@ -255,7 +271,7 @@ export default function App() {
         onCategoryPositionsReady={setArteCategoryPositions}
       />
 
-      {categorySet && world.id !== 'bambini' && (
+      {categorySet && world.id !== 'bambini' && world.id !== 'incontri' && (
         <ArteExplorer
           world={world}
           categorySet={categorySet}
@@ -277,11 +293,36 @@ export default function App() {
         />
       )}
 
+      {world.id === 'incontri' && adultGateOk && (
+        <IncontriLiveExplorer
+          world={world}
+          activeCategory={activeArteCategory}
+          onToggleCategory={toggleArteCategory}
+          onSearchCategory={flyToArteCategory}
+          user={user}
+          onOpenAuth={() => setAuthOpen(true)}
+        />
+      )}
+
       {world.id === 'social' && (
         <SocialFeed world={world} user={user} onOpenAuth={() => setAuthOpen(true)} />
       )}
 
-      <div className={`rb-world-tagline ${categorySet ? 'rb-world-tagline-list' : ''}`}>
+      {world.id === 'incontri' && !adultGateOk && (
+        <AdultGate
+          onConfirm={() => {
+            setAdultGateOk(true);
+            localStorage.setItem('rb-adult-gate-ok', JSON.stringify(true));
+          }}
+          onDecline={() => setIndex(DEFAULT_WORLD_INDEX)}
+        />
+      )}
+
+      <div
+        className={`rb-world-tagline ${categorySet ? 'rb-world-tagline-list' : ''} ${
+          activeArteCategory ? 'rb-world-tagline-behind' : ''
+        }`}
+      >
         {categorySet
           ? categorySet.categories.map((c) => (
               <button

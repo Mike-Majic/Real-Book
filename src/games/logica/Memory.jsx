@@ -100,7 +100,7 @@ export default function Memory({ onFinish }) {
               type="button"
               className={`rb-memory-card ${isVisible ? 'flipped' : ''}`}
               onClick={() => handleFlip(i)}
-              disabled={isVisible}
+              aria-disabled={isVisible}
             >
               {isVisible ? card.symbol : '❔'}
             </button>

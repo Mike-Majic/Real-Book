@@ -42,3 +42,32 @@
   border-radius: 50%;
   border: 2px solid #0a0a0f;
 }
+
+/* "Grumo" di utenti raggruppati per città (vedi clusterUsers in
+   WorldGlobe.jsx): un cerchio col conteggio al posto di tanti marker
+   singoli, altrimenti una città affollata diventerebbe illeggibile. */
+.rb-marker-cluster {
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  transition: transform 0.15s ease;
+}
+
+.rb-marker-cluster:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.rb-marker-cluster span {
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}

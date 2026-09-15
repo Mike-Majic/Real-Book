@@ -3,6 +3,7 @@ import Globe from 'react-globe.gl';
 import * as THREE from 'three';
 import { WORLDS } from '../data/worlds';
 import { loadLandDots } from '../globe/landDots';
+import { loadLandGeo } from '../globe/landGeo';
 import { buildLandDots, buildNetworkShell, buildShellNodeGeometry } from '../globe/networkOverlay';
 import { buildCategoryShell } from '../globe/categoryShell';
 import './WorldGlobe.css';
@@ -11,6 +12,12 @@ import './WorldGlobe.css';
 // esportata così chi apre un pannello dopo il volo (App.jsx) può aspettare
 // esattamente questo tempo, invece di un numero magico duplicato altrove.
 export const CATEGORY_FLY_MS = 1800;
+
+// Esperimento: continenti con contorni reali (GeoJSON) al posto dei puntini.
+// Per tornare al vecchio sistema basta rimettere questa a false, il codice
+// dei puntini (src/globe/landDots.js, buildLandDots) è ancora tutto qui,
+// intatto, sotto l'else.
+const USE_REALISTIC_CONTINENTS = true;
 
 function makeMarkerEl(user, world, onOpen) {
   const el = document.createElement('div');
@@ -29,12 +36,75 @@ function makeMarkerEl(user, world, onOpen) {
   return el;
 }
 
+// Quando una città ha più utenti della soglia, invece di un marker per
+// persona (che a migliaia diventerebbe illeggibile, oltre che lento) si
+// mostra un solo "grumo" col conteggio. Un click lo apre (rivela i marker
+// singoli di quella città) e centra la camera li' sopra.
+const CLUSTER_THRESHOLD = 12;
+
+function makeClusterEl(cluster, world, onExpand) {
+  const el = document.createElement('div');
+  el.className = 'rb-marker-cluster';
+  el.style.borderColor = world.color;
+  el.style.background = `color-mix(in srgb, ${world.color} 28%, rgba(0,0,0,0.55))`;
+  el.innerHTML = `<span>${cluster.count}</span>`;
+  el.title = `${cluster.city} · ${cluster.count} persone`;
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    onExpand(cluster);
+  });
+  return el;
+}
+
+// Raggruppa gli utenti per città: sotto soglia restano marker singoli,
+// sopra soglia diventano un unico "grumo" (a meno che quella città non sia
+// già stata aperta con un click).
+function clusterUsers(users, expandedCities) {
+  const byCity = new Map();
+  for (const u of users) {
+    const key = u.city || `${u.lat},${u.lng}`;
+    if (!byCity.has(key)) byCity.set(key, []);
+    byCity.get(key).push(u);
+  }
+
+  const items = [];
+  for (const [city, group] of byCity) {
+    if (group.length > CLUSTER_THRESHOLD && !expandedCities.has(city)) {
+      items.push({ kind: 'cluster', city, lat: group[0].lat, lng: group[0].lng, count: group.length });
+    } else {
+      for (const u of group) items.push({ kind: 'user', ...u });
+    }
+  }
+  return items;
+}
+
 export default function WorldGlobe({ world, users, onSelectUser, containerRef, flyTo, categories, activeCategory, onCategorySelect, onCategoryPositionsReady }) {
   const globeRef = useRef();
   const overlayRef = useRef(null);
   const categoryShellRef = useRef(null);
   const landPointsRef = useRef(null);
   const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const [landPolygons, setLandPolygons] = useState([]);
+  const [expandedCities, setExpandedCities] = useState(() => new Set());
+
+  // Cambiando mondo, si riparte con tutte le città "chiuse" (raggruppate).
+  useEffect(() => {
+    setExpandedCities(new Set());
+  }, [world.id]);
+
+  const displayItems = useMemo(() => clusterUsers(users, expandedCities), [users, expandedCities]);
+
+  const expandCluster = (cluster) => {
+    setExpandedCities((prev) => new Set(prev).add(cluster.city));
+    const g = globeRef.current;
+    if (g) g.pointOfView({ lat: cluster.lat, lng: cluster.lng, altitude: 0.4 }, 1200);
+  };
+  // Puntatore "grezzo" (touch) = dispositivo mobile: li' il globo deve stare
+  // fermo di default e muoversi solo con le dita (trascinamento/pizzico),
+  // mai da solo. Su desktop invece ruota da solo finche' il mouse non ci
+  // passa sopra.
+  const isTouchDevice = useMemo(() => window.matchMedia('(pointer: coarse)').matches, []);
+  const isHoveringRef = useRef(false);
 
   useEffect(() => {
     const onResize = () => setSize({ width: window.innerWidth, height: window.innerHeight });
@@ -80,9 +150,11 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Puntini dei continenti: caricati a parte (dipendono dall'immagine terra/acqua),
-  // se falliscono il resto della scena resta comunque visibile.
+  // Continenti: due sistemi alternativi, scelti da USE_REALISTIC_CONTINENTS.
+  // Puntini (vecchio): caricati dall'immagine terra/acqua, se falliscono il
+  // resto della scena resta comunque visibile.
   useEffect(() => {
+    if (USE_REALISTIC_CONTINENTS) return undefined;
     let cancelled = false;
 
     loadLandDots()
@@ -99,6 +171,26 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Contorni reali (nuovo): GeoJSON precalcolato (vedi scripts/build-land-geojson.mjs),
+  // nessuna richiesta di rete oltre al file statico.
+  useEffect(() => {
+    if (!USE_REALISTIC_CONTINENTS) return undefined;
+    let cancelled = false;
+
+    loadLandGeo()
+      .then((features) => {
+        if (cancelled) return;
+        setLandPolygons(features);
+      })
+      .catch((err) => {
+        console.error('Impossibile caricare i contorni dei continenti', err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -190,10 +282,37 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
   useEffect(() => {
     const g = globeRef.current;
     if (!g) return;
-    g.controls().autoRotate = true;
+    g.controls().autoRotate = !isTouchDevice;
     g.controls().autoRotateSpeed = 0.35;
     g.controls().enableZoom = true;
     g.pointOfView({ altitude: 2.4 }, 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Solo su desktop: passando il mouse sopra il globo, la rotazione automatica
+  // si ferma; togliendolo, riparte. Su mobile non c'e' mai auto-rotazione, quindi
+  // non serve gestire l'hover (il touch non "passa sopra", tocca e basta).
+  useEffect(() => {
+    if (isTouchDevice) return undefined;
+    const g = globeRef.current;
+    if (!g) return undefined;
+    const canvas = g.renderer().domElement;
+    const controls = g.controls();
+    const onEnter = () => {
+      isHoveringRef.current = true;
+      controls.autoRotate = false;
+    };
+    const onLeave = () => {
+      isHoveringRef.current = false;
+      controls.autoRotate = true;
+    };
+    canvas.addEventListener('pointerenter', onEnter);
+    canvas.addEventListener('pointerleave', onLeave);
+    return () => {
+      canvas.removeEventListener('pointerenter', onEnter);
+      canvas.removeEventListener('pointerleave', onLeave);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Quando si cerca una città nota nei filtri, il globo smette di ruotare da solo
@@ -209,11 +328,16 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
     if (flyTo.lng !== undefined) pov.lng = flyTo.lng;
     g.pointOfView(pov, CATEGORY_FLY_MS);
 
+    // Su mobile il globo resta sempre fermo (si muove solo con le dita), quindi
+    // dopo il volo non riparte mai da solo.
+    if (isTouchDevice) return undefined;
+
     const resumeTimer = setTimeout(() => {
-      controls.autoRotate = true;
+      if (!isHoveringRef.current) controls.autoRotate = true;
     }, 4000);
 
     return () => clearTimeout(resumeTimer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flyTo]);
 
   return (
@@ -225,16 +349,36 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
         showAtmosphere
         atmosphereColor={world.atmosphereColor}
         atmosphereAltitude={0.3}
-        htmlElementsData={users}
+        polygonsData={USE_REALISTIC_CONTINENTS ? landPolygons : []}
+        polygonCapColor={() => polygonFillColor(world.atmosphereColor)}
+        polygonSideColor={() => 'rgba(0,0,0,0)'}
+        polygonStrokeColor={() => world.atmosphereColor}
+        polygonAltitude={0.006}
+        htmlElementsData={displayItems}
         htmlLat="lat"
         htmlLng="lng"
         htmlAltitude={0.03}
-        htmlElement={(user) => makeMarkerEl(user, world, onSelectUser)}
+        htmlElement={(item) =>
+          item.kind === 'cluster' ? makeClusterEl(item, world, expandCluster) : makeMarkerEl(item, world, onSelectUser)
+        }
         width={size.width}
         height={size.height}
       />
     </div>
   );
+}
+
+// Colore del "riempimento" dei continenti: stesso colore del mondo ma molto
+// trasparente, così i contorni (lo stroke) restano il segno principale.
+const capColorCache = new Map();
+function polygonFillColor(hexColor) {
+  let cached = capColorCache.get(hexColor);
+  if (!cached) {
+    const c = new THREE.Color(hexColor);
+    cached = `rgba(${Math.round(c.r * 255)}, ${Math.round(c.g * 255)}, ${Math.round(c.b * 255)}, 0.1)`;
+    capColorCache.set(hexColor, cached);
+  }
+  return cached;
 }
 
 function applyOverlayColor(overlay, color) {

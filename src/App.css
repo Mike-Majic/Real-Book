@@ -32,6 +32,13 @@
   pointer-events: auto;
 }
 
+/* Quando la colonna di una categoria è aperta, questa lista deve restare
+   dietro al pannello, non sopra: qui sotto lo z-index più basso di tutti i
+   pannelli (che partono da 15). */
+.rb-world-tagline-behind {
+  z-index: 10;
+}
+
 .rb-tagline-cat-btn {
   background: transparent;
   border: none;

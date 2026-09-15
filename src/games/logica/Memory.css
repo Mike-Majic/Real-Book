@@ -58,15 +58,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Niente attributo HTML "disabled" sulle carte scoperte (Safari/iOS lo
+     sbiadisce di default): qui forziamo sempre piena opacità, l'icona non
+     deve mai risultare trasparente. */
+  opacity: 1;
 }
 
-.rb-memory-card:not(:disabled):hover {
+.rb-memory-card:not(.flipped):hover {
   border-color: var(--accent, #22c55e);
 }
 
 .rb-memory-card.flipped {
-  background: color-mix(in srgb, var(--accent, #22c55e) 18%, transparent);
+  background: color-mix(in srgb, var(--accent, #22c55e) 32%, #050508);
   border-color: var(--accent, #22c55e);
+  cursor: default;
 }
 
 @media (max-width: 380px) {
