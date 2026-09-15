@@ -45,38 +45,50 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef })
     []
   );
 
-  // Guscio "a rete" (continenti a puntini + wireframe con nodi luminosi), come nelle
-  // immagini di riferimento: sfondo nero, colore che cambia in base al mondo.
+  // Guscio "a rete" (wireframe + nodi luminosi), come nelle immagini di riferimento.
+  // Non dipende da nessuna immagine: appare subito, a prescindere dai puntini dei continenti.
   useEffect(() => {
     const g = globeRef.current;
     if (!g) return undefined;
+
+    const scene = g.scene();
+    const shell = buildNetworkShell();
+    const group = new THREE.Group();
+    group.add(shell.lines, shell.nodes);
+    scene.add(group);
+    overlayRef.current = { group, shell, landDots: null };
+    applyOverlayColor(overlayRef.current, world.atmosphereColor);
+
+    return () => {
+      scene.remove(group);
+      shell.icoGeometry.dispose();
+      shell.edgesGeometry.dispose();
+      shell.lineMaterial.dispose();
+      shell.nodeMaterial.dispose();
+      overlayRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Puntini dei continenti: caricati a parte (dipendono dall'immagine terra/acqua),
+  // se falliscono il resto della scena resta comunque visibile.
+  useEffect(() => {
     let cancelled = false;
 
-    loadLandDots().then((landPoints) => {
-      if (cancelled) return;
-      const scene = g.scene();
-      const group = new THREE.Group();
-      const landDots = buildLandDots(landPoints);
-      const shell = buildNetworkShell();
-      group.add(landDots, shell.lines, shell.nodes);
-      scene.add(group);
-      overlayRef.current = { group, landDots, shell };
-      applyOverlayColor(overlayRef.current, world.atmosphereColor);
-    });
+    loadLandDots()
+      .then((landPoints) => {
+        if (cancelled || !overlayRef.current) return;
+        const landDots = buildLandDots(landPoints);
+        overlayRef.current.group.add(landDots);
+        overlayRef.current.landDots = landDots;
+        applyOverlayColor(overlayRef.current, world.atmosphereColor);
+      })
+      .catch((err) => {
+        console.error('Impossibile caricare la mappa dei continenti', err);
+      });
 
     return () => {
       cancelled = true;
-      if (overlayRef.current) {
-        const { group, landDots, shell } = overlayRef.current;
-        g.scene().remove(group);
-        landDots.geometry.dispose();
-        landDots.material.dispose();
-        shell.icoGeometry.dispose();
-        shell.edgesGeometry.dispose();
-        shell.lineMaterial.dispose();
-        shell.nodeMaterial.dispose();
-        overlayRef.current = null;
-      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -116,7 +128,7 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef })
 }
 
 function applyOverlayColor(overlay, color) {
-  overlay.landDots.material.color.set(color);
+  if (overlay.landDots) overlay.landDots.material.color.set(color);
   overlay.shell.lineMaterial.color.set(color);
   overlay.shell.nodeMaterial.color.set(color);
 }

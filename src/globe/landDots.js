@@ -31,7 +31,8 @@ export function loadLandDots() {
       resolve(points);
     };
     img.onerror = reject;
-    img.src = '/textures/earth-water.png';
+    // BASE_URL tiene conto del sottopercorso di pubblicazione (es. /Real-Book/ su GitHub Pages).
+    img.src = `${import.meta.env.BASE_URL}textures/earth-water.png`;
   });
 
   return cachedPromise;
