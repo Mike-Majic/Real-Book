@@ -1,0 +1,20 @@
+.rb-song-play-btn {
+  align-self: center;
+  background: var(--accent, #22c55e);
+  border: 1px solid var(--accent, #22c55e);
+  color: #06210f;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 12px 20px;
+  border-radius: 999px;
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+
+.rb-song-play-btn:hover {
+  filter: brightness(1.08);
+}
+
+.rb-song-play-btn:active {
+  transform: scale(0.97);
+}

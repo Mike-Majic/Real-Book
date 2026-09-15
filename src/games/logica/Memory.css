@@ -1,0 +1,77 @@
+.rb-memory-setup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 0;
+}
+
+.rb-memory-setup p {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(245, 245, 247, 0.75);
+}
+
+.rb-memory-mode-btn {
+  width: 220px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f5f5f7;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.rb-memory-mode-btn:hover {
+  border-color: var(--accent, #22c55e);
+  background: color-mix(in srgb, var(--accent, #22c55e) 14%, transparent);
+}
+
+.rb-memory {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.rb-memory-status {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.rb-memory-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 56px);
+  grid-template-rows: repeat(4, 56px);
+  gap: 6px;
+}
+
+.rb-memory-card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rb-memory-card:not(:disabled):hover {
+  border-color: var(--accent, #22c55e);
+}
+
+.rb-memory-card.flipped {
+  background: color-mix(in srgb, var(--accent, #22c55e) 18%, transparent);
+  border-color: var(--accent, #22c55e);
+}
+
+@media (max-width: 380px) {
+  .rb-memory-grid {
+    grid-template-columns: repeat(4, 48px);
+    grid-template-rows: repeat(4, 48px);
+  }
+}
