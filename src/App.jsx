@@ -125,8 +125,20 @@ export default function App() {
     setFlyTo({ lat: pos.lat, lng: pos.lng, key: `cat-${cat.id}-${Date.now()}` });
   };
 
+  // Selezionare una categoria (dal triangolo sul globo, o riaprendola) vola e
+  // zooma su di essa come fa la ricerca; chiuderla torna alla vista larga.
   const toggleArteCategory = (id) => {
-    setActiveArteCategory((cur) => (cur === id ? null : id));
+    setActiveArteCategory((cur) => {
+      const next = cur === id ? null : id;
+      if (next) {
+        const cat = ARTE_CATEGORIES.find((c) => c.id === next);
+        const pos = arteCategoryPositions[next] ?? cat?.anchor;
+        if (pos) setFlyTo({ lat: pos.lat, lng: pos.lng, altitude: 1.3, key: `cat-${next}-${Date.now()}` });
+      } else {
+        setFlyTo({ altitude: 2.4, key: `zoom-out-${Date.now()}` });
+      }
+      return next;
+    });
   };
 
   return (
@@ -136,7 +148,10 @@ export default function App() {
         user={user}
         onOpenAuth={() => setAuthOpen(true)}
         onLogout={() => setUser(null)}
-        onOpenSettings={() => setSettingsOpen(true)}
+        onOpenSettings={() => {
+          if (activeArteCategory) toggleArteCategory(activeArteCategory);
+          setSettingsOpen(true);
+        }}
       />
 
       <WorldGlobe
@@ -160,8 +175,10 @@ export default function App() {
         />
       )}
 
-      <div className="rb-world-tagline">
-        {world.id === 'arte' ? ARTE_CATEGORIES.map((c) => c.label).join(', ') : world.tagline}
+      <div className={`rb-world-tagline ${world.id === 'arte' ? 'rb-world-tagline-list' : ''}`}>
+        {world.id === 'arte'
+          ? ARTE_CATEGORIES.map((c) => <span key={c.id}>{c.label}</span>)
+          : world.tagline}
       </div>
 
       <nav className="rb-world-dots" aria-label="Cambia mondo">

@@ -199,7 +199,10 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
 
     const controls = g.controls();
     controls.autoRotate = false;
-    g.pointOfView({ lat: flyTo.lat, lng: flyTo.lng, altitude: 1.3 }, 1800);
+    const pov = { altitude: flyTo.altitude ?? 1.3 };
+    if (flyTo.lat !== undefined) pov.lat = flyTo.lat;
+    if (flyTo.lng !== undefined) pov.lng = flyTo.lng;
+    g.pointOfView(pov, 1800);
 
     const resumeTimer = setTimeout(() => {
       controls.autoRotate = true;
