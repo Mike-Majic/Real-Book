@@ -4,6 +4,8 @@ import PostComposer from './PostComposer';
 import PostCard from './PostCard';
 import GroupsDirectory from './GroupsDirectory';
 import CategoryHub from './CategoryHub';
+import EventComposer from './EventComposer';
+import EventCard from './EventCard';
 import SuggestedUsers from './SuggestedUsers';
 import TrendingGroups from './TrendingGroups';
 import { resolveAuthor, formatRelativeDate } from './resolveAuthor';
@@ -77,6 +79,7 @@ const FEED_TABS = [
   { id: 'following', label: 'Seguiti' },
   { id: 'groups', label: 'Gruppi' },
   { id: 'saved', label: 'Salvati' },
+  { id: 'eventi', label: '📅 Eventi' },
   { id: 'mondi', label: '🌍 Mondi' },
 ];
 
@@ -96,7 +99,18 @@ const FILLER_BATCH = 6;
 // altri tab (Seguiti/Gruppi/Salvati) sono per natura già "filtrati" in un
 // altro modo (chi segui, il gruppo scelto, cosa hai salvato) e restano
 // invariati dal filtro di zona.
-export default function SocialFeed({ world, user, onOpenAuth, locationFilters = {}, onNavigateToCategory }) {
+export default function SocialFeed({
+  world,
+  user,
+  onOpenAuth,
+  locationFilters = {},
+  onNavigateToCategory,
+  events = [],
+  onCreateEvent,
+  onToggleEventLike,
+  onOpenEventLikers,
+}) {
+  const [showEventComposer, setShowEventComposer] = useState(false);
   const [posts, setPosts] = useState(() => loadStored('rb-social-posts', INITIAL_POSTS));
   const [comments, setComments] = useState(() => loadStored('rb-social-comments', INITIAL_COMMENTS));
   const [following, setFollowing] = useState(() => loadStored('rb-social-following', []));
@@ -257,6 +271,12 @@ export default function SocialFeed({ world, user, onOpenAuth, locationFilters = 
 
   const trendingGroups = useMemo(() => [...GROUPS].sort((a, b) => b.memberCount - a.memberCount).slice(0, 4), []);
 
+  // Eventi in ordine di data/ora più vicina, quelli di oggi prima di domani.
+  const eventsSorted = useMemo(
+    () => [...events].sort((a, b) => new Date(`${a.data}T${a.ora}`) - new Date(`${b.data}T${b.ora}`)),
+    [events]
+  );
+
   // Solo il tab "Per te" (senza gruppo aperto) usa gli item con trendingRank;
   // gli altri tab restano liste semplici, qui uniformate alla stessa forma
   // {post, trendingRank} per riusare un solo blocco di rendering.
@@ -391,6 +411,42 @@ export default function SocialFeed({ world, user, onOpenAuth, locationFilters = 
         />
       ) : feedTab === 'mondi' && !isGroupView ? (
         <CategoryHub onNavigateToCategory={onNavigateToCategory} />
+      ) : feedTab === 'eventi' && !isGroupView ? (
+        <>
+          {showEventComposer ? (
+            <EventComposer
+              user={user}
+              onOpenAuth={onOpenAuth}
+              onClose={() => setShowEventComposer(false)}
+              onSubmit={(data) => {
+                onCreateEvent(data);
+                setShowEventComposer(false);
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              className="rb-event-new-btn"
+              onClick={() => (user ? setShowEventComposer(true) : onOpenAuth())}
+            >
+              + Crea un evento
+            </button>
+          )}
+
+          {eventsSorted.length === 0 && <p className="rb-social-empty">Nessun evento in programma al momento.</p>}
+          <ul className="rb-event-list">
+            {eventsSorted.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                user={user}
+                onOpenAuth={onOpenAuth}
+                onToggleLike={onToggleEventLike}
+                onOpenLikers={onOpenEventLikers}
+              />
+            ))}
+          </ul>
+        </>
       ) : (
         <>
           {feedTab !== 'saved' && (

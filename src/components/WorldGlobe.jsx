@@ -36,6 +36,30 @@ function makeMarkerEl(user, world, onOpen) {
   return el;
 }
 
+// Marker quadrato di un evento (diverso apposta dai marker rotondi degli
+// utenti, per non confonderli): la foto che l'utente ha caricato, con un
+// badge del numero di like sopra se ce n'è almeno uno. Un click apre
+// sempre la lista di chi ha messo like (vedi EventLikersModal), anche a
+// zero like — è lì che si vede il dettaglio dell'evento.
+function makeEventMarkerEl(event, world, onOpen) {
+  const el = document.createElement('div');
+  el.className = 'rb-event-marker';
+  const likeCount = event.mi_piace.length;
+  const photoStyle = event.foto
+    ? `background-image:url('${event.foto}')`
+    : `background:${event.gradient ?? world.color}`;
+  el.innerHTML = `
+    <div class="rb-event-marker-photo" style="${photoStyle}; border-color:${world.color}"></div>
+    ${likeCount > 0 ? `<span class="rb-event-marker-badge">${likeCount}</span>` : ''}
+  `;
+  el.title = `${event.titolo} · ${event.citta}`;
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    onOpen(event.id);
+  });
+  return el;
+}
+
 // Quando un gruppo ha più utenti della soglia, invece di un marker per
 // persona (che a migliaia diventerebbe illeggibile, oltre che lento) si
 // mostra un solo "grumo" col conteggio. Un click vola dentro e affina il
@@ -107,7 +131,19 @@ function clusterUsers(users, view) {
   return items;
 }
 
-export default function WorldGlobe({ world, users, onSelectUser, containerRef, flyTo, categories, activeCategory, onCategorySelect, onCategoryPositionsReady }) {
+export default function WorldGlobe({
+  world,
+  users,
+  onSelectUser,
+  containerRef,
+  flyTo,
+  categories,
+  activeCategory,
+  onCategorySelect,
+  onCategoryPositionsReady,
+  events = [],
+  onSelectEvent,
+}) {
   const globeRef = useRef();
   const overlayRef = useRef(null);
   const categoryShellRef = useRef(null);
@@ -141,7 +177,10 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
     return () => clearInterval(interval);
   }, []);
 
-  const displayItems = useMemo(() => clusterUsers(users, view), [users, view]);
+  const displayItems = useMemo(() => {
+    const eventItems = events.map((e) => ({ kind: 'event', ...e }));
+    return [...clusterUsers(users, view), ...eventItems];
+  }, [users, view, events]);
 
   const expandCluster = (cluster) => {
     const g = globeRef.current;
@@ -407,7 +446,11 @@ export default function WorldGlobe({ world, users, onSelectUser, containerRef, f
         htmlLng="lng"
         htmlAltitude={0.03}
         htmlElement={(item) =>
-          item.kind === 'cluster' ? makeClusterEl(item, world, expandCluster) : makeMarkerEl(item, world, onSelectUser)
+          item.kind === 'cluster'
+            ? makeClusterEl(item, world, expandCluster)
+            : item.kind === 'event'
+            ? makeEventMarkerEl(item, world, onSelectEvent)
+            : makeMarkerEl(item, world, onSelectUser)
         }
         width={size.width}
         height={size.height}

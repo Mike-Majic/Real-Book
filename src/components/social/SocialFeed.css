@@ -204,3 +204,22 @@
 .rb-mypost-comment-detail strong {
   color: rgba(245, 245, 247, 0.9);
 }
+
+.rb-event-new-btn {
+  width: 100%;
+  background: var(--accent, #1d9bf0);
+  border: 1px solid var(--accent, #1d9bf0);
+  color: #06151f;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  margin-bottom: 14px;
+}
+
+.rb-event-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}

@@ -28,6 +28,9 @@ import { INCONTRI_CATEGORIES, resolveCategoryQuery as resolveIncontriCategoryQue
 import { FAKE_PROFILES } from './data/fakeProfiles';
 import IncontriLiveExplorer from './components/incontri/IncontriLiveExplorer';
 import AdultGate from './components/incontri/AdultGate';
+import { SEED_EVENTS, isEventExpired } from './data/events';
+import EventLikersModal from './components/EventLikersModal';
+import FriendChatModal from './components/FriendChatModal';
 import './App.css';
 
 // Test di scala richiesto dall'utente: nel mondo Incontri aggiunge ~1800
@@ -110,6 +113,16 @@ export default function App() {
   const [visibility, setVisibility] = useState(() => loadStored('rb-visibility', DEFAULT_VISIBILITY));
   const [adultGateOk, setAdultGateOk] = useState(() => loadStored('rb-adult-gate-ok', false));
   const [flyTo, setFlyTo] = useState(null);
+  // Eventi del mondo Social e sistema di amicizie: sollevati qui (non dentro
+  // SocialFeed) perché servono anche a WorldGlobe (marker quadrato sul
+  // globo) e ai due sono montati insieme quando si è nel mondo Social —
+  // niente localStorage-bridge come per le foto di Arte, qui serve stato
+  // condiviso in tempo reale.
+  const [events, setEvents] = useState(() => loadStored('rb-events', SEED_EVENTS));
+  const [friends, setFriends] = useState(() => loadStored('rb-friends', [1, 2, 6]));
+  const [friendRequestsSent, setFriendRequestsSent] = useState(() => loadStored('rb-friend-requests-sent', []));
+  const [eventLikersId, setEventLikersId] = useState(null);
+  const [activeFriendChatId, setActiveFriendChatId] = useState(null);
   // Timer del pannello che deve ancora aprirsi a volo finito (vedi
   // flyToCategoryThenOpen): tenerlo in un ref per poterlo annullare se nel
   // frattempo si sceglie un'altra categoria o si cambia mondo.
@@ -159,6 +172,49 @@ export default function App() {
   useEffect(() => localStorage.setItem('rb-location-filters', JSON.stringify(locationFilters)), [locationFilters]);
   useEffect(() => localStorage.setItem('rb-arte-filter', JSON.stringify(arteFilter)), [arteFilter]);
   useEffect(() => localStorage.setItem('rb-visibility', JSON.stringify(visibility)), [visibility]);
+  useEffect(() => localStorage.setItem('rb-events', JSON.stringify(events)), [events]);
+  useEffect(() => localStorage.setItem('rb-friends', JSON.stringify(friends)), [friends]);
+  useEffect(
+    () => localStorage.setItem('rb-friend-requests-sent', JSON.stringify(friendRequestsSent)),
+    [friendRequestsSent]
+  );
+
+  // Un evento sparisce (dal globo e dalla colonna) a fine giornata della sua
+  // data, in automatico: ricalcolato ad ogni render invece che con un timer
+  // che ticchetta, la granularità è "un giorno" quindi non serve altro.
+  const visibleEvents = useMemo(() => events.filter((e) => !isEventExpired(e)), [events]);
+
+  const createEvent = ({ titolo, citta, lat, lng, data, ora, bio, foto }) => {
+    const newEvent = {
+      id: `evento-${Date.now()}`,
+      autoreId: 'me',
+      titolo,
+      citta,
+      lat,
+      lng,
+      data,
+      ora,
+      bio,
+      foto,
+      gradient: null,
+      mi_piace: [],
+    };
+    setEvents((prev) => [newEvent, ...prev]);
+  };
+
+  const toggleEventLike = (eventId) => {
+    setEvents((prev) =>
+      prev.map((e) => {
+        if (e.id !== eventId) return e;
+        const has = e.mi_piace.includes('me');
+        return { ...e, mi_piace: has ? e.mi_piace.filter((id) => id !== 'me') : [...e.mi_piace, 'me'] };
+      })
+    );
+  };
+
+  const sendFriendRequest = (userId) => {
+    setFriendRequestsSent((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
+  };
 
   const worldUsers = useMemo(() => {
     const base =
@@ -314,6 +370,8 @@ export default function App() {
         activeCategory={activeArteCategory}
         onCategorySelect={toggleArteCategory}
         onCategoryPositionsReady={setArteCategoryPositions}
+        events={world.id === 'social' ? visibleEvents : []}
+        onSelectEvent={(eventId) => setEventLikersId(eventId)}
       />
 
       {categorySet && world.id !== 'bambini' && world.id !== 'incontri' && (
@@ -359,6 +417,10 @@ export default function App() {
           onOpenAuth={() => setAuthOpen(true)}
           locationFilters={locationFilters}
           onNavigateToCategory={navigateToCategory}
+          events={visibleEvents}
+          onCreateEvent={createEvent}
+          onToggleEventLike={toggleEventLike}
+          onOpenEventLikers={(eventId) => setEventLikersId(eventId)}
         />
       )}
 
@@ -433,6 +495,24 @@ export default function App() {
       />
 
       <ProfileModal user={selectedUser} world={world} onClose={() => setSelectedUser(null)} />
+
+      <EventLikersModal
+        event={visibleEvents.find((e) => e.id === eventLikersId) ?? null}
+        user={user}
+        onOpenAuth={() => setAuthOpen(true)}
+        friends={friends}
+        friendRequestsSent={friendRequestsSent}
+        onSendRequest={sendFriendRequest}
+        onOpenChat={(friendId) => {
+          setEventLikersId(null);
+          setActiveFriendChatId(friendId);
+        }}
+        onClose={() => setEventLikersId(null)}
+      />
+
+      {activeFriendChatId && (
+        <FriendChatModal friendId={activeFriendChatId} user={user} onClose={() => setActiveFriendChatId(null)} />
+      )}
 
       <AuthModal
         open={authOpen}

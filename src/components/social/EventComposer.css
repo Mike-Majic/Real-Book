@@ -1,0 +1,118 @@
+.rb-event-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.rb-event-composer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rb-event-composer-header h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.rb-event-composer-close {
+  background: transparent;
+  border: none;
+  color: rgba(245, 245, 247, 0.6);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.rb-event-composer input[type='text'],
+.rb-event-composer input[type='date'],
+.rb-event-composer input[type='time'],
+.rb-event-composer textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 9px 12px;
+  color: #f5f5f7;
+  font: inherit;
+  font-size: 13px;
+}
+
+.rb-event-composer input.invalid {
+  border-color: #ff3860;
+}
+
+.rb-event-composer-error {
+  margin: 0;
+  font-size: 11px;
+  color: #ff8080;
+}
+
+.rb-event-composer-row {
+  display: flex;
+  gap: 8px;
+}
+
+.rb-event-composer-row input {
+  flex: 1;
+}
+
+.rb-event-composer-photo-btn {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f5f5f7;
+  font-size: 12px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.rb-event-composer-photo-preview {
+  position: relative;
+  width: fit-content;
+}
+
+.rb-event-composer-photo-preview img {
+  max-width: 180px;
+  max-height: 140px;
+  border-radius: 10px;
+  display: block;
+  object-fit: cover;
+}
+
+.rb-event-composer-photo-preview button {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.rb-event-composer-submit {
+  background: var(--accent, #1d9bf0);
+  border: 1px solid var(--accent, #1d9bf0);
+  color: #06151f;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 9px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  align-self: flex-end;
+}
+
+.rb-event-composer-submit:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
