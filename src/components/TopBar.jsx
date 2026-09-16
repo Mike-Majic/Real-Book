@@ -1,7 +1,7 @@
 import { isStaff } from '../data/roles';
 import './TopBar.css';
 
-export default function TopBar({ world, user, onOpenAuth, onLogout, onOpenSettings, onOpenAdmin }) {
+export default function TopBar({ world, user, onOpenAuth, onLogout, onOpenSettings, onOpenAdmin, onOpenProfile }) {
   return (
     <header className="rb-topbar" style={{ '--accent': world.color }}>
       <div className="rb-topbar-brand">
@@ -24,8 +24,11 @@ export default function TopBar({ world, user, onOpenAuth, onLogout, onOpenSettin
                 🛠️
               </button>
             )}
-            <img src={user.avatar} alt={user.name} />
-            <span>{user.name}</span>
+            <button type="button" className="rb-user-chip-identity" onClick={onOpenProfile} title="Il mio profilo">
+              <img src={user.avatar} alt={user.name} />
+              <span>{user.name}</span>
+              {user.verificato && <span className="rb-verified-badge" title="Verificato">✓</span>}
+            </button>
             <button className="rb-btn-ghost" onClick={onLogout}>Esci</button>
           </div>
         ) : (

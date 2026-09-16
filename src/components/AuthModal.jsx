@@ -15,6 +15,7 @@ export default function AuthModal({ open, onClose, onLogin }) {
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [dataNascita, setDataNascita] = useState('');
   const [phone, setPhone] = useState('');
   const [backupEmail, setBackupEmail] = useState('');
   const [attachments, setAttachments] = useState([]);
@@ -74,7 +75,16 @@ export default function AuthModal({ open, onClose, onLogin }) {
 
   const submitRegister = (e) => {
     e.preventDefault();
-    const { account, error: err } = registerAccount({ username, nickname, email, password, phone, backupEmail, attachments });
+    const { account, error: err } = registerAccount({
+      username,
+      nickname,
+      email,
+      password,
+      phone,
+      backupEmail,
+      attachments,
+      dataNascita,
+    });
     if (err) {
       setError(err);
       return;
@@ -132,6 +142,16 @@ export default function AuthModal({ open, onClose, onLogin }) {
             <label className="rb-field">
               <span>Password</span>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            </label>
+            <label className="rb-field">
+              <span>Data di nascita</span>
+              <input
+                type="date"
+                value={dataNascita}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setDataNascita(e.target.value)}
+              />
+              <span className="rb-auth-field-hint">Serve per i mondi riservati ai maggiorenni.</span>
             </label>
             <label className="rb-field">
               <span>Cellulare (facoltativo)</span>

@@ -28,12 +28,14 @@ import { INCONTRI_CATEGORIES, resolveCategoryQuery as resolveIncontriCategoryQue
 import { SOCIAL_CATEGORIES, resolveCategoryQuery as resolveSocialCategoryQuery } from './data/socialCategories';
 import { FAKE_PROFILES } from './data/fakeProfiles';
 import IncontriLiveExplorer from './components/incontri/IncontriLiveExplorer';
-import AdultGate from './components/incontri/AdultGate';
+import AgeGate from './components/AgeGate';
+import { isAdult } from './data/age';
 import { SEED_EVENTS, isEventExpired } from './data/events';
 import { isStaff } from './data/roles';
 import EventLikersModal from './components/EventLikersModal';
 import FriendChatModal from './components/FriendChatModal';
 import AdminPanel from './components/AdminPanel';
+import ProfileSettingsPanel from './components/ProfileSettingsPanel';
 import './App.css';
 
 // Test di scala richiesto dall'utente: nel mondo Incontri aggiunge ~1800
@@ -102,6 +104,10 @@ export default function App() {
   const { index, setIndex, containerRef } = useSwipeWorld(WORLDS.length, DEFAULT_WORLD_INDEX, gameplayActive);
   const world = WORLDS[index];
   const categorySet = CATEGORY_WORLDS[world.id] ?? null;
+  // Incontri e Lavoro sono riservati ai maggiorenni: l'età è quella vera
+  // dell'account (data di nascita in registrazione), non più una
+  // dichiarazione con un pulsante.
+  const isAgeGatedWorld = world.id === 'incontri' || world.id === 'lavoro';
 
   const [user, setUser] = useState(() => loadStored('rb-user', null));
   const [authOpen, setAuthOpen] = useState(false);
@@ -116,7 +122,6 @@ export default function App() {
   const [arteFilter, setArteFilter] = useState(() => loadStored('rb-arte-filter', DEFAULT_ARTE_FILTER));
   const [arteInitialSubfamily, setArteInitialSubfamily] = useState('');
   const [visibility, setVisibility] = useState(() => loadStored('rb-visibility', DEFAULT_VISIBILITY));
-  const [adultGateOk, setAdultGateOk] = useState(() => loadStored('rb-adult-gate-ok', false));
   const [flyTo, setFlyTo] = useState(null);
   // Eventi del mondo Social e sistema di amicizie: sollevati qui (non dentro
   // SocialFeed) perché servono anche a WorldGlobe (marker quadrato sul
@@ -129,6 +134,7 @@ export default function App() {
   const [eventLikersId, setEventLikersId] = useState(null);
   const [activeFriendChatId, setActiveFriendChatId] = useState(null);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
   // Timer del pannello che deve ancora aprirsi a volo finito (vedi
   // flyToCategoryThenOpen): tenerlo in un ref per poterlo annullare se nel
   // frattempo si sceglie un'altra categoria o si cambia mondo.
@@ -371,6 +377,7 @@ export default function App() {
           setSettingsOpen(true);
         }}
         onOpenAdmin={() => setAdminOpen(true)}
+        onOpenProfile={() => setProfileSettingsOpen(true)}
       />
 
       <WorldGlobe
@@ -411,7 +418,7 @@ export default function App() {
         />
       )}
 
-      {world.id === 'incontri' && adultGateOk && (
+      {world.id === 'incontri' && isAdult(user?.dataNascita) && (
         <IncontriLiveExplorer
           world={world}
           activeCategory={activeArteCategory}
@@ -440,12 +447,11 @@ export default function App() {
         />
       )}
 
-      {world.id === 'incontri' && !adultGateOk && (
-        <AdultGate
-          onConfirm={() => {
-            setAdultGateOk(true);
-            localStorage.setItem('rb-adult-gate-ok', JSON.stringify(true));
-          }}
+      {isAgeGatedWorld && !isAdult(user?.dataNascita) && (
+        <AgeGate
+          world={world}
+          user={user}
+          onOpenAuth={() => setAuthOpen(true)}
           onDecline={() => setIndex(DEFAULT_WORLD_INDEX)}
         />
       )}
@@ -531,6 +537,13 @@ export default function App() {
       )}
 
       {adminOpen && <AdminPanel user={user} onClose={() => setAdminOpen(false)} />}
+
+      <ProfileSettingsPanel
+        open={profileSettingsOpen}
+        onClose={() => setProfileSettingsOpen(false)}
+        user={user}
+        onUpdateUser={(account) => setUser({ ...account, name: account.nickname })}
+      />
 
       <AuthModal
         open={authOpen}

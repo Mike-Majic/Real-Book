@@ -2,7 +2,7 @@
   position: fixed;
   inset: 0;
   z-index: 1100;
-  background: rgba(5, 0, 2, 0.92);
+  background: rgba(5, 4, 8, 0.92);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -11,8 +11,8 @@
 
 .rb-adult-gate-card {
   max-width: 380px;
-  background: #12060a;
-  border: 1px solid rgba(255, 56, 96, 0.35);
+  background: #0d0c12;
+  border: 1px solid color-mix(in srgb, var(--accent, #ff3860) 40%, transparent);
   border-radius: 16px;
   padding: 24px;
   text-align: center;
@@ -48,8 +48,8 @@
 }
 
 .rb-adult-gate-confirm {
-  background: #ff3860;
-  color: #1a0006;
+  background: var(--accent, #ff3860);
+  color: #0d0c12;
 }
 
 .rb-adult-gate-decline {
