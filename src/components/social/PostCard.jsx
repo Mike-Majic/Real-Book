@@ -37,7 +37,7 @@ function Comment({ comment, user, onReact }) {
 // "commentabile da chiunque" = chiunque usi l'app può leggere/commentare
 // (feed pubblico), ma mettere like o commentare richiede di essere
 // loggati — coerente con come l'app già gestisce le altre interazioni.
-export default function PostCard({ post, comments, user, onOpenAuth, onToggleLike, onAddComment, onReactToComment }) {
+export default function PostCard({ post, comments, user, onOpenAuth, onToggleLike, onAddComment, onReactToComment, trendingRank = null }) {
   const [expanded, setExpanded] = useState(false);
   const author = resolveAuthor(post.autoreId, user);
   const myId = 'me';
@@ -54,6 +54,9 @@ export default function PostCard({ post, comments, user, onOpenAuth, onToggleLik
 
   return (
     <li className="rb-post-card">
+      {trendingRank !== null && (
+        <span className="rb-post-trending-badge">🔥 #{trendingRank} di tendenza nel mondo Social</span>
+      )}
       <div className="rb-post-header">
         <img className="rb-post-avatar" src={author.avatar} alt={author.name} />
         <div>

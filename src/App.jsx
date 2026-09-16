@@ -305,7 +305,7 @@ export default function App() {
       )}
 
       {world.id === 'social' && (
-        <SocialFeed world={world} user={user} onOpenAuth={() => setAuthOpen(true)} />
+        <SocialFeed world={world} user={user} onOpenAuth={() => setAuthOpen(true)} locationFilters={locationFilters} />
       )}
 
       {world.id === 'incontri' && !adultGateOk && (

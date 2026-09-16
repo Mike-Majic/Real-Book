@@ -3,8 +3,52 @@ import TwoColumnSwitcher from '../layout/TwoColumnSwitcher';
 import PostComposer from './PostComposer';
 import PostCard from './PostCard';
 import { resolveAuthor, formatRelativeDate } from './resolveAuthor';
+import { getCityInfo } from '../../data/geo';
 import { INITIAL_POSTS, INITIAL_COMMENTS, computeRelevance } from '../../data/socialPosts';
 import './SocialFeed.css';
+
+// Ogni tot post filtrati per zona, si intercala il prossimo post in
+// classifica per numero di mi piace (1°, poi 2°, ...) tra TUTTI i post
+// esistenti, non solo quelli della zona — così chi filtra per regione vede
+// comunque cosa va per la maggiore nel resto del mondo Social.
+const TRENDING_EVERY = 3;
+
+// Un post è "della zona" se il suo autore ha una città nota che rispetta i
+// filtri Dove di Impostazioni (stessa logica già usata altrove in App.jsx
+// per gli utenti sul globo, qui applicata ai post). I post senza una città
+// nota (es. pubblicati dall'utente loggato in questa demo) non compaiono
+// nel feed filtrato per zona: non c'è modo di sapere a quale zona appartengono.
+function matchesLocation(post, user, locationFilters) {
+  const city = resolveAuthor(post.autoreId, user)?.city;
+  if (!city) return false;
+  if (locationFilters.city && !city.toLowerCase().includes(locationFilters.city.toLowerCase())) return false;
+  const info = getCityInfo(city);
+  if (locationFilters.continent && info?.continent !== locationFilters.continent) return false;
+  if (locationFilters.region && info?.region !== locationFilters.region) return false;
+  return true;
+}
+
+// Intercala, ogni TRENDING_EVERY post "di zona", il prossimo post più
+// popolare in classifica (per numero di mi piace) tra tutti i post
+// esistenti — saltando quelli già presenti nella lista di zona, per non
+// mostrare lo stesso post due volte di fila.
+function interleaveTrending(regionalPosts, allPosts) {
+  const alreadyShown = new Set(regionalPosts.map((p) => p.id));
+  const ranking = [...allPosts]
+    .filter((p) => !alreadyShown.has(p.id))
+    .sort((a, b) => b.mi_piace.length - a.mi_piace.length);
+
+  const items = [];
+  let rankIdx = 0;
+  regionalPosts.forEach((post, i) => {
+    items.push({ post, trendingRank: null });
+    if ((i + 1) % TRENDING_EVERY === 0 && rankIdx < ranking.length) {
+      items.push({ post: ranking[rankIdx], trendingRank: rankIdx + 1 });
+      rankIdx += 1;
+    }
+  });
+  return items;
+}
 
 function loadStored(key, fallback) {
   try {
@@ -26,7 +70,7 @@ function makeId(prefix) {
 // commentato (Fase C) — stesso TwoColumnSwitcher già usato da Arte &
 // Musica/Nerd/Bambini, non ricostruito da zero. Stato di post/commenti
 // tenuto qui (nessun backend) e persistito in localStorage.
-export default function SocialFeed({ world, user, onOpenAuth }) {
+export default function SocialFeed({ world, user, onOpenAuth, locationFilters = {} }) {
   const [posts, setPosts] = useState(() => loadStored('rb-social-posts', INITIAL_POSTS));
   const [comments, setComments] = useState(() => loadStored('rb-social-comments', INITIAL_COMMENTS));
 
@@ -88,6 +132,22 @@ export default function SocialFeed({ world, user, onOpenAuth }) {
     [posts, comments]
   );
 
+  const hasLocationFilter = Boolean(locationFilters.city || locationFilters.region || locationFilters.continent);
+
+  const regionalPosts = useMemo(() => {
+    if (!hasLocationFilter) return [];
+    return sortedPosts.filter((p) => matchesLocation(p, user, locationFilters));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortedPosts, user, locationFilters.city, locationFilters.region, locationFilters.continent, hasLocationFilter]);
+
+  // Con un filtro di zona attivo, il feed è "post della zona" con i più
+  // popolari di tutto il mondo Social intercalati ogni 3; senza filtro
+  // resta il feed globale per pertinenza di sempre.
+  const feedItems = useMemo(() => {
+    if (!hasLocationFilter) return sortedPosts.map((post) => ({ post, trendingRank: null }));
+    return interleaveTrending(regionalPosts, posts);
+  }, [hasLocationFilter, sortedPosts, regionalPosts, posts]);
+
   // Fase C: solo i post pubblicati dall'utente loggato.
   const myPosts = useMemo(
     () => posts.filter((p) => p.autoreId === 'me').sort((a, b) => new Date(b.data) - new Date(a.data)),
@@ -98,13 +158,22 @@ export default function SocialFeed({ world, user, onOpenAuth }) {
     <>
       <div className="rb-social-panel-header">
         <h3>Feed</h3>
-        <p>Cosa succede nel mondo Social</p>
+        <p>
+          {hasLocationFilter
+            ? `Post da ${locationFilters.city || locationFilters.region || locationFilters.continent}, con i più popolari di tutto il mondo Social intercalati`
+            : 'Cosa succede nel mondo Social'}
+        </p>
       </div>
       <PostComposer user={user} onOpenAuth={onOpenAuth} onSubmit={createPost} />
+
+      {hasLocationFilter && regionalPosts.length === 0 && (
+        <p className="rb-social-empty">Nessun post ancora da questa zona.</p>
+      )}
+
       <ul className="rb-post-list">
-        {sortedPosts.map((post) => (
+        {feedItems.map(({ post, trendingRank }, i) => (
           <PostCard
-            key={post.id}
+            key={`${post.id}-${i}`}
             post={post}
             comments={comments}
             user={user}
@@ -112,6 +181,7 @@ export default function SocialFeed({ world, user, onOpenAuth }) {
             onToggleLike={toggleLike}
             onAddComment={addComment}
             onReactToComment={reactToComment}
+            trendingRank={trendingRank}
           />
         ))}
       </ul>
