@@ -325,6 +325,8 @@ export default function App() {
           onSearchCategory={flyToArteCategory}
           initialSubfamily={arteInitialSubfamily}
           locationFilters={locationFilters}
+          user={user}
+          onOpenAuth={() => setAuthOpen(true)}
         />
       )}
 

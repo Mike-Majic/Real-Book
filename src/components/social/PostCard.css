@@ -110,6 +110,19 @@
   margin-bottom: 8px;
 }
 
+.rb-post-photo {
+  max-width: 100%;
+  border-radius: 10px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.rb-post-photo-tags {
+  margin: 0 0 8px;
+  font-size: 11.5px;
+  color: rgba(245, 245, 247, 0.6);
+}
+
 .rb-gif-load-error {
   margin: 0 0 8px;
   font-size: 12px;

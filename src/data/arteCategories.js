@@ -74,6 +74,14 @@ export const ARTE_CATEGORIES = [
     aliases: ['live', 'concerto', 'concerti', 'dal vivo', 'dj set'],
     subfamilies: ['Concerti', 'DJ set', 'Reading dal vivo', 'Session acustiche', 'Festival'],
   },
+  {
+    id: 'video',
+    label: 'Video',
+    icon: '🎥',
+    anchor: { lat: 25, lng: 105 },
+    aliases: ['video', 'video breve', 'cortometraggio video', 'clip'],
+    subfamilies: [],
+  },
 ];
 
 // Trova la categoria il cui alias combacia (anche parzialmente) con la query digitata.

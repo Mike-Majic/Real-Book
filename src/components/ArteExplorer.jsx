@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import CategoryColumn from './CategoryColumn';
 import LibreriaColumn from './LibreriaColumn';
+import FotografiaColumn from './FotografiaColumn';
+import VideoColumn from './VideoColumn';
 import './ArteExplorer.css';
 
 // Guscio di navigazione categorie, generico per qualunque mondo che abbia un
@@ -8,7 +10,17 @@ import './ArteExplorer.css';
 // resolveQuery }, vedi CATEGORY_WORLDS in App.jsx) — usato oggi da Arte &
 // Musica e da Nerd, senza copie: la X, il campo di ricerca categoria e
 // CategoryColumn sono sempre gli stessi, cambiano solo i dati.
-export default function ArteExplorer({ world, categorySet, activeCategory, onToggleCategory, onSearchCategory, initialSubfamily, locationFilters }) {
+export default function ArteExplorer({
+  world,
+  categorySet,
+  activeCategory,
+  onToggleCategory,
+  onSearchCategory,
+  initialSubfamily,
+  locationFilters,
+  user,
+  onOpenAuth,
+}) {
   const [categoryQuery, setCategoryQuery] = useState('');
   const [categoryQueryInvalid, setCategoryQueryInvalid] = useState(false);
 
@@ -64,6 +76,10 @@ export default function ArteExplorer({ world, categorySet, activeCategory, onTog
               featured={categorySet.featured[category.id] ?? []}
               allResults={categorySet.results[category.id] ?? []}
             />
+          ) : category.id === 'fotografia' ? (
+            <FotografiaColumn key={category.id} user={user} onOpenAuth={onOpenAuth} />
+          ) : category.id === 'video' ? (
+            <VideoColumn key={category.id} user={user} onOpenAuth={onOpenAuth} />
           ) : (
             <CategoryColumn
               key={category.id}

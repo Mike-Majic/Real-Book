@@ -7,17 +7,20 @@ import './PostCard.css';
 
 const REACTION_EMOJIS = ['❤️', '😂', '👍'];
 
-// La GIF viene salvata come semplice URL (niente upload, vedi socialPosts.js):
-// se quel link smette di funzionare (CDN, scadenza, rete) l'utente deve
-// vedere un avviso chiaro, non un'area vuota senza spiegazione — è successo
-// in test reali e capire "salvata ma non si carica" da "non salvata affatto"
-// altrimenti richiede di aprire la console.
-function GifImage({ src, className }) {
+// GIF e foto vengono salvate come URL/dataURL (niente vero upload su
+// server per le GIF, vedi socialPosts.js): se quel link smette di
+// funzionare (CDN, scadenza, rete) l'utente deve vedere un avviso chiaro,
+// non un'area vuota senza spiegazione — è successo in test reali e capire
+// "salvata ma non si carica" da "non salvata affatto" altrimenti richiede
+// di aprire la console. Le foto caricate dal mondo Arte sono invece
+// dataURL locali (mai un link esterno), quindi per loro questo errore non
+// dovrebbe mai scattare, ma il fallback resta a scopo di sicurezza.
+function MediaImage({ src, alt, errorText, className }) {
   const [failed, setFailed] = useState(false);
   if (failed) {
-    return <p className="rb-gif-load-error">⚠️ GIF non disponibile (il link non si è caricato)</p>;
+    return <p className="rb-gif-load-error">⚠️ {errorText}</p>;
   }
-  return <img className={className} src={src} alt="GIF" onError={() => setFailed(true)} />;
+  return <img className={className} src={src} alt={alt} onError={() => setFailed(true)} />;
 }
 
 function Comment({ comment, user, onReact }) {
@@ -29,7 +32,9 @@ function Comment({ comment, user, onReact }) {
         <div className="rb-comment-bubble">
           <strong>{author.name}</strong>
           <p>{comment.testo}</p>
-          {comment.gif && <GifImage className="rb-comment-gif" src={comment.gif} />}
+          {comment.gif && (
+            <MediaImage className="rb-comment-gif" src={comment.gif} alt="GIF" errorText="GIF non disponibile (il link non si è caricato)" />
+          )}
         </div>
         <div className="rb-comment-footer">
           <span className="rb-comment-date">{formatRelativeDate(comment.data)}</span>
@@ -131,7 +136,17 @@ export default function PostCard({
       )}
 
       <p className="rb-post-text">{post.testo}</p>
-      {post.gif && <GifImage className="rb-post-gif" src={post.gif} />}
+      {post.gif && (
+        <MediaImage className="rb-post-gif" src={post.gif} alt="GIF" errorText="GIF non disponibile (il link non si è caricato)" />
+      )}
+      {post.foto && (
+        <>
+          <MediaImage className="rb-post-photo" src={post.foto} alt="Foto" errorText="Foto non disponibile" />
+          {post.fotoTagLabels?.length > 0 && (
+            <p className="rb-post-photo-tags">📷 con {post.fotoTagLabels.join(', ')}</p>
+          )}
+        </>
+      )}
       {post.link_esterno && <LinkPreview url={post.link_esterno.url} />}
 
       <div className="rb-post-actions">
