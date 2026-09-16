@@ -1,14 +1,14 @@
-// Categorie del mondo Incontri (rosso): per ora solo "Live", una chat in
-// diretta. Stessa struttura di BAMBINI_CATEGORIES/ARTE_CATEGORIES, così
-// funziona con lo stesso meccanismo di triangoli sul globo (vedi App.jsx,
-// CATEGORY_WORLDS).
+// Categorie del mondo Incontri (rosso): per ora solo "Live-chat", dirette
+// con chat in tempo reale. Stessa struttura di BAMBINI_CATEGORIES/
+// ARTE_CATEGORIES, così funziona con lo stesso meccanismo di triangoli sul
+// globo (vedi App.jsx, CATEGORY_WORLDS).
 export const INCONTRI_CATEGORIES = [
   {
     id: 'live',
-    label: 'Live',
+    label: 'Live-chat',
     icon: '🔴',
     anchor: { lat: 41.9, lng: 12.5 },
-    aliases: ['live', 'diretta', 'chat', 'chat dal vivo'],
+    aliases: ['live', 'live-chat', 'livechat', 'diretta', 'chat', 'chat dal vivo'],
     subfamilies: [],
   },
 ];

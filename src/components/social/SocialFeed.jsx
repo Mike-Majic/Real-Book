@@ -3,6 +3,7 @@ import TwoColumnSwitcher from '../layout/TwoColumnSwitcher';
 import PostComposer from './PostComposer';
 import PostCard from './PostCard';
 import GroupsDirectory from './GroupsDirectory';
+import CategoryHub from './CategoryHub';
 import SuggestedUsers from './SuggestedUsers';
 import TrendingGroups from './TrendingGroups';
 import { resolveAuthor, formatRelativeDate } from './resolveAuthor';
@@ -76,6 +77,7 @@ const FEED_TABS = [
   { id: 'following', label: 'Seguiti' },
   { id: 'groups', label: 'Gruppi' },
   { id: 'saved', label: 'Salvati' },
+  { id: 'mondi', label: '🌍 Mondi' },
 ];
 
 // Quanti post finti si aggiungono ogni volta che si arriva in fondo al feed.
@@ -94,7 +96,7 @@ const FILLER_BATCH = 6;
 // altri tab (Seguiti/Gruppi/Salvati) sono per natura già "filtrati" in un
 // altro modo (chi segui, il gruppo scelto, cosa hai salvato) e restano
 // invariati dal filtro di zona.
-export default function SocialFeed({ world, user, onOpenAuth, locationFilters = {} }) {
+export default function SocialFeed({ world, user, onOpenAuth, locationFilters = {}, onNavigateToCategory }) {
   const [posts, setPosts] = useState(() => loadStored('rb-social-posts', INITIAL_POSTS));
   const [comments, setComments] = useState(() => loadStored('rb-social-comments', INITIAL_COMMENTS));
   const [following, setFollowing] = useState(() => loadStored('rb-social-following', []));
@@ -387,6 +389,8 @@ export default function SocialFeed({ world, user, onOpenAuth, locationFilters = 
           onToggleJoin={toggleJoinGroup}
           onOpenGroup={openGroup}
         />
+      ) : feedTab === 'mondi' && !isGroupView ? (
+        <CategoryHub onNavigateToCategory={onNavigateToCategory} />
       ) : (
         <>
           {feedTab !== 'saved' && (

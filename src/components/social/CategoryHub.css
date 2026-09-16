@@ -1,0 +1,55 @@
+.rb-category-hub {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rb-category-hub-hint {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(245, 245, 247, 0.55);
+}
+
+.rb-category-hub-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rb-category-hub-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--hub-color, #1d9bf0) 75%, #f5f5f7);
+}
+
+.rb-category-hub-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rb-category-hub-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: color-mix(in srgb, var(--hub-color, #1d9bf0) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--hub-color, #1d9bf0) 40%, transparent);
+  color: #f5f5f7;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.rb-category-hub-btn:hover {
+  background: color-mix(in srgb, var(--hub-color, #1d9bf0) 26%, transparent);
+}
+
+.rb-category-hub-icon {
+  font-size: 13px;
+}

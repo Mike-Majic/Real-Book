@@ -114,6 +114,13 @@ export default function App() {
   // flyToCategoryThenOpen): tenerlo in un ref per poterlo annullare se nel
   // frattempo si sceglie un'altra categoria o si cambia mondo.
   const pendingOpenRef = useRef(null);
+  // Apertura categoria in sospeso quando la navigazione richiede PRIMA un
+  // cambio di mondo (vedi navigateToCategory): si esegue in un effect
+  // separato, dopo quello qui sotto che azzera activeArteCategory al cambio
+  // mondo, altrimenti quell'effect cancellerebbe il timer appena creato
+  // (stesso giro di render: world.id cambia, l'effect di reset gira e
+  // troverebbe già pendingOpenRef.current impostato dalla nuova apertura).
+  const pendingCategoryNavRef = useRef(null);
 
   // Cambiando mondo si azzera la categoria attiva (è sempre relativa al mondo
   // da cui si esce), altrimenti tornando in un mondo con categorie ci si
@@ -130,6 +137,16 @@ export default function App() {
         pendingOpenRef.current = null;
       }
     };
+  }, [world.id]);
+
+  // Esegue l'apertura categoria rimasta in sospeso da navigateToCategory,
+  // ora che il mondo è davvero cambiato e l'effect sopra ha già ripulito lo
+  // stato del mondo precedente.
+  useEffect(() => {
+    if (!pendingCategoryNavRef.current) return;
+    const openCategory = pendingCategoryNavRef.current;
+    pendingCategoryNavRef.current = null;
+    openCategory();
   }, [world.id]);
 
   useEffect(() => {
@@ -210,19 +227,47 @@ export default function App() {
     else setActiveArteCategory(cat.id);
   };
 
+  // Naviga a una categoria di un mondo qualunque (usato dall'hub testuale
+  // del mondo Social, e da applyArteFilter qui sotto): se serve cambia
+  // mondo prima, poi vola sulla categoria e apre il pannello. Se il mondo
+  // di destinazione non è quello attivo, l'apertura vera e propria si
+  // rimanda a dopo il cambio mondo (vedi pendingCategoryNavRef sopra) — non
+  // si può volare/aprire nello stesso giro perché arteCategoryPositions
+  // appartiene ancora al mondo che si sta lasciando. Uscendo dal mondo
+  // Social, SocialFeed si smonta da solo (è mostrato solo quando
+  // world.id === 'social'): è così che "si chiudono le colonne".
+  const navigateToCategory = (worldId, categoryId, initialSubfamily = '') => {
+    const targetIndex = WORLDS.findIndex((w) => w.id === worldId);
+    if (targetIndex === -1) return;
+    const cat = CATEGORY_WORLDS[worldId]?.categories.find((c) => c.id === categoryId);
+    if (!cat) return;
+    const sameWorld = targetIndex === index;
+
+    const openCategory = () => {
+      setArteInitialSubfamily(initialSubfamily);
+      // Le posizioni reali dei triangoli (più precise dell'anchor) valgono
+      // solo per il mondo già attivo: per un mondo appena raggiunto si usa
+      // sempre l'anchor, che WorldGlobe affina non appena calcola i
+      // triangoli del nuovo mondo.
+      const pos = (sameWorld ? arteCategoryPositions[cat.id] : null) ?? cat.anchor;
+      if (pos) flyToCategoryThenOpen(cat.id, pos);
+      else setActiveArteCategory(cat.id);
+    };
+
+    if (sameWorld) {
+      openCategory();
+    } else {
+      pendingCategoryNavRef.current = openCategory;
+      setIndex(targetIndex);
+    }
+  };
+
   // Applica il filtro Categoria/Sottofamiglia scelto nelle Impostazioni: passa
   // al mondo Arte & Musica se serve, apre la categoria e pre-seleziona la
   // sottofamiglia scelta.
   const applyArteFilter = () => {
     if (!arteFilter.category) return;
-    const cat = ARTE_CATEGORIES.find((c) => c.id === arteFilter.category);
-    if (!cat) return;
-    const arteIndex = WORLDS.findIndex((w) => w.id === 'arte');
-    if (arteIndex !== index) setIndex(arteIndex);
-    setArteInitialSubfamily(arteFilter.subfamily);
-    const pos = arteCategoryPositions[cat.id] ?? cat.anchor;
-    if (pos) flyToCategoryThenOpen(cat.id, pos);
-    else setActiveArteCategory(cat.id);
+    navigateToCategory('arte', arteFilter.category, arteFilter.subfamily);
   };
 
   // Selezionare una categoria (dal triangolo sul globo, o dal pulsante in
@@ -305,7 +350,13 @@ export default function App() {
       )}
 
       {world.id === 'social' && (
-        <SocialFeed world={world} user={user} onOpenAuth={() => setAuthOpen(true)} locationFilters={locationFilters} />
+        <SocialFeed
+          world={world}
+          user={user}
+          onOpenAuth={() => setAuthOpen(true)}
+          locationFilters={locationFilters}
+          onNavigateToCategory={navigateToCategory}
+        />
       )}
 
       {world.id === 'incontri' && !adultGateOk && (
