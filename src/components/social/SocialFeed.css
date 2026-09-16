@@ -1,13 +1,15 @@
+/* Stesso margine di ArteExplorer.css sopra i marker del globo: vedi il
+   commento lì per il perché di 1015 invece di un piccolo valore fisso. */
 .rb-social-feed {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 15;
+  z-index: 1015;
 }
 
 @media (max-width: 760px) {
   .rb-social-feed {
-    z-index: 35;
+    z-index: 1035;
   }
 }
 

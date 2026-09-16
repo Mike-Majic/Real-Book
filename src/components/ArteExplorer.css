@@ -1,15 +1,20 @@
+/* z-index 1015+ (non solo il minimo per stare sopra alla topbar/tagline):
+   il globo (react-globe.gl) assegna ai marker HTML uno z-index inline
+   dinamico proporzionale al numero di marker visibili in quel momento, che
+   con molti profili ravvicinati può superare qualunque valore "piccolo" —
+   senza questo margine, zoomando i marker finiscono sopra ai pannelli. */
 .rb-arte-explorer {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 15;
+  z-index: 1015;
 }
 
 /* Sotto il breakpoint mobile i pannelli diventano a schermo intero (vedi
    CategoryColumn.css) e devono stare sopra alla barra in alto, non sotto. */
 @media (max-width: 760px) {
   .rb-arte-explorer {
-    z-index: 35;
+    z-index: 1035;
   }
 }
 
@@ -23,7 +28,7 @@
   align-items: center;
   gap: 10px;
   pointer-events: auto;
-  z-index: 41;
+  z-index: 1041;
 }
 
 .rb-arte-close-all-btn {

@@ -1,7 +1,7 @@
 .rb-adult-gate-overlay {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 1100;
   background: rgba(5, 0, 2, 0.92);
   display: flex;
   align-items: center;

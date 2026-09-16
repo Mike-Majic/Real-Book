@@ -46,7 +46,7 @@
   bottom: 0;
   overflow: hidden;
   pointer-events: auto;
-  z-index: 40;
+  z-index: 1040;
 }
 
 .rb-2col-mobile-track {
@@ -88,6 +88,6 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 41;
+  z-index: 1041;
   box-shadow: -4px 0 16px rgba(0, 0, 0, 0.35);
 }
