@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import CategoryColumn from './CategoryColumn';
+import LibreriaColumn from './LibreriaColumn';
 import './ArteExplorer.css';
 
 // Guscio di navigazione categorie, generico per qualunque mondo che abbia un
@@ -54,14 +55,25 @@ export default function ArteExplorer({ world, categorySet, activeCategory, onTog
             </form>
           </div>
 
-          <CategoryColumn
-            key={category.id}
-            category={category}
-            initialSubfamily={initialSubfamily}
-            locationFilters={locationFilters}
-            featured={categorySet.featured[category.id] ?? []}
-            allResults={categorySet.results[category.id] ?? []}
-          />
+          {category.id === 'libreria' ? (
+            <LibreriaColumn
+              key={category.id}
+              category={category}
+              initialSubfamily={initialSubfamily}
+              locationFilters={locationFilters}
+              featured={categorySet.featured[category.id] ?? []}
+              allResults={categorySet.results[category.id] ?? []}
+            />
+          ) : (
+            <CategoryColumn
+              key={category.id}
+              category={category}
+              initialSubfamily={initialSubfamily}
+              locationFilters={locationFilters}
+              featured={categorySet.featured[category.id] ?? []}
+              allResults={categorySet.results[category.id] ?? []}
+            />
+          )}
         </>
       )}
     </div>
