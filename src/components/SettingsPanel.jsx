@@ -1,7 +1,62 @@
-import { JOB_CATEGORIES } from '../data/worlds';
+import { useState } from 'react';
 import { CONTINENTS, REGIONS } from '../data/geo';
 import { ARTE_CATEGORIES } from '../data/arteCategories';
 import './SettingsPanel.css';
+
+// Vista "Filtri avanzati": una seconda schermata dentro lo stesso pannello,
+// raggiunta con un pulsante e richiusa con "Indietro" verso le Impostazioni
+// principali. Oggi ospita solo la scorciatoia a una categoria di Arte &
+// Musica, ma è pensata per accogliere altri filtri via via che si
+// aggiungono, senza affollare la schermata principale.
+function AdvancedFiltersView({ onBack, arteFilter, setArteFilter }) {
+  const selectedArteCategory = ARTE_CATEGORIES.find((c) => c.id === arteFilter.category) ?? null;
+
+  return (
+    <>
+      <div className="rb-settings-header">
+        <button type="button" className="rb-settings-back-btn" onClick={onBack}>
+          ← Impostazioni
+        </button>
+      </div>
+      <h2 className="rb-settings-subtitle">Filtri avanzati</h2>
+
+      <section className="rb-settings-section rb-settings-section-first">
+        <h3>Arte & Musica</h3>
+        <p className="rb-settings-hint">Vai dritto a una categoria (ed eventualmente a una sottofamiglia) del mondo Arte & Musica.</p>
+
+        <label className="rb-field">
+          <span>Categoria</span>
+          <select
+            value={arteFilter.category}
+            onChange={(e) => setArteFilter({ category: e.target.value, subfamily: '' })}
+          >
+            <option value="">Nessuna categoria</option>
+            {ARTE_CATEGORIES.map((c) => (
+              <option key={c.id} value={c.id}>{c.label}</option>
+            ))}
+          </select>
+        </label>
+
+        {selectedArteCategory && (
+          <label className="rb-field">
+            <span>Sottofamiglia</span>
+            <select
+              value={arteFilter.subfamily}
+              onChange={(e) => setArteFilter({ category: arteFilter.category, subfamily: e.target.value })}
+            >
+              <option value="">Tutte</option>
+              {selectedArteCategory.subfamilies.map((sf) => (
+                <option key={sf} value={sf}>{sf}</option>
+              ))}
+            </select>
+          </label>
+        )}
+      </section>
+
+      <p className="rb-settings-footnote">Altri filtri avanzati arriveranno qui, senza affollare le Impostazioni principali.</p>
+    </>
+  );
+}
 
 export default function SettingsPanel({
   open,
@@ -9,8 +64,6 @@ export default function SettingsPanel({
   onApply,
   filters,
   setFilters,
-  jobFilters,
-  setJobFilters,
   locationFilters,
   setLocationFilters,
   arteFilter,
@@ -19,12 +72,22 @@ export default function SettingsPanel({
   setVisibility,
   onResetFilters,
 }) {
+  const [view, setView] = useState('main');
+
   if (!open) return null;
 
   const updateFilter = (key, value) => setFilters((f) => ({ ...f, [key]: value }));
-  const updateJobFilter = (key, value) => setJobFilters((f) => ({ ...f, [key]: value }));
   const updateLocation = (key, value) => setLocationFilters((f) => ({ ...f, [key]: value }));
-  const selectedArteCategory = ARTE_CATEGORIES.find((c) => c.id === arteFilter.category) ?? null;
+
+  if (view === 'advanced') {
+    return (
+      <div className="rb-settings-overlay" onClick={onClose}>
+        <aside className="rb-settings-panel" onClick={(e) => e.stopPropagation()}>
+          <AdvancedFiltersView onBack={() => setView('main')} arteFilter={arteFilter} setArteFilter={setArteFilter} />
+        </aside>
+      </div>
+    );
+  }
 
   return (
     <div className="rb-settings-overlay" onClick={onClose}>
@@ -45,7 +108,7 @@ export default function SettingsPanel({
 
         <section className="rb-settings-section">
           <h3>Dove</h3>
-          <p className="rb-settings-hint">Filtro di posizione, valido per tutti i mondi.</p>
+          <p className="rb-settings-hint">Continente, regione e città: valido per tutti i mondi.</p>
 
           <label className="rb-field">
             <span>Continente</span>
@@ -86,7 +149,7 @@ export default function SettingsPanel({
 
         <section className="rb-settings-section">
           <h3>Personalizza il tuo Versemove</h3>
-          <p className="rb-settings-hint">Filtri per i mondi Social e Incontri — tutto gratuito, nessuna funzione a pagamento.</p>
+          <p className="rb-settings-hint">Genere ed età: valido per tutti i mondi — tutto gratuito, nessuna funzione a pagamento.</p>
 
           <label className="rb-field">
             <span>Mostrami</span>
@@ -130,54 +193,13 @@ export default function SettingsPanel({
         </section>
 
         <section className="rb-settings-section">
-          <h3>Arte & Musica</h3>
-          <p className="rb-settings-hint">Vai dritto a una categoria (ed eventualmente a una sottofamiglia) del mondo Arte & Musica.</p>
-
-          <label className="rb-field">
-            <span>Categoria</span>
-            <select
-              value={arteFilter.category}
-              onChange={(e) => setArteFilter({ category: e.target.value, subfamily: '' })}
-            >
-              <option value="">Nessuna categoria</option>
-              {ARTE_CATEGORIES.map((c) => (
-                <option key={c.id} value={c.id}>{c.label}</option>
-              ))}
-            </select>
-          </label>
-
-          {selectedArteCategory && (
-            <label className="rb-field">
-              <span>Sottofamiglia</span>
-              <select
-                value={arteFilter.subfamily}
-                onChange={(e) => setArteFilter({ category: arteFilter.category, subfamily: e.target.value })}
-              >
-                <option value="">Tutte</option>
-                {selectedArteCategory.subfamilies.map((sf) => (
-                  <option key={sf} value={sf}>{sf}</option>
-                ))}
-              </select>
-            </label>
-          )}
-        </section>
-
-        <section className="rb-settings-section">
-          <h3>Lavoro</h3>
-          <p className="rb-settings-hint">Filtro aggiuntivo per il mondo Lavoro.</p>
-
-          <label className="rb-field">
-            <span>Tipologia di lavoro</span>
-            <select
-              value={jobFilters.category}
-              onChange={(e) => updateJobFilter('category', e.target.value)}
-            >
-              <option value="">Tutte le categorie</option>
-              {JOB_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </label>
+          <button type="button" className="rb-settings-nav-btn" onClick={() => setView('advanced')}>
+            <span>
+              <strong>Filtri avanzati</strong>
+              <p>Categorie specifiche di un mondo e altri filtri in arrivo.</p>
+            </span>
+            <span aria-hidden="true">→</span>
+          </button>
         </section>
 
         <p className="rb-settings-footnote">I filtri sono salvati solo su questo dispositivo, per ora. In arrivo: account veri e ricerca in tempo reale.</p>

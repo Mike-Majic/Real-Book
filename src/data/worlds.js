@@ -67,16 +67,3 @@ export const WORLDS = [
 ];
 
 export const DEFAULT_WORLD_INDEX = WORLDS.findIndex((w) => w.id === 'social');
-
-export const JOB_CATEGORIES = [
-  'Elettronica',
-  'Meccanica',
-  'Industriale',
-  'Istruttore',
-  'Edilizia',
-  'Informatica / IT',
-  'Logistica',
-  'Ristorazione',
-  'Sanità',
-  'Altro',
-];

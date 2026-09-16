@@ -45,7 +45,6 @@ import './App.css';
 const SHOW_FAKE_PROFILES_SCALE_TEST = true;
 
 const DEFAULT_FILTERS = { gender: 'Tutti', ageMin: 18, ageMax: 60 };
-const DEFAULT_JOB_FILTERS = { category: '' };
 const DEFAULT_LOCATION_FILTERS = { continent: '', region: '', city: '', distance: 150 };
 const DEFAULT_ARTE_FILTER = { category: '', subfamily: '' };
 const DEFAULT_VISIBILITY = { nearbyVisible: false };
@@ -115,7 +114,6 @@ export default function App() {
   const [selectedUser, setSelectedUser] = useState(null);
 
   const [filters, setFilters] = useState(() => loadStored('rb-filters', DEFAULT_FILTERS));
-  const [jobFilters, setJobFilters] = useState(() => loadStored('rb-job-filters', DEFAULT_JOB_FILTERS));
   const [locationFilters, setLocationFilters] = useState(() => loadStored('rb-location-filters', DEFAULT_LOCATION_FILTERS));
   const [activeArteCategory, setActiveArteCategory] = useState(null);
   const [arteCategoryPositions, setArteCategoryPositions] = useState({});
@@ -186,7 +184,6 @@ export default function App() {
 
   useEffect(() => localStorage.setItem('rb-user', JSON.stringify(user)), [user]);
   useEffect(() => localStorage.setItem('rb-filters', JSON.stringify(filters)), [filters]);
-  useEffect(() => localStorage.setItem('rb-job-filters', JSON.stringify(jobFilters)), [jobFilters]);
   useEffect(() => localStorage.setItem('rb-location-filters', JSON.stringify(locationFilters)), [locationFilters]);
   useEffect(() => localStorage.setItem('rb-arte-filter', JSON.stringify(arteFilter)), [arteFilter]);
   useEffect(() => localStorage.setItem('rb-visibility', JSON.stringify(visibility)), [visibility]);
@@ -248,23 +245,12 @@ export default function App() {
       return true;
     };
 
-    if (world.id === 'incontri' || world.id === 'social') {
-      return base.filter((u) => {
-        if (filters.gender !== 'Tutti' && u.gender !== filters.gender.toLowerCase()) return false;
-        if (u.age && (u.age < filters.ageMin || u.age > filters.ageMax)) return false;
-        return matchesLocation(u);
-      });
-    }
-
-    if (world.id === 'lavoro') {
-      return base.filter((u) => {
-        if (jobFilters.category && u.jobType !== jobFilters.category) return false;
-        return matchesLocation(u);
-      });
-    }
-
-    return base;
-  }, [world.id, filters, jobFilters, locationFilters]);
+    return base.filter((u) => {
+      if (filters.gender !== 'Tutti' && u.gender !== filters.gender.toLowerCase()) return false;
+      if (u.age && (u.age < filters.ageMin || u.age > filters.ageMax)) return false;
+      return matchesLocation(u);
+    });
+  }, [world.id, filters, locationFilters]);
 
   // Quando la città cercata nei filtri (globali, validi per tutti i mondi) corrisponde
   // a una città nota, il globo ci "vola" sopra.
@@ -499,8 +485,6 @@ export default function App() {
         }}
         filters={filters}
         setFilters={setFilters}
-        jobFilters={jobFilters}
-        setJobFilters={setJobFilters}
         locationFilters={locationFilters}
         setLocationFilters={setLocationFilters}
         arteFilter={arteFilter}
@@ -509,7 +493,6 @@ export default function App() {
         setVisibility={setVisibility}
         onResetFilters={() => {
           setFilters(DEFAULT_FILTERS);
-          setJobFilters(DEFAULT_JOB_FILTERS);
           setLocationFilters(DEFAULT_LOCATION_FILTERS);
           setArteFilter(DEFAULT_ARTE_FILTER);
           setVisibility(DEFAULT_VISIBILITY);
