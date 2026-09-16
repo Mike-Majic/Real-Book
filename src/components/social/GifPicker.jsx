@@ -25,11 +25,19 @@ export default function GifPicker({ onSelect, onClose }) {
     try {
       const url = `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(query.trim())}&limit=12&rating=${SAFE_RATING}&lang=it`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error(`richiesta fallita (${res.status})`);
+      if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
       setResults(data.data ?? []);
-    } catch {
-      setError('Impossibile cercare le GIF ora. Riprova più tardi.');
+    } catch (err) {
+      // La chiave pubblica di prova di GIPHY è condivisa da migliaia di app
+      // demo/tutorial in tutto il mondo: è facile che vada in rate limit
+      // (429) indipendentemente da questa app. Lo status aiuta a capire se è
+      // questo il caso, invece di un generico "riprova più tardi".
+      setError(
+        err.message === '429'
+          ? 'GIPHY ha bloccato temporaneamente le ricerche (troppe richieste sulla chiave di prova condivisa). Serve una chiave propria per risolvere del tutto.'
+          : 'Impossibile cercare le GIF ora. Riprova più tardi.'
+      );
       setResults([]);
     } finally {
       setLoading(false);
