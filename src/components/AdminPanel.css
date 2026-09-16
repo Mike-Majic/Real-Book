@@ -1,0 +1,96 @@
+.rb-admin-card {
+  position: relative;
+  width: min(920px, 94vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  background: #131318;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 26px;
+  color: #f5f5f7;
+  box-shadow: 0 0 0 1px var(--accent, #1d9bf0) inset, 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.rb-admin-card .rb-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #f5f5f7;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.rb-admin-card h2 {
+  margin: 0 0 4px;
+  font-size: 19px;
+}
+
+.rb-admin-hint {
+  margin: 0 0 18px;
+  font-size: 12.5px;
+  color: rgba(245, 245, 247, 0.55);
+}
+
+.rb-admin-table-wrap {
+  overflow-x: auto;
+}
+
+.rb-admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.rb-admin-table th {
+  text-align: left;
+  padding: 8px 10px;
+  color: rgba(245, 245, 247, 0.5);
+  font-size: 11px;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  white-space: nowrap;
+}
+
+.rb-admin-table td {
+  padding: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  white-space: nowrap;
+}
+
+.rb-admin-table select {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f5f5f7;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.rb-admin-role-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.rb-admin-role-badge.owner {
+  background: color-mix(in srgb, #ffb020 25%, transparent);
+  color: #ffb020;
+}
+
+.rb-admin-role-badge.moderatore {
+  background: color-mix(in srgb, var(--accent, #1d9bf0) 25%, transparent);
+  color: var(--accent, #1d9bf0);
+}
+
+.rb-admin-empty {
+  text-align: center;
+  color: rgba(245, 245, 247, 0.5);
+  padding: 24px 0;
+}

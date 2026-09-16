@@ -1,6 +1,7 @@
+import { isStaff } from '../data/roles';
 import './TopBar.css';
 
-export default function TopBar({ world, user, onOpenAuth, onLogout, onOpenSettings }) {
+export default function TopBar({ world, user, onOpenAuth, onLogout, onOpenSettings, onOpenAdmin }) {
   return (
     <header className="rb-topbar" style={{ '--accent': world.color }}>
       <div className="rb-topbar-brand">
@@ -16,6 +17,11 @@ export default function TopBar({ world, user, onOpenAuth, onLogout, onOpenSettin
 
         {user ? (
           <div className="rb-user-chip">
+            {isStaff(user.ruolo) && (
+              <button className="rb-icon-btn" onClick={onOpenAdmin} aria-label="Backend" title="Backend">
+                🛠️
+              </button>
+            )}
             <img src={user.avatar} alt={user.name} />
             <span>{user.name}</span>
             <button className="rb-btn-ghost" onClick={onLogout}>Esci</button>

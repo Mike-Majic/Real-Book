@@ -29,8 +29,10 @@ import { FAKE_PROFILES } from './data/fakeProfiles';
 import IncontriLiveExplorer from './components/incontri/IncontriLiveExplorer';
 import AdultGate from './components/incontri/AdultGate';
 import { SEED_EVENTS, isEventExpired } from './data/events';
+import { isStaff } from './data/roles';
 import EventLikersModal from './components/EventLikersModal';
 import FriendChatModal from './components/FriendChatModal';
+import AdminPanel from './components/AdminPanel';
 import './App.css';
 
 // Test di scala richiesto dall'utente: nel mondo Incontri aggiunge ~1800
@@ -123,6 +125,7 @@ export default function App() {
   const [friendRequestsSent, setFriendRequestsSent] = useState(() => loadStored('rb-friend-requests-sent', []));
   const [eventLikersId, setEventLikersId] = useState(null);
   const [activeFriendChatId, setActiveFriendChatId] = useState(null);
+  const [adminOpen, setAdminOpen] = useState(false);
   // Timer del pannello che deve ancora aprirsi a volo finito (vedi
   // flyToCategoryThenOpen): tenerlo in un ref per poterlo annullare se nel
   // frattempo si sceglie un'altra categoria o si cambia mondo.
@@ -165,6 +168,12 @@ export default function App() {
   useEffect(() => {
     document.documentElement.style.setProperty('--rb-accent', world.color);
   }, [world]);
+
+  // Se chi ha aperto il backend si disconnette (o non è più owner/moderatore,
+  // es. l'owner lo declassa da un altro account), il pannello si chiude da solo.
+  useEffect(() => {
+    if (adminOpen && !isStaff(user?.ruolo)) setAdminOpen(false);
+  }, [user, adminOpen]);
 
   useEffect(() => localStorage.setItem('rb-user', JSON.stringify(user)), [user]);
   useEffect(() => localStorage.setItem('rb-filters', JSON.stringify(filters)), [filters]);
@@ -358,6 +367,7 @@ export default function App() {
           if (activeArteCategory) toggleArteCategory(activeArteCategory);
           setSettingsOpen(true);
         }}
+        onOpenAdmin={() => setAdminOpen(true)}
       />
 
       <WorldGlobe
@@ -513,6 +523,8 @@ export default function App() {
       {activeFriendChatId && (
         <FriendChatModal friendId={activeFriendChatId} user={user} onClose={() => setActiveFriendChatId(null)} />
       )}
+
+      {adminOpen && <AdminPanel user={user} onClose={() => setAdminOpen(false)} />}
 
       <AuthModal
         open={authOpen}
