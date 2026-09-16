@@ -3,11 +3,11 @@ import './GifPicker.css';
 
 // Le GIF arrivano SOLO da GIPHY con il filtro contenuti più severo attivo
 // (rating=g, "General audiences") e non è mai disattivabile da qui: nessuna
-// ricerca gif senza filtro. La chiave usata è la chiave pubblica di prova
-// che GIPHY stessa pubblica per demo/beta (dc6zaTOxFJmzC) — per un'app in
-// produzione andrebbe sostituita con una chiave propria e magari passata
-// dal server, non incorporata nel bundle.
-const GIPHY_API_KEY = 'dc6zaTOxFJmzC';
+// ricerca gif senza filtro. Chiave propria dell'app (Web SDK, creata sul
+// portale sviluppatori GIPHY), non più quella pubblica di prova condivisa:
+// così le ricerche non dipendono più dal rate limit di migliaia di altre
+// app demo nel mondo.
+const GIPHY_API_KEY = 'hm5LPni1NFdC5eNfStQ5bj7R9DiHH7om';
 const SAFE_RATING = 'g';
 
 export default function GifPicker({ onSelect, onClose }) {
@@ -29,13 +29,9 @@ export default function GifPicker({ onSelect, onClose }) {
       const data = await res.json();
       setResults(data.data ?? []);
     } catch (err) {
-      // La chiave pubblica di prova di GIPHY è condivisa da migliaia di app
-      // demo/tutorial in tutto il mondo: è facile che vada in rate limit
-      // (429) indipendentemente da questa app. Lo status aiuta a capire se è
-      // questo il caso, invece di un generico "riprova più tardi".
       setError(
         err.message === '429'
-          ? 'GIPHY ha bloccato temporaneamente le ricerche (troppe richieste sulla chiave di prova condivisa). Serve una chiave propria per risolvere del tutto.'
+          ? 'Troppe ricerche in poco tempo, GIPHY ha messo in pausa le richieste. Riprova tra qualche minuto.'
           : 'Impossibile cercare le GIF ora. Riprova più tardi.'
       );
       setResults([]);
