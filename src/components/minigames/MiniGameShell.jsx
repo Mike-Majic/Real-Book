@@ -23,7 +23,7 @@ export default function MiniGameShell({ game }) {
   };
 
   const shareResult = async () => {
-    const text = `Ho fatto ${result?.score ?? 0} punti a "${game.nome}" su Real Book!`;
+    const text = `Ho fatto ${result?.score ?? 0} punti a "${game.nome}" su Versemove!`;
     if (navigator.share) {
       try {
         await navigator.share({ text });

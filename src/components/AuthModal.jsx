@@ -20,7 +20,7 @@ export default function AuthModal({ open, onClose, onLogin }) {
     <div className="rb-modal-overlay" onClick={onClose}>
       <form className="rb-auth-card" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <button type="button" className="rb-close-btn" onClick={onClose} aria-label="Chiudi">✕</button>
-        <h2>Accedi a Real Book</h2>
+        <h2>Accedi a Versemove</h2>
         <p className="rb-auth-hint">Login dimostrativo: nessuna password reale, solo per provare l'interfaccia.</p>
         <label className="rb-field">
           <span>Nome utente</span>

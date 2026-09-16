@@ -85,7 +85,7 @@ export default function SettingsPanel({
         </section>
 
         <section className="rb-settings-section">
-          <h3>Personalizza il tuo Real Book</h3>
+          <h3>Personalizza il tuo Versemove</h3>
           <p className="rb-settings-hint">Filtri per i mondi Social e Incontri — tutto gratuito, nessuna funzione a pagamento.</p>
 
           <label className="rb-field">
