@@ -16,7 +16,7 @@ function loadStored(key, fallback) {
 // "avviare una diretta" vuol dire comparire in questa lista (per chi usa
 // questo stesso browser): non c'è uno streaming video reale, solo lo stato
 // salvato come il resto dell'app.
-export default function LiveUsersList({ user, onOpenAuth }) {
+export default function LiveUsersList({ user, onOpenAuth, onStartLive }) {
   const [myLiveActive, setMyLiveActive] = useState(() => loadStored('rb-my-live-active', false));
   const [myViewCount] = useState(() => loadStored('rb-my-live-views', Math.floor(Math.random() * 220) + 30));
 
@@ -28,7 +28,14 @@ export default function LiveUsersList({ user, onOpenAuth }) {
       onOpenAuth();
       return;
     }
-    setMyLiveActive((v) => !v);
+    setMyLiveActive((v) => {
+      const next = !v;
+      // Avviare la diretta deve portare subito alla chat (su mobile, dove
+      // le due colonne non stanno affiancate): è lì che si vedono i
+      // commenti di chi si è unito.
+      if (next) onStartLive?.();
+      return next;
+    });
   };
 
   const entries = [

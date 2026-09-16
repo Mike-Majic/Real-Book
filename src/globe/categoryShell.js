@@ -21,9 +21,11 @@ function vectorToPolar(v) {
 
 // Più categorie ci sono, più i triangoli devono essere piccoli per farcele stare
 // tutte in modo leggibile: si passa a un icosaedro più suddiviso (più facce, più
-// piccole) man mano che il numero di categorie cresce.
+// piccole) man mano che il numero di categorie cresce. Il minimo è 80 facce
+// (non 20) anche per i mondi con pochissime categorie (es. Incontri): un
+// mondo con 1-2 categorie non deve avere triangoli enormi rispetto a un
+// mondo con 9-10, devono restare della stessa dimensione ovunque.
 function pickDetailLevel(categoryCount) {
-  if (categoryCount <= 6) return 0; // 20 facce
   if (categoryCount <= 20) return 1; // 80 facce
   return 2; // 320 facce
 }
