@@ -5,7 +5,7 @@ export default function TopBar({ world, user, onOpenAuth, onLogout, onOpenSettin
   return (
     <header className="rb-topbar" style={{ '--accent': world.color }}>
       <div className="rb-topbar-brand">
-        <span className="rb-logo-dot" />
+        <img className="rb-logo-icon" src={`${import.meta.env.BASE_URL}icons/logo-64.png`} alt="" />
         <span className="notranslate" translate="no">Versemove</span>
         <span className="rb-world-pill">{world.label}</span>
       </div>
