@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { resolveAuthor, formatRelativeDate } from './resolveAuthor';
+import { getGroupById } from '../../data/groups';
 import LinkPreview from './LinkPreview';
 import PostComposer from './PostComposer';
 import './PostCard.css';
@@ -37,12 +38,31 @@ function Comment({ comment, user, onReact }) {
 // "commentabile da chiunque" = chiunque usi l'app può leggere/commentare
 // (feed pubblico), ma mettere like o commentare richiede di essere
 // loggati — coerente con come l'app già gestisce le altre interazioni.
-export default function PostCard({ post, comments, user, onOpenAuth, onToggleLike, onAddComment, onReactToComment, trendingRank = null }) {
+export default function PostCard({
+  post,
+  comments,
+  user,
+  onOpenAuth,
+  onToggleLike,
+  onAddComment,
+  onReactToComment,
+  trendingRank = null,
+  following = [],
+  onToggleFollow,
+  saved = false,
+  onToggleSave,
+  onOpenGroup,
+}) {
   const [expanded, setExpanded] = useState(false);
   const author = resolveAuthor(post.autoreId, user);
   const myId = 'me';
   const liked = post.mi_piace.includes(myId);
   const postComments = comments.filter((c) => c.post_id === post.id);
+  const group = post.gruppo_id ? getGroupById(post.gruppo_id) : null;
+  // Il pulsante Segui ha senso solo su post di altri utenti reali (non 'me',
+  // non autori non risolvibili): serve un id numerico su cui basare il follow.
+  const canFollow = typeof post.autoreId === 'number' && onToggleFollow;
+  const isFollowing = canFollow && following.includes(post.autoreId);
 
   const handleLike = () => {
     if (!user) {
@@ -52,6 +72,22 @@ export default function PostCard({ post, comments, user, onOpenAuth, onToggleLik
     onToggleLike(post.id);
   };
 
+  const handleFollow = () => {
+    if (!user) {
+      onOpenAuth();
+      return;
+    }
+    onToggleFollow(post.autoreId);
+  };
+
+  const handleSave = () => {
+    if (!user) {
+      onOpenAuth();
+      return;
+    }
+    onToggleSave(post.id);
+  };
+
   return (
     <li className="rb-post-card">
       {trendingRank !== null && (
@@ -59,11 +95,27 @@ export default function PostCard({ post, comments, user, onOpenAuth, onToggleLik
       )}
       <div className="rb-post-header">
         <img className="rb-post-avatar" src={author.avatar} alt={author.name} />
-        <div>
+        <div className="rb-post-header-info">
           <strong>{author.name}</strong>
           <span className="rb-post-date">{formatRelativeDate(post.data)}</span>
         </div>
+        {canFollow && (
+          <button type="button" className={`rb-post-follow-btn ${isFollowing ? 'active' : ''}`} onClick={handleFollow}>
+            {isFollowing ? 'Segui già' : '+ Segui'}
+          </button>
+        )}
       </div>
+
+      {group && (
+        <button
+          type="button"
+          className="rb-post-group-badge"
+          style={{ '--group-color': group.color }}
+          onClick={() => onOpenGroup?.(group.id)}
+        >
+          {group.icon} {group.name}
+        </button>
+      )}
 
       <p className="rb-post-text">{post.testo}</p>
       {post.gif && <img className="rb-post-gif" src={post.gif} alt="GIF" />}
@@ -76,6 +128,11 @@ export default function PostCard({ post, comments, user, onOpenAuth, onToggleLik
         <button type="button" className="rb-post-action-btn" onClick={() => setExpanded((v) => !v)}>
           💬 {postComments.length}
         </button>
+        {onToggleSave && (
+          <button type="button" className={`rb-post-action-btn rb-post-save-btn ${saved ? 'active' : ''}`} onClick={handleSave}>
+            {saved ? '🔖 Salvato' : '🔖 Salva'}
+          </button>
+        )}
       </div>
 
       {expanded && (

@@ -1,15 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import TwoColumnSwitcher from '../layout/TwoColumnSwitcher';
 import PostComposer from './PostComposer';
 import PostCard from './PostCard';
+import GroupsDirectory from './GroupsDirectory';
+import SuggestedUsers from './SuggestedUsers';
+import TrendingGroups from './TrendingGroups';
 import { resolveAuthor, formatRelativeDate } from './resolveAuthor';
 import { getCityInfo } from '../../data/geo';
 import { INITIAL_POSTS, INITIAL_COMMENTS, computeRelevance } from '../../data/socialPosts';
+import { GROUPS, getGroupById } from '../../data/groups';
+import { generateFillerBatch } from '../../data/socialFiller';
+import { usersForWorld } from '../../data/mockUsers';
 import './SocialFeed.css';
 
-// Ogni tot post filtrati per zona, si intercala il prossimo post in
-// classifica per numero di mi piace (1°, poi 2°, ...) tra TUTTI i post
-// esistenti, non solo quelli della zona — così chi filtra per regione vede
+// Ogni tot post "di zona" (tab Per te, con un filtro Dove attivo), si
+// intercala il prossimo post in classifica per numero di mi piace (1°, poi
+// 2°, ...) tra TUTTI i post esistenti — così chi filtra per regione vede
 // comunque cosa va per la maggiore nel resto del mondo Social.
 const TRENDING_EVERY = 3;
 
@@ -65,19 +71,54 @@ function makeId(prefix) {
   return `${prefix}-${Date.now()}-${uidCounter}`;
 }
 
-// Mondo Social (Blu): colonna sinistra = feed globale (Fase B), colonna
-// destra = i miei post pubblicati, con dettaglio di chi ha messo like e
-// commentato (Fase C) — stesso TwoColumnSwitcher già usato da Arte &
-// Musica/Nerd/Bambini, non ricostruito da zero. Stato di post/commenti
-// tenuto qui (nessun backend) e persistito in localStorage.
+const FEED_TABS = [
+  { id: 'foryou', label: 'Per te' },
+  { id: 'following', label: 'Seguiti' },
+  { id: 'groups', label: 'Gruppi' },
+  { id: 'saved', label: 'Salvati' },
+];
+
+// Quanti post finti si aggiungono ogni volta che si arriva in fondo al feed.
+const FILLER_BATCH = 6;
+
+// Mondo Social (Blu): colonna sinistra = feed (Per te / Seguiti / Gruppi /
+// Salvati, con scroll infinito), colonna destra = suggerimenti (persone da
+// seguire, gruppi di tendenza) + i miei post. Nessun backend: tutto lo stato
+// "reale" (post scritti, follow, gruppi, salvati) vive qui ed è persistito
+// in localStorage; i post generati per lo scroll infinito sono marcati
+// isFiller e non vengono salvati, per non far crescere lo storage all'infinito.
+//
+// Il filtro Dove (continente/regione/città) di Impostazioni agisce solo sul
+// tab "Per te": in quel caso mostra i post della zona con i più popolari di
+// tutto il mondo Social intercalati ogni 3 (vedi interleaveTrending). Gli
+// altri tab (Seguiti/Gruppi/Salvati) sono per natura già "filtrati" in un
+// altro modo (chi segui, il gruppo scelto, cosa hai salvato) e restano
+// invariati dal filtro di zona.
 export default function SocialFeed({ world, user, onOpenAuth, locationFilters = {} }) {
   const [posts, setPosts] = useState(() => loadStored('rb-social-posts', INITIAL_POSTS));
   const [comments, setComments] = useState(() => loadStored('rb-social-comments', INITIAL_COMMENTS));
+  const [following, setFollowing] = useState(() => loadStored('rb-social-following', []));
+  const [joinedGroups, setJoinedGroups] = useState(() => loadStored('rb-social-joined-groups', []));
+  const [savedPosts, setSavedPosts] = useState(() => loadStored('rb-social-saved', []));
 
-  useEffect(() => localStorage.setItem('rb-social-posts', JSON.stringify(posts)), [posts]);
-  useEffect(() => localStorage.setItem('rb-social-comments', JSON.stringify(comments)), [comments]);
+  const [feedTab, setFeedTab] = useState('foryou');
+  const [activeGroupId, setActiveGroupId] = useState(null);
+  const [mobileView, setMobileView] = useState('primary');
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const createPost = ({ testo, gif, link_esterno }) => {
+  useEffect(
+    () => localStorage.setItem('rb-social-posts', JSON.stringify(posts.filter((p) => !p.isFiller))),
+    [posts]
+  );
+  useEffect(
+    () => localStorage.setItem('rb-social-comments', JSON.stringify(comments.filter((c) => !c.isFiller))),
+    [comments]
+  );
+  useEffect(() => localStorage.setItem('rb-social-following', JSON.stringify(following)), [following]);
+  useEffect(() => localStorage.setItem('rb-social-joined-groups', JSON.stringify(joinedGroups)), [joinedGroups]);
+  useEffect(() => localStorage.setItem('rb-social-saved', JSON.stringify(savedPosts)), [savedPosts]);
+
+  const createPost = ({ testo, gif, link_esterno, gruppo_id }) => {
     const newPost = {
       id: makeId('post'),
       autoreId: 'me',
@@ -87,6 +128,7 @@ export default function SocialFeed({ world, user, onOpenAuth, locationFilters = 
       commenti: [],
       gif,
       link_esterno,
+      gruppo_id: gruppo_id ?? null,
     };
     setPosts((p) => [newPost, ...p]);
   };
@@ -125,71 +167,279 @@ export default function SocialFeed({ world, user, onOpenAuth, locationFilters = 
     );
   };
 
-  // Fase B: feed globale ordinato per pertinenza (like + commenti, con peso
-  // maggiore ai post recenti — vedi computeRelevance).
-  const sortedPosts = useMemo(
-    () => [...posts].sort((a, b) => computeRelevance(b, comments) - computeRelevance(a, comments)),
-    [posts, comments]
-  );
+  const toggleFollow = (userId) => {
+    setFollowing((prev) => (prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]));
+  };
+
+  const toggleJoinGroup = (groupId) => {
+    setJoinedGroups((prev) => (prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId]));
+  };
+
+  const toggleSavePost = (postId) => {
+    setSavedPosts((prev) => (prev.includes(postId) ? prev.filter((id) => id !== postId) : [...prev, postId]));
+  };
+
+  // Apre il feed di un gruppo da qualunque punto dell'app (badge su un post,
+  // card nella directory, widget "di tendenza" nella colonna destra) e, su
+  // mobile, riporta anche alla colonna principale se si veniva dalla destra.
+  const openGroup = (groupId) => {
+    setActiveGroupId(groupId);
+    setMobileView('primary');
+  };
+
+  const isGroupView = Boolean(activeGroupId);
+  const activeGroup = isGroupView ? getGroupById(activeGroupId) : null;
+
+  // Feed "Per te": i post curati/scritti dagli utenti restano ordinati per
+  // pertinenza tra loro; quelli generati per lo scroll infinito si
+  // aggiungono in coda (anch'essi ordinati per pertinenza tra loro) così
+  // l'ordine di ciò che si è già visto non "salta" mentre se ne carica altro.
+  const forYouList = useMemo(() => {
+    const curated = posts.filter((p) => !p.isFiller);
+    const filler = posts.filter((p) => p.isFiller);
+    const byRelevance = (a, b) => computeRelevance(b, comments) - computeRelevance(a, comments);
+    return [...curated.sort(byRelevance), ...filler.sort(byRelevance)];
+  }, [posts, comments]);
 
   const hasLocationFilter = Boolean(locationFilters.city || locationFilters.region || locationFilters.continent);
 
-  const regionalPosts = useMemo(() => {
+  const regionalForYou = useMemo(() => {
     if (!hasLocationFilter) return [];
-    return sortedPosts.filter((p) => matchesLocation(p, user, locationFilters));
+    return forYouList.filter((p) => matchesLocation(p, user, locationFilters));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortedPosts, user, locationFilters.city, locationFilters.region, locationFilters.continent, hasLocationFilter]);
+  }, [forYouList, user, locationFilters.city, locationFilters.region, locationFilters.continent, hasLocationFilter]);
 
-  // Con un filtro di zona attivo, il feed è "post della zona" con i più
-  // popolari di tutto il mondo Social intercalati ogni 3; senza filtro
-  // resta il feed globale per pertinenza di sempre.
-  const feedItems = useMemo(() => {
-    if (!hasLocationFilter) return sortedPosts.map((post) => ({ post, trendingRank: null }));
-    return interleaveTrending(regionalPosts, posts);
-  }, [hasLocationFilter, sortedPosts, regionalPosts, posts]);
+  // Con un filtro di zona attivo, il tab "Per te" mostra i post della zona
+  // con i più popolari di tutto il mondo Social intercalati ogni 3; senza
+  // filtro resta il feed per pertinenza di sempre (+ scroll infinito).
+  const forYouItems = useMemo(() => {
+    if (!hasLocationFilter) return forYouList.map((post) => ({ post, trendingRank: null }));
+    return interleaveTrending(regionalForYou, posts);
+  }, [hasLocationFilter, forYouList, regionalForYou, posts]);
 
-  // Fase C: solo i post pubblicati dall'utente loggato.
+  const followingList = useMemo(
+    () =>
+      posts
+        .filter((p) => following.includes(p.autoreId) || (p.gruppo_id && joinedGroups.includes(p.gruppo_id)))
+        .sort((a, b) => new Date(b.data) - new Date(a.data)),
+    [posts, following, joinedGroups]
+  );
+
+  const savedList = useMemo(
+    () => posts.filter((p) => savedPosts.includes(p.id)).sort((a, b) => new Date(b.data) - new Date(a.data)),
+    [posts, savedPosts]
+  );
+
+  const groupList = useMemo(
+    () =>
+      activeGroupId
+        ? posts
+            .filter((p) => p.gruppo_id === activeGroupId)
+            .sort((a, b) => computeRelevance(b, comments) - computeRelevance(a, comments))
+        : [],
+    [posts, comments, activeGroupId]
+  );
+
+  const groupPostCounts = useMemo(() => {
+    const counts = {};
+    posts.forEach((p) => {
+      if (!p.isFiller && p.gruppo_id) counts[p.gruppo_id] = (counts[p.gruppo_id] ?? 0) + 1;
+    });
+    return counts;
+  }, [posts]);
+
+  const suggestedUsers = useMemo(
+    () => usersForWorld('social').filter((u) => !following.includes(u.id)).slice(0, 4),
+    [following]
+  );
+
+  const trendingGroups = useMemo(() => [...GROUPS].sort((a, b) => b.memberCount - a.memberCount).slice(0, 4), []);
+
+  // Solo il tab "Per te" (senza gruppo aperto) usa gli item con trendingRank;
+  // gli altri tab restano liste semplici, qui uniformate alla stessa forma
+  // {post, trendingRank} per riusare un solo blocco di rendering.
+  const displayedItems = isGroupView
+    ? groupList.map((post) => ({ post, trendingRank: null }))
+    : feedTab === 'following'
+    ? followingList.map((post) => ({ post, trendingRank: null }))
+    : feedTab === 'saved'
+    ? savedList.map((post) => ({ post, trendingRank: null }))
+    : forYouItems;
+
+  const canInfiniteScroll =
+    isGroupView || feedTab === 'foryou' || (feedTab === 'following' && (following.length > 0 || joinedGroups.length > 0));
+
+  const emptyStateMessage = (() => {
+    if (isGroupView || displayedItems.length > 0) return null;
+    if (feedTab === 'following') return 'Non segui ancora nessuno. Segui qualcuno o iscriviti a un gruppo per vedere qui i loro post.';
+    if (feedTab === 'saved') return 'Non hai ancora salvato nessun post. Tocca 🔖 su un post per ritrovarlo qui.';
+    return null;
+  })();
+
+  const loadingRef = useRef(false);
+  const sentinelRef = useRef(null);
+
+  const loadMore = () => {
+    if (loadingRef.current || !canInfiniteScroll) return;
+    loadingRef.current = true;
+    setLoadingMore(true);
+    window.setTimeout(() => {
+      let options = {};
+      if (isGroupView) options = { groupId: activeGroupId };
+      else if (feedTab === 'following') options = { followingPool: following, joinedGroupsPool: joinedGroups };
+      const { posts: newPosts, comments: newComments } = generateFillerBatch(FILLER_BATCH, options);
+      if (newPosts.length > 0) {
+        setPosts((p) => [...p, ...newPosts]);
+        setComments((c) => [...c, ...newComments]);
+      }
+      loadingRef.current = false;
+      setLoadingMore(false);
+    }, 450);
+  };
+
+  const loadMoreRef = useRef(loadMore);
+  loadMoreRef.current = loadMore;
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !canInfiniteScroll) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) loadMoreRef.current();
+      },
+      { rootMargin: '600px 0px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+    // Deliberatamente SENZA displayedItems.length tra le dipendenze: se lo
+    // includessimo, ogni nuovo lotto ricrea l'observer mentre la sentinella
+    // è ancora nella rootMargin, IntersectionObserver la considera "appena
+    // apparsa" e richiama subito la callback — un ciclo che carica lotti
+    // all'infinito senza che l'utente scorra più nulla. Lo stesso observer
+    // resta quindi attivo tra un lotto e l'altro: si riattiva solo quando
+    // cambia davvero il "contesto" del feed (tab o gruppo).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedTab, activeGroupId, canInfiniteScroll]);
+
+  // Solo i post pubblicati dall'utente loggato.
   const myPosts = useMemo(
     () => posts.filter((p) => p.autoreId === 'me').sort((a, b) => new Date(b.data) - new Date(a.data)),
     [posts]
   );
 
+  const feedSubtitle =
+    feedTab === 'foryou' && !isGroupView && hasLocationFilter
+      ? `Post da ${locationFilters.city || locationFilters.region || locationFilters.continent}, con i più popolari di tutto il mondo Social intercalati`
+      : 'Cosa succede nel mondo Social';
+
   const primary = (
     <>
       <div className="rb-social-panel-header">
         <h3>Feed</h3>
-        <p>
-          {hasLocationFilter
-            ? `Post da ${locationFilters.city || locationFilters.region || locationFilters.continent}, con i più popolari di tutto il mondo Social intercalati`
-            : 'Cosa succede nel mondo Social'}
-        </p>
+        <p>{feedSubtitle}</p>
       </div>
-      <PostComposer user={user} onOpenAuth={onOpenAuth} onSubmit={createPost} />
 
-      {hasLocationFilter && regionalPosts.length === 0 && (
-        <p className="rb-social-empty">Nessun post ancora da questa zona.</p>
+      <div className="rb-feed-tabs">
+        {FEED_TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            className={`rb-feed-tab-btn ${!isGroupView && feedTab === t.id ? 'active' : ''}`}
+            onClick={() => {
+              setActiveGroupId(null);
+              setFeedTab(t.id);
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {isGroupView && activeGroup && (
+        <div className="rb-group-feed-header" style={{ '--group-color': activeGroup.color }}>
+          <button type="button" className="rb-group-back-btn" onClick={() => setActiveGroupId(null)}>
+            ← Gruppi
+          </button>
+          <span className="rb-group-feed-icon">{activeGroup.icon}</span>
+          <div className="rb-group-feed-info">
+            <strong>{activeGroup.name}</strong>
+            <span>
+              {(activeGroup.memberCount + (joinedGroups.includes(activeGroup.id) ? 1 : 0)).toLocaleString('it-IT')} membri
+            </span>
+          </div>
+          <button
+            type="button"
+            className={`rb-group-join-btn ${joinedGroups.includes(activeGroup.id) ? 'joined' : ''}`}
+            onClick={() => (user ? toggleJoinGroup(activeGroup.id) : onOpenAuth())}
+          >
+            {joinedGroups.includes(activeGroup.id) ? 'Iscritto ✓' : 'Iscriviti'}
+          </button>
+        </div>
       )}
 
-      <ul className="rb-post-list">
-        {feedItems.map(({ post, trendingRank }, i) => (
-          <PostCard
-            key={`${post.id}-${i}`}
-            post={post}
-            comments={comments}
-            user={user}
-            onOpenAuth={onOpenAuth}
-            onToggleLike={toggleLike}
-            onAddComment={addComment}
-            onReactToComment={reactToComment}
-            trendingRank={trendingRank}
-          />
-        ))}
-      </ul>
+      {feedTab === 'groups' && !isGroupView ? (
+        <GroupsDirectory
+          groups={GROUPS}
+          joinedGroups={joinedGroups}
+          postCounts={groupPostCounts}
+          user={user}
+          onOpenAuth={onOpenAuth}
+          onToggleJoin={toggleJoinGroup}
+          onOpenGroup={openGroup}
+        />
+      ) : (
+        <>
+          {feedTab !== 'saved' && (
+            <PostComposer user={user} onOpenAuth={onOpenAuth} onSubmit={createPost} groups={GROUPS} defaultGroupId={activeGroupId} />
+          )}
+
+          {hasLocationFilter && feedTab === 'foryou' && !isGroupView && regionalForYou.length === 0 && (
+            <p className="rb-social-empty">Nessun post ancora da questa zona.</p>
+          )}
+          {emptyStateMessage && <p className="rb-social-empty">{emptyStateMessage}</p>}
+
+          <ul className="rb-post-list">
+            {displayedItems.map(({ post, trendingRank }, i) => (
+              <PostCard
+                key={`${post.id}-${i}`}
+                post={post}
+                comments={comments}
+                user={user}
+                onOpenAuth={onOpenAuth}
+                onToggleLike={toggleLike}
+                onAddComment={addComment}
+                onReactToComment={reactToComment}
+                trendingRank={trendingRank}
+                following={following}
+                onToggleFollow={toggleFollow}
+                saved={savedPosts.includes(post.id)}
+                onToggleSave={toggleSavePost}
+                onOpenGroup={openGroup}
+              />
+            ))}
+            {canInfiniteScroll && (
+              <li ref={sentinelRef} className="rb-feed-sentinel">
+                {loadingMore && <span className="rb-feed-spinner" aria-label="Caricamento altri post" />}
+              </li>
+            )}
+          </ul>
+        </>
+      )}
     </>
   );
 
   const secondary = (
     <>
+      <SuggestedUsers candidates={suggestedUsers} user={user} onOpenAuth={onOpenAuth} onToggleFollow={toggleFollow} />
+      <TrendingGroups
+        groups={trendingGroups}
+        joinedGroups={joinedGroups}
+        user={user}
+        onOpenAuth={onOpenAuth}
+        onToggleJoin={toggleJoinGroup}
+        onOpenGroup={openGroup}
+      />
+
       <div className="rb-social-panel-header">
         <h3>I miei post</h3>
         <p>{user ? `${myPosts.length} pubblicati` : 'Accedi per vedere i tuoi post'}</p>
@@ -232,7 +482,14 @@ export default function SocialFeed({ world, user, onOpenAuth, locationFilters = 
 
   return (
     <div className="rb-social-feed" style={{ '--accent': world.color }}>
-      <TwoColumnSwitcher primary={primary} secondary={secondary} primaryLabel="Feed" secondaryLabel="I miei post" />
+      <TwoColumnSwitcher
+        primary={primary}
+        secondary={secondary}
+        primaryLabel="Feed"
+        secondaryLabel="I miei post"
+        mobileView={mobileView}
+        onMobileViewChange={setMobileView}
+      />
     </div>
   );
 }

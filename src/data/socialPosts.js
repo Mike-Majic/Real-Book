@@ -4,7 +4,8 @@
 // forma dei dati e un set di post/commenti finti per popolare il feed.
 //
 // Post: { id, autoreId, testo, data (ISO), mi_piace: [autoreId,...],
-//         commenti: [commentId,...], gif: url|null, link_esterno: {url}|null }
+//         commenti: [commentId,...], gif: url|null, link_esterno: {url}|null,
+//         gruppo_id: id di GROUPS|null (null = bacheca generale) }
 // Commento: { id, post_id, autoreId, testo, data (ISO), gif: url|null,
 //             reazioni: { emoji: conteggio } }
 //
@@ -21,6 +22,7 @@ export const INITIAL_POSTS = [
     commenti: ['c-1', 'c-2'],
     gif: null,
     link_esterno: null,
+    gruppo_id: 'fotografia',
   },
   {
     id: 'post-2',
@@ -31,6 +33,7 @@ export const INITIAL_POSTS = [
     commenti: ['c-3'],
     gif: null,
     link_esterno: null,
+    gruppo_id: 'tech',
   },
   {
     id: 'post-3',
@@ -41,6 +44,7 @@ export const INITIAL_POSTS = [
     commenti: [],
     gif: null,
     link_esterno: null,
+    gruppo_id: 'cinema',
   },
   {
     id: 'post-4',
@@ -51,6 +55,7 @@ export const INITIAL_POSTS = [
     commenti: ['c-4'],
     gif: 'https://media.giphy.com/media/3o7aCTPPm4OHfRLSH6/giphy.gif',
     link_esterno: null,
+    gruppo_id: 'viaggi',
   },
   {
     id: 'post-5',
@@ -61,6 +66,7 @@ export const INITIAL_POSTS = [
     commenti: [],
     gif: null,
     link_esterno: { url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw' },
+    gruppo_id: 'danza-teatro',
   },
   {
     id: 'post-6',
@@ -71,6 +77,7 @@ export const INITIAL_POSTS = [
     commenti: ['c-5'],
     gif: null,
     link_esterno: { url: 'https://www.moma.org/calendar/exhibitions' },
+    gruppo_id: 'arte-mostre',
   },
   {
     id: 'post-7',
@@ -81,6 +88,7 @@ export const INITIAL_POSTS = [
     commenti: [],
     gif: null,
     link_esterno: null,
+    gruppo_id: 'mare-barca',
   },
   {
     id: 'post-8',
@@ -91,6 +99,7 @@ export const INITIAL_POSTS = [
     commenti: ['c-6', 'c-7'],
     gif: null,
     link_esterno: null,
+    gruppo_id: 'musica-indie',
   },
   {
     id: 'post-9',
@@ -101,6 +110,7 @@ export const INITIAL_POSTS = [
     commenti: [],
     gif: null,
     link_esterno: null,
+    gruppo_id: null,
   },
   {
     id: 'post-10',
@@ -111,6 +121,7 @@ export const INITIAL_POSTS = [
     commenti: [],
     gif: null,
     link_esterno: null,
+    gruppo_id: 'cucina',
   },
 ];
 

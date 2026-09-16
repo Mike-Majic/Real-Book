@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import EmojiPicker from './EmojiPicker';
 import GifPicker from './GifPicker';
 import './PostComposer.css';
@@ -14,12 +14,22 @@ export default function PostComposer({
   placeholder = 'A cosa stai pensando?',
   submitLabel = 'Pubblica',
   compact = false,
+  // Passato solo dal composer principale del feed (non da quello dei
+  // commenti): permette di scegliere se pubblicare in bacheca generale o
+  // in uno dei gruppi, come iscriversi/postare in un subreddit.
+  groups = null,
+  defaultGroupId = null,
 }) {
   const [text, setText] = useState('');
   const [gif, setGif] = useState(null);
   const [linkUrl, setLinkUrl] = useState('');
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [showLinkInput, setShowLinkInput] = useState(false);
+  const [groupId, setGroupId] = useState(defaultGroupId);
+
+  // Se si apre il feed di un gruppo diverso, il composer riparte
+  // preselezionando quel gruppo (non lo stato interno di prima).
+  useEffect(() => setGroupId(defaultGroupId), [defaultGroupId]);
 
   const requireAuth = () => {
     if (!user) {
@@ -38,16 +48,34 @@ export default function PostComposer({
       testo: text.trim(),
       gif,
       link_esterno: linkUrl.trim() ? { url: linkUrl.trim() } : null,
+      gruppo_id: groups ? groupId : undefined,
     });
     setText('');
     setGif(null);
     setLinkUrl('');
     setShowLinkInput(false);
     setShowGifPicker(false);
+    if (groups) setGroupId(defaultGroupId);
   };
 
   return (
     <form className={`rb-post-composer ${compact ? 'compact' : ''}`} onSubmit={submit}>
+      {groups && (
+        <select
+          className="rb-composer-group-select"
+          value={groupId ?? ''}
+          onChange={(e) => setGroupId(e.target.value || null)}
+          onFocus={() => requireAuth()}
+          aria-label="Pubblica in"
+        >
+          <option value="">🌐 Bacheca generale</option>
+          {groups.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.icon} {g.name}
+            </option>
+          ))}
+        </select>
+      )}
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}

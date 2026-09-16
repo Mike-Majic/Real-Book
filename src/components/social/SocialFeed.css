@@ -31,6 +31,112 @@
   color: rgba(245, 245, 247, 0.5);
 }
 
+.rb-feed-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+}
+
+.rb-feed-tab-btn {
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(245, 245, 247, 0.7);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rb-feed-tab-btn.active {
+  background: var(--accent, #1d9bf0);
+  border-color: var(--accent, #1d9bf0);
+  color: #06151f;
+}
+
+.rb-group-feed-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: color-mix(in srgb, var(--group-color, #1d9bf0) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--group-color, #1d9bf0) 40%, transparent);
+  border-radius: 14px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.rb-group-back-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: rgba(245, 245, 247, 0.7);
+  font-size: 11.5px;
+  cursor: pointer;
+  padding: 4px 2px;
+}
+
+.rb-group-feed-icon {
+  font-size: 22px;
+}
+
+.rb-group-feed-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rb-group-feed-info strong {
+  font-size: 13.5px;
+}
+
+.rb-group-feed-info span {
+  font-size: 10.5px;
+  color: rgba(245, 245, 247, 0.55);
+}
+
+.rb-group-feed-header .rb-group-join-btn {
+  flex-shrink: 0;
+  background: var(--group-color, #1d9bf0);
+  border: 1px solid var(--group-color, #1d9bf0);
+  color: #06151f;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 7px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.rb-group-feed-header .rb-group-join-btn.joined {
+  background: transparent;
+  color: #f5f5f7;
+}
+
+.rb-feed-sentinel {
+  display: flex;
+  justify-content: center;
+  padding: 14px 0;
+  min-height: 1px;
+}
+
+.rb-feed-spinner {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--accent, #1d9bf0);
+  animation: rb-feed-spin 0.7s linear infinite;
+}
+
+@keyframes rb-feed-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .rb-post-list {
   list-style: none;
   margin: 0;
