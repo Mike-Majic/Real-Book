@@ -11,6 +11,7 @@
 }
 
 .rb-match-card {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -19,6 +20,43 @@
   overflow: hidden;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid color-mix(in srgb, var(--accent, #ff3860) 40%, transparent);
+  transition: transform 0.32s ease, opacity 0.32s ease;
+}
+
+/* "Mi piace" scorre la card a destra, "Passa" a sinistra, prima di
+   passare al profilo successivo (vedi decide() in MatchColumn.jsx). */
+.rb-match-card.leaving-right {
+  transform: translateX(140%) rotate(10deg);
+  opacity: 0;
+}
+
+.rb-match-card.leaving-left {
+  transform: translateX(-140%) rotate(-10deg);
+  opacity: 0;
+}
+
+.rb-match-fav-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rb-match-fav-btn.active {
+  background: #ffb020;
+  border-color: #ffb020;
+  color: #1a0006;
 }
 
 .rb-match-card-photo {
@@ -77,6 +115,12 @@
   cursor: pointer;
 }
 
+.rb-match-pass-btn:disabled,
+.rb-match-like-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .rb-match-pass-btn {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -89,15 +133,105 @@
   color: #1a0006;
 }
 
-.rb-match-list-col h3 {
-  margin: 0 0 4px;
-  font-size: 15px;
+.rb-match-secondary-col {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
 }
 
-.rb-match-list-col > p {
-  margin: 0 0 12px;
-  font-size: 11.5px;
-  color: rgba(245, 245, 247, 0.55);
+.rb-match-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.rb-match-tab-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(245, 245, 247, 0.75);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rb-match-tab-btn.active {
+  background: var(--accent, #ff3860);
+  border-color: var(--accent, #ff3860);
+  color: #1a0006;
+}
+
+.rb-match-pane-empty {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(245, 245, 247, 0.5);
+}
+
+.rb-match-likes-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 8px;
+}
+
+.rb-match-likes-item img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.rb-match-likes-item > span {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rb-match-likes-item strong {
+  font-size: 12.5px;
+}
+
+.rb-match-likes-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.rb-match-likes-actions button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f5f5f7;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.rb-match-likes-actions button:last-child {
+  background: var(--accent, #ff3860);
+  border-color: var(--accent, #ff3860);
+}
+
+.rb-match-fav-remove {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  color: rgba(245, 245, 247, 0.6);
+  cursor: pointer;
+  font-size: 12px;
 }
 
 .rb-match-list {
