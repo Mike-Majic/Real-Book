@@ -62,6 +62,8 @@ export default function SettingsPanel({
   open,
   onClose,
   onApply,
+  user,
+  onOpenAuth,
   filters,
   setFilters,
   locationFilters,
@@ -186,6 +188,36 @@ export default function SettingsPanel({
                 type="checkbox"
                 checked={visibility.nearbyVisible}
                 onChange={(e) => setVisibility((v) => ({ ...v, nearbyVisible: e.target.checked }))}
+              />
+              <span className="rb-toggle-slider" />
+            </span>
+          </label>
+        </section>
+
+        <section className="rb-settings-section">
+          <h3>Posizione in tempo reale</h3>
+          <p className="rb-settings-hint">
+            {user
+              ? 'Se attivo, il pallino sul tuo marker nel mondo diventa verde e segue la tua posizione reale, aggiornata in tempo reale. Se spento, il pallino resta quello standard e nessuna posizione viene condivisa o richiesta al browser.'
+              : 'Accedi per poter condividere la tua posizione in tempo reale.'}
+          </p>
+
+          <label className="rb-toggle-row">
+            <span className="rb-toggle-text">
+              <strong>Condividi la mia posizione in tempo reale</strong>
+            </span>
+            <span className="rb-toggle">
+              <input
+                type="checkbox"
+                checked={visibility.shareLiveLocation}
+                disabled={!user}
+                onChange={(e) => {
+                  if (!user) {
+                    onOpenAuth?.();
+                    return;
+                  }
+                  setVisibility((v) => ({ ...v, shareLiveLocation: e.target.checked }));
+                }}
               />
               <span className="rb-toggle-slider" />
             </span>

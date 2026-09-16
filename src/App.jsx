@@ -47,7 +47,7 @@ const SHOW_FAKE_PROFILES_SCALE_TEST = true;
 const DEFAULT_FILTERS = { gender: 'Tutti', ageMin: 18, ageMax: 60 };
 const DEFAULT_LOCATION_FILTERS = { continent: '', region: '', city: '', distance: 150 };
 const DEFAULT_ARTE_FILTER = { category: '', subfamily: '' };
-const DEFAULT_VISIBILITY = { nearbyVisible: false };
+const DEFAULT_VISIBILITY = { nearbyVisible: false, shareLiveLocation: false };
 
 // Mondi che hanno un proprio set di categorie esplorabili sul globo (triangoli
 // cliccabili + colonne di ricerca/persone vicine, via ArteExplorer/CategoryColumn).
@@ -120,6 +120,13 @@ export default function App() {
   const [arteFilter, setArteFilter] = useState(() => loadStored('rb-arte-filter', DEFAULT_ARTE_FILTER));
   const [arteInitialSubfamily, setArteInitialSubfamily] = useState('');
   const [visibility, setVisibility] = useState(() => loadStored('rb-visibility', DEFAULT_VISIBILITY));
+  // Posizione reale del dispositivo, aggiornata in continuo solo mentre
+  // "Condividi la mia posizione in tempo reale" è attivo nelle Impostazioni
+  // (vedi effect più sotto). Senza consenso attivo non si chiede mai il
+  // permesso al browser, e il proprio marker semplicemente non appare sul
+  // globo — nessuna posizione "finta" o salvata altrove.
+  const [ownPosition, setOwnPosition] = useState(null);
+  const geoWatchIdRef = useRef(null);
   const [flyTo, setFlyTo] = useState(null);
   // Eventi del mondo Social e sistema di amicizie: sollevati qui (non dentro
   // SocialFeed) perché servono anche a WorldGlobe (marker quadrato sul
@@ -194,6 +201,39 @@ export default function App() {
     [friendRequestsSent]
   );
 
+  // Traccia la posizione reale del dispositivo solo mentre l'utente ha
+  // attivato "Condividi la mia posizione in tempo reale" nelle Impostazioni:
+  // il permesso al browser si chiede solo a quel momento, mai prima. Se lo
+  // disattiva, si smette subito di osservare (clearWatch) e il marker
+  // sparisce dal globo. Se il permesso viene negato, il toggle si rimette
+  // da solo su spento.
+  useEffect(() => {
+    if (!user || !visibility.shareLiveLocation || !navigator.geolocation) {
+      if (geoWatchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(geoWatchIdRef.current);
+        geoWatchIdRef.current = null;
+      }
+      setOwnPosition(null);
+      return undefined;
+    }
+
+    geoWatchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => setOwnPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {
+        setOwnPosition(null);
+        setVisibility((v) => ({ ...v, shareLiveLocation: false }));
+      },
+      { enableHighAccuracy: true, maximumAge: 10000 }
+    );
+
+    return () => {
+      if (geoWatchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(geoWatchIdRef.current);
+        geoWatchIdRef.current = null;
+      }
+    };
+  }, [user, visibility.shareLiveLocation]);
+
   // Un evento sparisce (dal globo e dalla colonna) a fine giornata della sua
   // data, in automatico: ricalcolato ad ogni render invece che con un timer
   // che ticchetta, la granularità è "un giorno" quindi non serve altro.
@@ -251,6 +291,25 @@ export default function App() {
       return matchesLocation(u);
     });
   }, [world.id, filters, locationFilters]);
+
+  // Il proprio marker (quando si condivide la posizione in tempo reale) si
+  // aggiunge SOPRA ai risultati già filtrati, non dentro: i propri filtri
+  // (genere/età/posizione) servono a scoprire gli altri, non a nascondere
+  // se stessi dal globo.
+  const globeUsers = useMemo(() => {
+    if (!user || !visibility.shareLiveLocation || !ownPosition) return worldUsers;
+    const ownMarker = {
+      id: 'me-live',
+      name: user.nickname ?? user.name ?? 'Io',
+      avatar: user.avatar,
+      city: 'La mia posizione',
+      country: '',
+      lat: ownPosition.lat,
+      lng: ownPosition.lng,
+      isLive: true,
+    };
+    return [...worldUsers, ownMarker];
+  }, [worldUsers, user, visibility.shareLiveLocation, ownPosition]);
 
   // Quando la città cercata nei filtri (globali, validi per tutti i mondi) corrisponde
   // a una città nota, il globo ci "vola" sopra.
@@ -368,7 +427,7 @@ export default function App() {
 
       <WorldGlobe
         world={world}
-        users={worldUsers}
+        users={globeUsers}
         onSelectUser={setSelectedUser}
         containerRef={containerRef}
         flyTo={flyTo}
@@ -483,6 +542,8 @@ export default function App() {
           applyArteFilter();
           setSettingsOpen(false);
         }}
+        user={user}
+        onOpenAuth={() => setAuthOpen(true)}
         filters={filters}
         setFilters={setFilters}
         locationFilters={locationFilters}

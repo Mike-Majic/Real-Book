@@ -19,13 +19,20 @@ export const CATEGORY_FLY_MS = 1800;
 // intatto, sotto l'else.
 const USE_REALISTIC_CONTINENTS = true;
 
+// Il pallino nell'angolo della foto è verde e "vivo" solo per il proprio
+// marker quando si condivide la posizione in tempo reale (vedi App.jsx,
+// ownPosition/shareLiveLocation): altrimenti resta il colore standard del
+// mondo, come sempre.
+const LIVE_LOCATION_COLOR = '#22c55e';
+
 function makeMarkerEl(user, world, onOpen) {
   const el = document.createElement('div');
   el.className = 'rb-marker';
+  const dotColor = user.isLive ? LIVE_LOCATION_COLOR : world.color;
   el.innerHTML = `
     <div class="rb-marker-photo" style="border-color:${world.color}">
       <img src="${user.avatar}" alt="${user.name}" loading="lazy" />
-      <span class="rb-marker-dot" style="background:${world.color}"></span>
+      <span class="rb-marker-dot ${user.isLive ? 'rb-marker-dot-live' : ''}" style="background:${dotColor}"></span>
     </div>
   `;
   el.title = `${user.name} · ${user.city}`;
