@@ -6,7 +6,7 @@ import ProfileModal from './components/ProfileModal';
 import AuthModal from './components/AuthModal';
 import ArteExplorer from './components/ArteExplorer';
 import BambiniGameExplorer from './components/BambiniGameExplorer';
-import SocialFeed from './components/social/SocialFeed';
+import SocialWorldExplorer from './components/social/SocialWorldExplorer';
 import { WORLDS, DEFAULT_WORLD_INDEX } from './data/worlds';
 import { usersForWorld } from './data/mockUsers';
 import { useSwipeWorld } from './hooks/useSwipeWorld';
@@ -25,6 +25,7 @@ import {
 } from './data/nerdCategories';
 import { BAMBINI_CATEGORIES, resolveCategoryQuery as resolveBambiniCategoryQuery } from './games/registry';
 import { INCONTRI_CATEGORIES, resolveCategoryQuery as resolveIncontriCategoryQuery } from './data/incontriCategories';
+import { SOCIAL_CATEGORIES, resolveCategoryQuery as resolveSocialCategoryQuery } from './data/socialCategories';
 import { FAKE_PROFILES } from './data/fakeProfiles';
 import IncontriLiveExplorer from './components/incontri/IncontriLiveExplorer';
 import AdultGate from './components/incontri/AdultGate';
@@ -58,6 +59,8 @@ const CATEGORY_WORLDS = {
   bambini: { categories: BAMBINI_CATEGORIES, resolveQuery: resolveBambiniCategoryQuery },
   // Incontri: solo "Live" per ora, apre la chat invece di colonne di contenuti.
   incontri: { categories: INCONTRI_CATEGORIES, resolveQuery: resolveIncontriCategoryQuery },
+  // Social: solo "World", apre il feed esistente invece di CategoryColumn.
+  social: { categories: SOCIAL_CATEGORIES, resolveQuery: resolveSocialCategoryQuery },
 };
 
 // Aspetta che l'utente finisca di digitare prima di far "volare" il globo sulla città cercata.
@@ -384,7 +387,7 @@ export default function App() {
         onSelectEvent={(eventId) => setEventLikersId(eventId)}
       />
 
-      {categorySet && world.id !== 'bambini' && world.id !== 'incontri' && (
+      {categorySet && world.id !== 'bambini' && world.id !== 'incontri' && world.id !== 'social' && (
         <ArteExplorer
           world={world}
           categorySet={categorySet}
@@ -421,8 +424,11 @@ export default function App() {
       )}
 
       {world.id === 'social' && (
-        <SocialFeed
+        <SocialWorldExplorer
           world={world}
+          activeCategory={activeArteCategory}
+          onToggleCategory={toggleArteCategory}
+          onSearchCategory={flyToArteCategory}
           user={user}
           onOpenAuth={() => setAuthOpen(true)}
           locationFilters={locationFilters}
