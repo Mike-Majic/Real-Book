@@ -22,6 +22,7 @@ export default function PostComposer({
 }) {
   const [text, setText] = useState('');
   const [gif, setGif] = useState(null);
+  const [gifLoadFailed, setGifLoadFailed] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [showLinkInput, setShowLinkInput] = useState(false);
@@ -30,6 +31,10 @@ export default function PostComposer({
   // Se si apre il feed di un gruppo diverso, il composer riparte
   // preselezionando quel gruppo (non lo stato interno di prima).
   useEffect(() => setGroupId(defaultGroupId), [defaultGroupId]);
+
+  // Ogni volta che cambia la GIF selezionata (nuova scelta, o rimossa) si
+  // riparte senza l'avviso di errore della GIF precedente.
+  useEffect(() => setGifLoadFailed(false), [gif]);
 
   const requireAuth = () => {
     if (!user) {
@@ -86,7 +91,11 @@ export default function PostComposer({
 
       {gif && (
         <div className="rb-composer-gif-preview">
-          <img src={gif} alt="GIF selezionata" />
+          {gifLoadFailed ? (
+            <p className="rb-composer-gif-error">⚠️ Questa GIF non si carica, provane un'altra</p>
+          ) : (
+            <img src={gif} alt="GIF selezionata" onError={() => setGifLoadFailed(true)} />
+          )}
           <button type="button" onClick={() => setGif(null)} aria-label="Rimuovi GIF">✕</button>
         </div>
       )}

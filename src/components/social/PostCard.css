@@ -110,6 +110,16 @@
   margin-bottom: 8px;
 }
 
+.rb-gif-load-error {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #ff8080;
+  background: rgba(255, 128, 128, 0.1);
+  border: 1px solid rgba(255, 128, 128, 0.3);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
 .rb-post-actions {
   display: flex;
   gap: 10px;
