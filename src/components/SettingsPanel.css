@@ -280,3 +280,77 @@
   color: rgba(245, 245, 247, 0.5);
   flex-shrink: 0;
 }
+
+/* Stesso linguaggio visivo di rb-settings-nav-btn, ma per una riga che
+   apre/chiude il contenuto sotto di sé invece di portare a un'altra
+   schermata (vedi CollapsibleSection in SettingsPanel.jsx). */
+.rb-settings-accordion-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #f5f5f7;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rb-settings-accordion-header strong {
+  display: block;
+  font-size: 15px;
+}
+
+.rb-settings-accordion-header p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: rgba(245, 245, 247, 0.55);
+  line-height: 1.4;
+}
+
+.rb-settings-accordion-chevron {
+  font-size: 18px;
+  color: rgba(245, 245, 247, 0.5);
+  flex-shrink: 0;
+  width: 24px;
+  text-align: center;
+}
+
+.rb-settings-accordion-body {
+  margin-top: 14px;
+}
+
+.rb-privacy-contact-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rb-privacy-contact-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+}
+
+.rb-privacy-inline-btn {
+  flex: none;
+  padding: 6px 12px;
+  font-size: 11.5px;
+}
+
+.rb-privacy-error {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  color: #ff8080;
+}

@@ -1,8 +1,34 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CONTINENTS, REGIONS } from '../data/geo';
 import { ARTE_CATEGORIES } from '../data/arteCategories';
+import { MOCK_USERS } from '../data/mockUsers';
+import { listBlockedContacts, blockContact, unblockContact } from '../data/blockedContacts';
+import { resetAccountPassword } from '../data/accounts';
 import ModalOverlay from './ModalOverlay';
 import './SettingsPanel.css';
+
+function contactName(id) {
+  const u = MOCK_USERS.find((m) => m.id === id);
+  return u?.name ?? `Utente #${id}`;
+}
+
+// Riga di titolo cliccabile che apre/chiude il contenuto sotto — stesso
+// linguaggio visivo di rb-settings-nav-btn (che porta a un'altra vista),
+// qui invece resta nella stessa schermata e mostra/nasconde i campi.
+function CollapsibleSection({ title, hint, open, onToggle, children }) {
+  return (
+    <section className="rb-settings-section">
+      <button type="button" className="rb-settings-accordion-header" onClick={onToggle} aria-expanded={open}>
+        <span>
+          <strong>{title}</strong>
+          {hint && <p>{hint}</p>}
+        </span>
+        <span className="rb-settings-accordion-chevron" aria-hidden="true">{open ? '−' : '+'}</span>
+      </button>
+      {open && <div className="rb-settings-accordion-body">{children}</div>}
+    </section>
+  );
+}
 
 // Vista "Filtri avanzati": una seconda schermata dentro lo stesso pannello,
 // raggiunta con un pulsante e richiusa con "Indietro" verso le Impostazioni
@@ -60,6 +86,143 @@ function AdvancedFiltersView({ onBack, onClose, arteFilter, setArteFilter }) {
   );
 }
 
+// Vista "Privacy": contatti bloccati e sicurezza dell'account. Stesso
+// pattern di navigazione di AdvancedFiltersView (una schermata in più
+// dentro lo stesso pannello, non un modale a parte).
+function PrivacyView({ onBack, onClose, user, onOpenAuth, friends, onUnfriend }) {
+  const [blocked, setBlocked] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwSent, setPwSent] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    listBlockedContacts().then((ids) => {
+      if (!cancelled) {
+        setBlocked(ids);
+        setLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const doBlock = async (id) => {
+    setError('');
+    const { error: err } = await blockContact(id);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setBlocked((prev) => [...prev, String(id)]);
+    onUnfriend?.(id);
+  };
+
+  const doUnblock = async (id) => {
+    setError('');
+    const { error: err } = await unblockContact(id);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setBlocked((prev) => prev.filter((b) => b !== String(id)));
+  };
+
+  const changePassword = async () => {
+    if (!user?.email) return;
+    setPwBusy(true);
+    const { error: err } = await resetAccountPassword(user.email);
+    setPwBusy(false);
+    if (!err) setPwSent(true);
+  };
+
+  const blockableFriends = (friends ?? []).filter((id) => !blocked.includes(String(id)));
+
+  return (
+    <>
+      <div className="rb-settings-header">
+        <button type="button" className="rb-settings-back-btn" onClick={onBack}>
+          ← Impostazioni
+        </button>
+        <button className="rb-close-btn" onClick={onClose} aria-label="Chiudi">✕</button>
+      </div>
+      <h2 className="rb-settings-subtitle">Privacy</h2>
+
+      <section className="rb-settings-section rb-settings-section-first">
+        <h3>Contatti bloccati</h3>
+        <p className="rb-settings-hint">
+          Un contatto bloccato non può più scriverti né vederti tra i tuoi amici. Puoi sbloccarlo quando vuoi.
+        </p>
+
+        {!user ? (
+          <button type="button" className="rb-settings-nav-btn" onClick={onOpenAuth}>
+            <span><strong>Accedi per gestire i contatti bloccati</strong></span>
+            <span aria-hidden="true">→</span>
+          </button>
+        ) : loading ? (
+          <p className="rb-settings-hint">Caricamento...</p>
+        ) : (
+          <>
+            {error && <p className="rb-privacy-error">{error}</p>}
+            {blocked.length > 0 && (
+              <ul className="rb-privacy-contact-list">
+                {blocked.map((id) => (
+                  <li key={id} className="rb-privacy-contact-row">
+                    <span>{contactName(Number.isNaN(Number(id)) ? id : Number(id))}</span>
+                    <button type="button" className="rb-reset-filters-btn rb-privacy-inline-btn" onClick={() => doUnblock(id)}>
+                      Sblocca
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {blockableFriends.length > 0 && (
+              <ul className="rb-privacy-contact-list">
+                {blockableFriends.map((id) => (
+                  <li key={id} className="rb-privacy-contact-row">
+                    <span>{contactName(id)}</span>
+                    <button type="button" className="rb-reset-filters-btn rb-privacy-inline-btn" onClick={() => doBlock(id)}>
+                      Blocca
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {blocked.length === 0 && blockableFriends.length === 0 && (
+              <p className="rb-settings-hint">Nessun contatto da mostrare.</p>
+            )}
+          </>
+        )}
+      </section>
+
+      <section className="rb-settings-section">
+        <h3>Sicurezza e accesso</h3>
+        <p className="rb-settings-hint">Ti mandiamo una mail con un link per scegliere una nuova password.</p>
+        {!user ? (
+          <button type="button" className="rb-settings-nav-btn" onClick={onOpenAuth}>
+            <span><strong>Accedi per gestire la sicurezza dell'account</strong></span>
+            <span aria-hidden="true">→</span>
+          </button>
+        ) : pwSent ? (
+          <p className="rb-settings-hint">Mail inviata: controlla la posta (anche spam).</p>
+        ) : (
+          <button type="button" className="rb-reset-filters-btn" onClick={changePassword} disabled={pwBusy}>
+            {pwBusy ? 'Un attimo…' : 'Cambia password'}
+          </button>
+        )}
+      </section>
+
+      <p className="rb-settings-footnote">Altre impostazioni privacy arriveranno qui.</p>
+    </>
+  );
+}
+
 export default function SettingsPanel({
   open,
   onClose,
@@ -75,8 +238,12 @@ export default function SettingsPanel({
   visibility,
   setVisibility,
   onResetFilters,
+  friends,
+  onUnfriend,
 }) {
   const [view, setView] = useState('main');
+  const [luogoOpen, setLuogoOpen] = useState(false);
+  const [personalizzaOpen, setPersonalizzaOpen] = useState(false);
 
   if (!open) return null;
 
@@ -88,6 +255,23 @@ export default function SettingsPanel({
       <ModalOverlay onClose={onClose} className="rb-settings-overlay">
         <aside className="rb-settings-panel" onClick={(e) => e.stopPropagation()}>
           <AdvancedFiltersView onBack={() => setView('main')} onClose={onClose} arteFilter={arteFilter} setArteFilter={setArteFilter} />
+        </aside>
+      </ModalOverlay>
+    );
+  }
+
+  if (view === 'privacy') {
+    return (
+      <ModalOverlay onClose={onClose} className="rb-settings-overlay">
+        <aside className="rb-settings-panel" onClick={(e) => e.stopPropagation()}>
+          <PrivacyView
+            onBack={() => setView('main')}
+            onClose={onClose}
+            user={user}
+            onOpenAuth={onOpenAuth}
+            friends={friends}
+            onUnfriend={onUnfriend}
+          />
         </aside>
       </ModalOverlay>
     );
@@ -110,10 +294,12 @@ export default function SettingsPanel({
           </button>
         </div>
 
-        <section className="rb-settings-section">
-          <h3>Dove</h3>
-          <p className="rb-settings-hint">Continente, regione e città: valido per tutti i mondi.</p>
-
+        <CollapsibleSection
+          title="Luogo"
+          hint="Continente, regione e città: valido per tutti i mondi."
+          open={luogoOpen}
+          onToggle={() => setLuogoOpen((v) => !v)}
+        >
           <label className="rb-field">
             <span>Continente</span>
             <select value={locationFilters.continent} onChange={(e) => updateLocation('continent', e.target.value)}>
@@ -149,12 +335,14 @@ export default function SettingsPanel({
             <input type="range" min={1} max={500} value={locationFilters.distance}
               onChange={(e) => updateLocation('distance', Number(e.target.value))} />
           </label>
-        </section>
+        </CollapsibleSection>
 
-        <section className="rb-settings-section">
-          <h3>Personalizza il tuo Versemove</h3>
-          <p className="rb-settings-hint">Genere ed età: valido per tutti i mondi — tutto gratuito, nessuna funzione a pagamento.</p>
-
+        <CollapsibleSection
+          title="Personalizza il tuo Versemove"
+          hint="Genere ed età: valido per tutti i mondi — tutto gratuito, nessuna funzione a pagamento."
+          open={personalizzaOpen}
+          onToggle={() => setPersonalizzaOpen((v) => !v)}
+        >
           <label className="rb-field">
             <span>Mostrami</span>
             <div className="rb-chip-group">
@@ -194,7 +382,7 @@ export default function SettingsPanel({
               <span className="rb-toggle-slider" />
             </span>
           </label>
-        </section>
+        </CollapsibleSection>
 
         <section className="rb-settings-section">
           <h3>Posizione in tempo reale</h3>
@@ -231,6 +419,16 @@ export default function SettingsPanel({
             <span>
               <strong>Filtri avanzati</strong>
               <p>Categorie specifiche di un mondo e altri filtri in arrivo.</p>
+            </span>
+            <span aria-hidden="true">→</span>
+          </button>
+        </section>
+
+        <section className="rb-settings-section">
+          <button type="button" className="rb-settings-nav-btn" onClick={() => setView('privacy')}>
+            <span>
+              <strong>Privacy</strong>
+              <p>Contatti bloccati, sicurezza e accesso.</p>
             </span>
             <span aria-hidden="true">→</span>
           </button>

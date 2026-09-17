@@ -615,6 +615,8 @@ export default function App() {
           setArteFilter(DEFAULT_ARTE_FILTER);
           setVisibility(DEFAULT_VISIBILITY);
         }}
+        friends={friends}
+        onUnfriend={(id) => setFriends((prev) => prev.filter((f) => f !== id))}
       />
 
       <ProfileModal user={selectedUser} world={world} onClose={() => setSelectedUser(null)} />
@@ -644,8 +646,6 @@ export default function App() {
         onClose={() => setProfileSettingsOpen(false)}
         user={user}
         onUpdateUser={(account) => setUser({ ...account, name: account.nickname })}
-        friends={friends}
-        onUnfriend={(id) => setFriends((prev) => prev.filter((f) => f !== id))}
       />
 
       <AuthModal

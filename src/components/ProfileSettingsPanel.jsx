@@ -8,9 +8,7 @@ import {
   setOwnWorlds,
 } from '../data/accounts';
 import { sendMailboxMessage } from '../data/modMailbox';
-import { listBlockedContacts, blockContact, unblockContact } from '../data/blockedContacts';
 import { WORLDS } from '../data/worlds';
-import { MOCK_USERS } from '../data/mockUsers';
 import ModalOverlay from './ModalOverlay';
 import './ProfileSettingsPanel.css';
 
@@ -28,11 +26,6 @@ const PRONOMI_PRESETS = [
 
 function daysLeft(ms) {
   return Math.ceil(ms / (24 * 60 * 60 * 1000));
-}
-
-function contactName(id) {
-  const u = MOCK_USERS.find((m) => m.id === id);
-  return u?.name ?? `Utente #${id}`;
 }
 
 // Icona "i" cerchiata: al click mostra una vignetta con la regola. Chi la
@@ -335,108 +328,11 @@ function WorldsTab({ user, onUpdateUser }) {
   );
 }
 
-// Scheda "Privacy": blocco/sblocco dei contatti. I contatti mostrati oggi
-// (friends, in App.jsx) sono ancora utenti finti di demo (mockUsers), non
-// veri account collegati — vedi il commento in blockedContacts.js.
-function PrivacyTab({ user, friends, onUnfriend }) {
-  const [blocked, setBlocked] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    let cancelled = false;
-    listBlockedContacts().then((ids) => {
-      if (!cancelled) {
-        setBlocked(ids);
-        setLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [user.id]);
-
-  const doBlock = async (id) => {
-    setError('');
-    const { error: err } = await blockContact(id);
-    if (err) {
-      setError(err);
-      return;
-    }
-    setBlocked((prev) => [...prev, String(id)]);
-    onUnfriend?.(id);
-  };
-
-  const doUnblock = async (id) => {
-    setError('');
-    const { error: err } = await unblockContact(id);
-    if (err) {
-      setError(err);
-      return;
-    }
-    setBlocked((prev) => prev.filter((b) => b !== String(id)));
-  };
-
-  const blockableFriends = friends.filter((id) => !blocked.includes(String(id)));
-
-  return (
-    <div className="rb-profile-field-group">
-      <div className="rb-profile-field-title"><strong>Contatti bloccati</strong></div>
-      <p className="rb-profile-worlds-hint">
-        Un contatto bloccato non può più scriverti né vederti nella tua lista amici. Puoi sbloccarlo in
-        qualsiasi momento.
-      </p>
-
-      {error && <p className="rb-profile-field-error">{error}</p>}
-
-      {loading ? (
-        <p className="rb-profile-worlds-hint">Caricamento...</p>
-      ) : (
-        <>
-          {blocked.length > 0 && (
-            <ul className="rb-profile-contact-list">
-              {blocked.map((id) => (
-                <li key={id} className="rb-profile-contact-row">
-                  <span>{contactName(Number.isNaN(Number(id)) ? id : Number(id))}</span>
-                  <button type="button" className="rb-profile-urgent-btn" onClick={() => doUnblock(id)}>
-                    Sblocca
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {blockableFriends.length > 0 && (
-            <>
-              <div className="rb-profile-field-title" style={{ marginTop: 14 }}>
-                <strong>I tuoi contatti</strong>
-              </div>
-              <ul className="rb-profile-contact-list">
-                {blockableFriends.map((id) => (
-                  <li key={id} className="rb-profile-contact-row">
-                    <span>{contactName(id)}</span>
-                    <button type="button" className="rb-profile-urgent-btn" onClick={() => doBlock(id)}>
-                      Blocca
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-
-          {blocked.length === 0 && blockableFriends.length === 0 && (
-            <p className="rb-profile-worlds-hint">Nessun contatto da mostrare.</p>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
 // Pannello "Il mio profilo": nickname/nome (con cooldown), dati account
-// (tipo/fatturazione/genere/pronomi), mondi abilitati e privacy (blocco
-// contatti), organizzati in schede per restare leggibile.
-export default function ProfileSettingsPanel({ open, onClose, user, onUpdateUser, friends = [], onUnfriend }) {
+// (tipo/fatturazione/genere/pronomi) e mondi abilitati, organizzati in
+// schede per restare leggibile. Il blocco contatti vive nel pannello
+// Impostazioni generale (SettingsPanel), insieme al resto della privacy.
+export default function ProfileSettingsPanel({ open, onClose, user, onUpdateUser }) {
   const [tab, setTab] = useState('profilo');
   const [nickname, setNickname] = useState(user?.nickname ?? '');
   const [nickErr, setNickErr] = useState('');
@@ -506,7 +402,6 @@ export default function ProfileSettingsPanel({ open, onClose, user, onUpdateUser
           <button type="button" className={tab === 'profilo' ? 'active' : ''} onClick={() => setTab('profilo')}>Profilo</button>
           <button type="button" className={tab === 'account' ? 'active' : ''} onClick={() => setTab('account')}>Account</button>
           <button type="button" className={tab === 'mondi' ? 'active' : ''} onClick={() => setTab('mondi')}>Mondi</button>
-          <button type="button" className={tab === 'privacy' ? 'active' : ''} onClick={() => setTab('privacy')}>Privacy</button>
         </div>
 
         {tab === 'profilo' && (
@@ -544,7 +439,6 @@ export default function ProfileSettingsPanel({ open, onClose, user, onUpdateUser
 
         {tab === 'account' && <AccountTab user={user} onUpdateUser={onUpdateUser} />}
         {tab === 'mondi' && <WorldsTab user={user} onUpdateUser={onUpdateUser} />}
-        {tab === 'privacy' && <PrivacyTab user={user} friends={friends} onUnfriend={onUnfriend} />}
 
         {urgentField && (
           <ModalOverlay onClose={() => setUrgentField(null)} className="rb-profile-confirm-overlay">
