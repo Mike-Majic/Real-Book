@@ -26,7 +26,6 @@ import {
 import { BAMBINI_CATEGORIES, resolveCategoryQuery as resolveBambiniCategoryQuery } from './games/registry';
 import { INCONTRI_CATEGORIES, resolveCategoryQuery as resolveIncontriCategoryQuery } from './data/incontriCategories';
 import { SOCIAL_CATEGORIES, resolveCategoryQuery as resolveSocialCategoryQuery } from './data/socialCategories';
-import { FAKE_PROFILES } from './data/fakeProfiles';
 import IncontriLiveExplorer from './components/incontri/IncontriLiveExplorer';
 import AccessGate from './components/AccessGate';
 import { isAdult } from './data/age';
@@ -38,12 +37,6 @@ import AdminPanel from './components/AdminPanel';
 import ProfileSettingsPanel from './components/ProfileSettingsPanel';
 import { getCurrentAccount, subscribeAuthChanges, logoutAccount } from './data/accounts';
 import './App.css';
-
-// Test di scala richiesto dall'utente: nel mondo Incontri aggiunge ~1800
-// profili finti oltre ai 20 curati a mano, per vedere come si comporta il
-// globo (e il clustering) con molti più utenti. Da togliere a fine
-// progetto: basta rimettere questa a false.
-const SHOW_FAKE_PROFILES_SCALE_TEST = true;
 
 const DEFAULT_FILTERS = { gender: 'Tutti', ageMin: 18, ageMax: 60 };
 const DEFAULT_LOCATION_FILTERS = { continent: '', region: '', city: '', distance: 150 };
@@ -141,7 +134,7 @@ export default function App() {
   // niente localStorage-bridge come per le foto di Arte, qui serve stato
   // condiviso in tempo reale.
   const [events, setEvents] = useState(() => loadStored('rb-events', SEED_EVENTS));
-  const [friends, setFriends] = useState(() => loadStored('rb-friends', [1, 2, 6]));
+  const [friends, setFriends] = useState(() => loadStored('rb-friends', []));
   const [friendRequestsSent, setFriendRequestsSent] = useState(() => loadStored('rb-friend-requests-sent', []));
   const [eventLikersId, setEventLikersId] = useState(null);
   const [activeFriendChatId, setActiveFriendChatId] = useState(null);
@@ -306,10 +299,7 @@ export default function App() {
   };
 
   const worldUsers = useMemo(() => {
-    const base =
-      SHOW_FAKE_PROFILES_SCALE_TEST && world.id === 'incontri'
-        ? [...usersForWorld(world.id), ...FAKE_PROFILES]
-        : usersForWorld(world.id);
+    const base = usersForWorld(world.id);
 
     const matchesLocation = (u) => {
       if (locationFilters.city && !u.city.toLowerCase().includes(locationFilters.city.toLowerCase())) return false;

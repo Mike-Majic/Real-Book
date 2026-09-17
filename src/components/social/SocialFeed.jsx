@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import TwoColumnSwitcher from '../layout/TwoColumnSwitcher';
 import PostComposer from './PostComposer';
 import PostCard from './PostCard';
@@ -12,7 +12,6 @@ import { resolveAuthor, formatRelativeDate } from './resolveAuthor';
 import { getCityInfo } from '../../data/geo';
 import { INITIAL_POSTS, INITIAL_COMMENTS, computeRelevance } from '../../data/socialPosts';
 import { GROUPS, getGroupById } from '../../data/groups';
-import { generateFillerBatch } from '../../data/socialFiller';
 import { usersForWorld } from '../../data/mockUsers';
 import './SocialFeed.css';
 
@@ -83,9 +82,6 @@ const FEED_TABS = [
   { id: 'mondi', label: '🌍 Mondi' },
 ];
 
-// Quanti post finti si aggiungono ogni volta che si arriva in fondo al feed.
-const FILLER_BATCH = 6;
-
 // Mondo Social (Blu): colonna sinistra = feed (Per te / Seguiti / Gruppi /
 // Salvati, con scroll infinito), colonna destra = suggerimenti (persone da
 // seguire, gruppi di tendenza) + i miei post. Nessun backend: tutto lo stato
@@ -120,7 +116,6 @@ export default function SocialFeed({
   const [feedTab, setFeedTab] = useState('foryou');
   const [activeGroupId, setActiveGroupId] = useState(null);
   const [mobileView, setMobileView] = useState('primary');
-  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(
     () => localStorage.setItem('rb-social-posts', JSON.stringify(posts.filter((p) => !p.isFiller))),
@@ -288,60 +283,12 @@ export default function SocialFeed({
     ? savedList.map((post) => ({ post, trendingRank: null }))
     : forYouItems;
 
-  const canInfiniteScroll =
-    isGroupView || feedTab === 'foryou' || (feedTab === 'following' && (following.length > 0 || joinedGroups.length > 0));
-
   const emptyStateMessage = (() => {
     if (isGroupView || displayedItems.length > 0) return null;
     if (feedTab === 'following') return 'Non segui ancora nessuno. Segui qualcuno o iscriviti a un gruppo per vedere qui i loro post.';
     if (feedTab === 'saved') return 'Non hai ancora salvato nessun post. Tocca 🔖 su un post per ritrovarlo qui.';
     return null;
   })();
-
-  const loadingRef = useRef(false);
-  const sentinelRef = useRef(null);
-
-  const loadMore = () => {
-    if (loadingRef.current || !canInfiniteScroll) return;
-    loadingRef.current = true;
-    setLoadingMore(true);
-    window.setTimeout(() => {
-      let options = {};
-      if (isGroupView) options = { groupId: activeGroupId };
-      else if (feedTab === 'following') options = { followingPool: following, joinedGroupsPool: joinedGroups };
-      const { posts: newPosts, comments: newComments } = generateFillerBatch(FILLER_BATCH, options);
-      if (newPosts.length > 0) {
-        setPosts((p) => [...p, ...newPosts]);
-        setComments((c) => [...c, ...newComments]);
-      }
-      loadingRef.current = false;
-      setLoadingMore(false);
-    }, 450);
-  };
-
-  const loadMoreRef = useRef(loadMore);
-  loadMoreRef.current = loadMore;
-
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || !canInfiniteScroll) return undefined;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) loadMoreRef.current();
-      },
-      { rootMargin: '600px 0px' }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-    // Deliberatamente SENZA displayedItems.length tra le dipendenze: se lo
-    // includessimo, ogni nuovo lotto ricrea l'observer mentre la sentinella
-    // è ancora nella rootMargin, IntersectionObserver la considera "appena
-    // apparsa" e richiama subito la callback — un ciclo che carica lotti
-    // all'infinito senza che l'utente scorra più nulla. Lo stesso observer
-    // resta quindi attivo tra un lotto e l'altro: si riattiva solo quando
-    // cambia davvero il "contesto" del feed (tab o gruppo).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feedTab, activeGroupId, canInfiniteScroll]);
 
   // Solo i post pubblicati dall'utente loggato.
   const myPosts = useMemo(
@@ -477,11 +424,6 @@ export default function SocialFeed({
                 onOpenGroup={openGroup}
               />
             ))}
-            {canInfiniteScroll && (
-              <li ref={sentinelRef} className="rb-feed-sentinel">
-                {loadingMore && <span className="rb-feed-spinner" aria-label="Caricamento altri post" />}
-              </li>
-            )}
           </ul>
         </>
       )}
