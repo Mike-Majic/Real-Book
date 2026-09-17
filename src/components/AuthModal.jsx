@@ -1,13 +1,28 @@
 import { useEffect, useState } from 'react';
 import { registerAccount, loginAccount, resendConfirmationEmail } from '../data/accounts';
 import ModalOverlay from './ModalOverlay';
+import TermsModal from './TermsModal';
 import './AuthModal.css';
+
+// Preimpostazioni più comuni per i pronomi: coprono la maggior parte dei
+// casi con un click, "Altro" lascia comunque scrivere qualsiasi cosa a chi
+// non si riconosce in queste opzioni.
+const PRONOMI_PRESETS = [
+  { value: 'non_specificato', label: 'Preferisco non specificare' },
+  { value: 'lui', label: 'Lui (he/him)' },
+  { value: 'lei', label: 'Lei (she/her)' },
+  { value: 'loro', label: 'Loro (they/them)' },
+  { value: 'altro', label: 'Altro (scrivi tu)' },
+];
+
+const PARTITA_IVA_PATTERN = /^\d{11}$/;
 
 // Accedi/Registrati con account veri, salvati su Supabase (non più solo
 // localStorage): la registrazione raccoglie nome utente, nickname, mail,
-// password, data di nascita, cellulare, mail di backup e allegati
-// facoltativi. Il ruolo si assegna da solo in base alla mail (lato server,
-// vedi la funzione di registrazione su Supabase) — qui non si sceglie mai.
+// password, data di nascita, cellulare, mail di backup, tipo account
+// (persona/azienda), genere, pronomi, consensi e allegati facoltativi. Il
+// ruolo si assegna da solo in base alla mail (lato server, vedi la funzione
+// di registrazione su Supabase) — qui non si sceglie mai.
 export default function AuthModal({ open, onClose, onLogin }) {
   const [mode, setMode] = useState('login');
   const [loginEmail, setLoginEmail] = useState('');
@@ -20,6 +35,15 @@ export default function AuthModal({ open, onClose, onLogin }) {
   const [phone, setPhone] = useState('');
   const [backupEmail, setBackupEmail] = useState('');
   const [attachments, setAttachments] = useState([]);
+  const [tipoAccount, setTipoAccount] = useState('persona');
+  const [ragioneSociale, setRagioneSociale] = useState('');
+  const [partitaIva, setPartitaIva] = useState('');
+  const [genere, setGenere] = useState('preferisco_non_dire');
+  const [pronomiPreset, setPronomiPreset] = useState('non_specificato');
+  const [pronomiCustom, setPronomiCustom] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [consensoMarketing, setConsensoMarketing] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [busy, setBusy] = useState(false);
@@ -39,6 +63,11 @@ export default function AuthModal({ open, onClose, onLogin }) {
       setInfo('');
       setPendingConfirmEmail('');
       setResendOk(false);
+      // I consensi si azzerano ad ogni riapertura: una spunta lasciata da
+      // una visita precedente non deve valere come accettazione per un
+      // nuovo tentativo di registrazione.
+      setTermsAccepted(false);
+      setConsensoMarketing(false);
     }
   }, [open]);
 
@@ -93,6 +122,27 @@ export default function AuthModal({ open, onClose, onLogin }) {
 
   const submitRegister = async (e) => {
     e.preventDefault();
+    setError('');
+
+    if (!termsAccepted) {
+      setError('Devi accettare i Termini di servizio e l\'Informativa Privacy per registrarti.');
+      return;
+    }
+    if (tipoAccount === 'azienda') {
+      if (!ragioneSociale.trim()) {
+        setError('Inserisci la ragione sociale.');
+        return;
+      }
+      if (!PARTITA_IVA_PATTERN.test(partitaIva.trim())) {
+        setError('La partita IVA deve essere di 11 cifre numeriche.');
+        return;
+      }
+    }
+
+    const pronomi = pronomiPreset === 'altro'
+      ? pronomiCustom.trim()
+      : PRONOMI_PRESETS.find((p) => p.value === pronomiPreset)?.label ?? '';
+
     setBusy(true);
     const { account, error: err, needsEmailConfirmation } = await registerAccount({
       username,
@@ -103,6 +153,13 @@ export default function AuthModal({ open, onClose, onLogin }) {
       backupEmail,
       attachments,
       dataNascita,
+      tipoAccount,
+      ragioneSociale: tipoAccount === 'azienda' ? ragioneSociale : '',
+      partitaIva: tipoAccount === 'azienda' ? partitaIva : '',
+      genere,
+      pronomi,
+      termsAcceptedAt: new Date().toISOString(),
+      consensoMarketing,
     });
     setBusy(false);
     if (err) {
@@ -209,6 +266,116 @@ export default function AuthModal({ open, onClose, onLogin }) {
                 <span className="rb-auth-attachments-count">{attachments.length} file selezionati</span>
               )}
             </label>
+
+            <div className="rb-field">
+              <span>Tipo di account</span>
+              <div className="rb-auth-segmented">
+                <button
+                  type="button"
+                  className={tipoAccount === 'persona' ? 'active' : ''}
+                  onClick={() => setTipoAccount('persona')}
+                >
+                  Persona
+                </button>
+                <button
+                  type="button"
+                  className={tipoAccount === 'azienda' ? 'active' : ''}
+                  onClick={() => setTipoAccount('azienda')}
+                >
+                  Azienda / P.IVA
+                </button>
+              </div>
+            </div>
+
+            {tipoAccount === 'azienda' && (
+              <>
+                <label className="rb-field">
+                  <span>Ragione sociale</span>
+                  <input
+                    type="text"
+                    autoComplete="organization"
+                    value={ragioneSociale}
+                    onChange={(e) => setRagioneSociale(e.target.value)}
+                  />
+                </label>
+                <label className="rb-field">
+                  <span>Partita IVA</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={11}
+                    autoComplete="off"
+                    value={partitaIva}
+                    onChange={(e) => setPartitaIva(e.target.value.replace(/\D/g, ''))}
+                  />
+                  <span className="rb-auth-field-hint">11 cifre numeriche, senza spazi né prefisso IT.</span>
+                </label>
+              </>
+            )}
+
+            <label className="rb-field">
+              <span>Genere</span>
+              <select value={genere} onChange={(e) => setGenere(e.target.value)}>
+                <option value="preferisco_non_dire">Preferisco non specificare</option>
+                <option value="uomo">Uomo</option>
+                <option value="donna">Donna</option>
+                <option value="altro">Altro</option>
+              </select>
+            </label>
+
+            <label className="rb-field">
+              <span>Pronomi</span>
+              <select value={pronomiPreset} onChange={(e) => setPronomiPreset(e.target.value)}>
+                {PRONOMI_PRESETS.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+              {pronomiPreset === 'altro' && (
+                <input
+                  type="text"
+                  className="rb-auth-pronomi-custom"
+                  placeholder="Scrivi i tuoi pronomi"
+                  value={pronomiCustom}
+                  onChange={(e) => setPronomiCustom(e.target.value)}
+                />
+              )}
+            </label>
+
+            <label className="rb-field rb-auth-checkbox-field">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+              />
+              <span>
+                Ho letto e accetto i{' '}
+                <button
+                  type="button"
+                  className="rb-auth-terms-link"
+                  onClick={(e) => {
+                    // Sta dentro la <label> del checkbox: senza queste due
+                    // righe, il click aprirebbe la modale MA farebbe anche
+                    // scattare/togliere la spunta (comportamento di default
+                    // del browser su un click dentro una label).
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowTerms(true);
+                  }}
+                >
+                  Termini di servizio e l'Informativa Privacy
+                </button>
+                {' '}(obbligatorio)
+              </span>
+            </label>
+
+            <label className="rb-field rb-auth-checkbox-field">
+              <input
+                type="checkbox"
+                checked={consensoMarketing}
+                onChange={(e) => setConsensoMarketing(e.target.checked)}
+              />
+              <span>Voglio ricevere comunicazioni e novità su Versemove (facoltativo)</span>
+            </label>
           </>
         )}
 
@@ -226,6 +393,8 @@ export default function AuthModal({ open, onClose, onLogin }) {
           {busy ? 'Un attimo…' : mode === 'login' ? 'Entra' : 'Crea account'}
         </button>
       </form>
+
+      <TermsModal open={showTerms} onClose={() => setShowTerms(false)} />
     </ModalOverlay>
   );
 }

@@ -20,6 +20,13 @@ function mapProfile(row) {
     backupEmail: row.backup_email ?? '',
     dataNascita: row.data_nascita,
     attachments: row.attachments ?? [],
+    tipoAccount: row.tipo_account ?? 'persona',
+    ragioneSociale: row.ragione_sociale ?? '',
+    partitaIva: row.partita_iva ?? '',
+    genere: row.genere ?? 'preferisco_non_dire',
+    pronomi: row.pronomi ?? '',
+    terminiAccettatiAt: row.termini_accettati_at,
+    consensoMarketing: row.consenso_marketing ?? false,
     ruolo: row.ruolo,
     verificato: row.verificato,
     avatar: row.avatar_url,
@@ -74,10 +81,32 @@ export async function getAccounts() {
 // subito una sessione: in quel caso avatar ed eventuali allegati non
 // possono essere caricati adesso (serve essere autenticati) e vanno gestiti
 // dopo la conferma, al primo login.
-export async function registerAccount({ username, nickname, email, password, phone, backupEmail, attachments, dataNascita }) {
+export async function registerAccount({
+  username,
+  nickname,
+  email,
+  password,
+  phone,
+  backupEmail,
+  attachments,
+  dataNascita,
+  tipoAccount,
+  ragioneSociale,
+  partitaIva,
+  genere,
+  pronomi,
+  termsAcceptedAt,
+  consensoMarketing,
+}) {
   const cleanEmail = (email ?? '').trim().toLowerCase();
   if (!username?.trim() || !nickname?.trim() || !cleanEmail || !password || !dataNascita) {
     return { error: 'Nome utente, nickname, mail, password e data di nascita sono obbligatori.' };
+  }
+  if (!termsAcceptedAt) {
+    return { error: 'Devi accettare i Termini di servizio e l\'Informativa Privacy per registrarti.' };
+  }
+  if (tipoAccount === 'azienda' && !ragioneSociale?.trim()) {
+    return { error: 'Inserisci la ragione sociale per un account azienda.' };
   }
 
   const { data, error } = await supabase.auth.signUp({
@@ -96,6 +125,13 @@ export async function registerAccount({ username, nickname, email, password, pho
         phone: phone?.trim() || '',
         backupEmail: backupEmail?.trim().toLowerCase() || '',
         dataNascita,
+        tipoAccount: tipoAccount === 'azienda' ? 'azienda' : 'persona',
+        ragioneSociale: ragioneSociale?.trim() || '',
+        partitaIva: partitaIva?.trim() || '',
+        genere: genere || 'preferisco_non_dire',
+        pronomi: pronomi?.trim() || '',
+        termsAcceptedAt,
+        consensoMarketing: Boolean(consensoMarketing),
       },
     },
   });
@@ -225,4 +261,19 @@ export async function resetAccountPassword(email) {
   const { error } = await supabase.auth.resetPasswordForEmail((email ?? '').trim().toLowerCase());
   if (error) return { error: error.message };
   return {};
+}
+
+// Aggiorna tipo account, ragione sociale/P.IVA, genere e pronomi dopo la
+// registrazione (es. dal pannello Impostazioni). La funzione lato server
+// valida i valori consentiti e tocca solo la riga di chi chiama.
+export async function updateAccountDetails(accountId, { tipoAccount, ragioneSociale, partitaIva, genere, pronomi }) {
+  const { error } = await supabase.rpc('update_own_account_details', {
+    p_tipo_account: tipoAccount,
+    p_ragione_sociale: ragioneSociale ?? '',
+    p_partita_iva: partitaIva ?? '',
+    p_genere: genere,
+    p_pronomi: pronomi ?? '',
+  });
+  if (error) return { error: error.message };
+  return { account: await fetchOwnProfile() };
 }
