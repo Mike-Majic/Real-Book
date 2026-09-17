@@ -13,6 +13,7 @@ import { getCityInfo } from '../../data/geo';
 import { INITIAL_POSTS, INITIAL_COMMENTS, computeRelevance } from '../../data/socialPosts';
 import { GROUPS, getGroupById } from '../../data/groups';
 import { usersForWorld } from '../../data/mockUsers';
+import { listContentsForPlacement, toggleContentLike as toggleContentLikeApi } from '../../data/contents';
 import './SocialFeed.css';
 
 // Ogni tot post "di zona" (tab Per te, con un filtro Dove attivo), si
@@ -129,7 +130,42 @@ export default function SocialFeed({
   useEffect(() => localStorage.setItem('rb-social-joined-groups', JSON.stringify(joinedGroups)), [joinedGroups]);
   useEffect(() => localStorage.setItem('rb-social-saved', JSON.stringify(savedPosts)), [savedPosts]);
 
-  const createPost = ({ testo, gif, link_esterno, gruppo_id }) => {
+  // Foto/video autotaggati e pubblicati anche nel mondo Social da un altro
+  // punto dell'app (es. Fotografia/Video nel mondo Arte, con un
+  // posizionamento Social confermato): non passano dal localStorage di
+  // questo componente, quindi vanno recuperati da Supabase al montaggio.
+  // Chi li ha già in stato (creati qui stesso in questa sessione, via
+  // PostComposer) non viene duplicato.
+  useEffect(() => {
+    listContentsForPlacement({ world: 'social' }).then((items) => {
+      if (!items.length) return;
+      setPosts((prev) => {
+        const knownContentIds = new Set(prev.filter((p) => p.contentId).map((p) => p.contentId));
+        const additions = items
+          .filter((c) => !knownContentIds.has(c.id))
+          .map((c) => ({
+            id: `content-${c.id}`,
+            autoreId: c.isMine ? 'me' : c.owner_id,
+            testo: c.caption ?? '',
+            data: c.created_at,
+            mi_piace: [],
+            commenti: [],
+            gif: null,
+            link_esterno: null,
+            gruppo_id: null,
+            contentId: c.id,
+            mediaUrl: c.url,
+            mediaType: c.type,
+            contentTags: c.tags ?? [],
+            contentLiked: c.likedByMe,
+            contentLikeCount: c.likeCount,
+          }));
+        return additions.length ? [...additions, ...prev] : prev;
+      });
+    });
+  }, []);
+
+  const createPost = ({ testo, gif, link_esterno, gruppo_id, contentId, mediaUrl, mediaType, tags }) => {
     const newPost = {
       id: makeId('post'),
       autoreId: 'me',
@@ -140,6 +176,16 @@ export default function SocialFeed({
       gif,
       link_esterno,
       gruppo_id: gruppo_id ?? null,
+      // Foto/video caricati con autotag (data/contents.js): contentId è
+      // l'id condiviso — i like su questo post si somMANO a quelli dello
+      // stesso contenuto pubblicato anche in altri mondi/categorie, mai un
+      // conteggio separato per ogni posto in cui compare.
+      contentId: contentId ?? null,
+      mediaUrl: mediaUrl ?? null,
+      mediaType: mediaType ?? null,
+      contentTags: tags ?? [],
+      contentLiked: false,
+      contentLikeCount: 0,
     };
     setPosts((p) => [newPost, ...p]);
   };
@@ -151,6 +197,23 @@ export default function SocialFeed({
         const has = p.mi_piace.includes('me');
         return { ...p, mi_piace: has ? p.mi_piace.filter((id) => id !== 'me') : [...p.mi_piace, 'me'] };
       })
+    );
+  };
+
+  // Like su un post con foto/video autotaggato: passa dalla stessa tabella
+  // content_likes condivisa con le altre posizioni dello stesso contenuto
+  // (Arte, Nerd, ecc.), non dall'array locale mi_piace usato per i post di testo.
+  const toggleContentLike = async (post) => {
+    if (!user) {
+      onOpenAuth();
+      return;
+    }
+    const { liked, error } = await toggleContentLikeApi(post.contentId, post.contentLiked);
+    if (error) return;
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === post.id ? { ...p, contentLiked: liked, contentLikeCount: p.contentLikeCount + (liked ? 1 : -1) } : p
+      )
     );
   };
 
@@ -414,6 +477,7 @@ export default function SocialFeed({
                 user={user}
                 onOpenAuth={onOpenAuth}
                 onToggleLike={toggleLike}
+                onToggleContentLike={toggleContentLike}
                 onAddComment={addComment}
                 onReactToComment={reactToComment}
                 trendingRank={trendingRank}
@@ -457,12 +521,14 @@ export default function SocialFeed({
           {myPosts.map((post) => {
             const postComments = comments.filter((c) => c.post_id === post.id);
             const likers = post.mi_piace.map((id) => resolveAuthor(id, user).name);
+            const likeCount = post.contentId ? post.contentLikeCount : post.mi_piace.length;
             return (
               <li key={post.id} className="rb-mypost-card">
                 <p className="rb-mypost-text">{post.testo}</p>
                 <span className="rb-mypost-date">{formatRelativeDate(post.data)}</span>
                 <div className="rb-mypost-stats">
-                  <strong>{post.mi_piace.length}</strong> mi piace · <strong>{postComments.length}</strong> commenti
+                  <strong>{likeCount}</strong> mi piace{post.contentId ? ' (totali su tutti i mondi)' : ''} ·{' '}
+                  <strong>{postComments.length}</strong> commenti
                 </div>
                 {likers.length > 0 && <p className="rb-mypost-detail">❤️ Piace a: {likers.join(', ')}</p>}
                 {postComments.length > 0 && (

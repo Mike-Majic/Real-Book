@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MOCK_USERS } from '../data/mockUsers';
 import { CONTENT_INTERACTIONS } from '../data/contentInteractions';
 import { findCityMatch, getCityInfo, distanceKm, isUnlimitedDistance } from '../data/geo';
+import { listContentsForPlacement, toggleContentLike } from '../data/contents';
 import { useIsDesktopLayout } from '../hooks/useIsDesktopLayout';
 import TwoColumnSwitcher from './layout/TwoColumnSwitcher';
 import './CategoryColumn.css';
@@ -25,11 +26,41 @@ import './CategoryColumn.css';
 // Mobile (verticale, o stretto anche in orizzontale): una sola colonna a
 // piena larghezza (di default la principale), con una maniglia fissa sul
 // bordo destro che scorre per mostrare la colonna secondaria.
-export default function CategoryColumn({ category, initialSubfamily = '', locationFilters = {}, featured = [], allResults = [] }) {
+export default function CategoryColumn({
+  world,
+  category,
+  initialSubfamily = '',
+  locationFilters = {},
+  featured = [],
+  allResults = [],
+  user,
+  onOpenAuth,
+}) {
   const [resultsQuery, setResultsQuery] = useState('');
   const [subfamilyFilter, setSubfamilyFilter] = useState(initialSubfamily);
   const [mobileView, setMobileView] = useState('primary'); // 'primary' | 'secondary'
   const isDesktop = useIsDesktopLayout();
+
+  // Foto/video veri caricati dagli utenti in questa categoria (autotag o
+  // ripubblicati manualmente, vedi data/contents.js) — mai finti, distinti
+  // dai risultati "editoriali" (allResults) sopra, ancora placeholder.
+  const [uploadedContents, setUploadedContents] = useState([]);
+  useEffect(() => {
+    if (!world) return;
+    listContentsForPlacement({ world, category: category.id }).then(setUploadedContents);
+  }, [world, category.id]);
+
+  const handleContentLike = async (content) => {
+    if (!user) {
+      onOpenAuth?.();
+      return;
+    }
+    const { liked, error } = await toggleContentLike(content.id, content.likedByMe);
+    if (error) return;
+    setUploadedContents((prev) =>
+      prev.map((c) => (c.id === content.id ? { ...c, likedByMe: liked, likeCount: c.likeCount + (liked ? 1 : -1) } : c))
+    );
+  };
 
   const results = useMemo(() => {
     return allResults.filter((r) => {
@@ -113,6 +144,28 @@ export default function CategoryColumn({ category, initialSubfamily = '', locati
           </button>
         ))}
       </div>
+
+      {uploadedContents.length > 0 && (
+        <>
+          <div className="rb-arte-panel-header">
+            <h3>Caricati dalla community</h3>
+          </div>
+          <ul className="rb-arte-uploaded-list">
+            {uploadedContents.map((c) => (
+              <li key={c.id} className="rb-arte-uploaded-card">
+                {c.type === 'video' ? <video src={c.url} controls /> : <img src={c.url} alt={c.caption || 'Contenuto'} />}
+                <div className="rb-arte-uploaded-info">
+                  {c.caption && <p>{c.caption}</p>}
+                  {c.tags?.length > 0 && <span className="rb-arte-uploaded-tags">{c.tags.map((t) => `#${t}`).join(' ')}</span>}
+                  <button type="button" className="rb-arte-uploaded-like-btn" onClick={() => handleContentLike(c)}>
+                    {c.likedByMe ? '❤️' : '🤍'} {c.likeCount}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       <ul className="rb-arte-results-list">
         {results.length === 0 && <li className="rb-arte-no-results">Nessun risultato.</li>}

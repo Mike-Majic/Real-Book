@@ -83,11 +83,14 @@ export default function ArteExplorer({
           ) : (
             <CategoryColumn
               key={category.id}
+              world={world.id}
               category={category}
               initialSubfamily={initialSubfamily}
               locationFilters={locationFilters}
               featured={categorySet.featured[category.id] ?? []}
               allResults={categorySet.results[category.id] ?? []}
+              user={user}
+              onOpenAuth={onOpenAuth}
             />
           )}
         </>

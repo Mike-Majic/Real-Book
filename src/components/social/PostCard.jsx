@@ -62,6 +62,7 @@ export default function PostCard({
   user,
   onOpenAuth,
   onToggleLike,
+  onToggleContentLike,
   onAddComment,
   onReactToComment,
   trendingRank = null,
@@ -74,7 +75,12 @@ export default function PostCard({
   const [expanded, setExpanded] = useState(false);
   const author = resolveAuthor(post.autoreId, user);
   const myId = 'me';
-  const liked = post.mi_piace.includes(myId);
+  // I post con foto/video autotaggato hanno un contentId condiviso con le
+  // altre posizioni dello stesso contenuto (Arte, Nerd, ecc): il like passa
+  // dal conteggio comune (content_likes), non dall'array locale mi_piace.
+  const hasSharedContent = Boolean(post.contentId);
+  const liked = hasSharedContent ? post.contentLiked : post.mi_piace.includes(myId);
+  const likeCount = hasSharedContent ? post.contentLikeCount : post.mi_piace.length;
   const postComments = comments.filter((c) => c.post_id === post.id);
   const group = post.gruppo_id ? getGroupById(post.gruppo_id) : null;
   // Il pulsante Segui ha senso solo su post di altri utenti reali (non 'me',
@@ -87,7 +93,8 @@ export default function PostCard({
       onOpenAuth();
       return;
     }
-    onToggleLike(post.id);
+    if (hasSharedContent) onToggleContentLike(post);
+    else onToggleLike(post.id);
   };
 
   const handleFollow = () => {
@@ -147,11 +154,20 @@ export default function PostCard({
           )}
         </>
       )}
+      {post.mediaUrl && post.mediaType === 'video' && (
+        <video className="rb-post-video" src={post.mediaUrl} controls />
+      )}
+      {post.mediaUrl && post.mediaType === 'foto' && (
+        <MediaImage className="rb-post-photo" src={post.mediaUrl} alt="Foto" errorText="Foto non disponibile" />
+      )}
+      {post.contentTags?.length > 0 && (
+        <p className="rb-post-photo-tags">{post.contentTags.map((t) => `#${t}`).join(' ')}</p>
+      )}
       {post.link_esterno && <LinkPreview url={post.link_esterno.url} />}
 
       <div className="rb-post-actions">
         <button type="button" className={`rb-post-action-btn ${liked ? 'active' : ''}`} onClick={handleLike}>
-          {liked ? '❤️' : '🤍'} {post.mi_piace.length}
+          {liked ? '❤️' : '🤍'} {likeCount}
         </button>
         <button type="button" className="rb-post-action-btn" onClick={() => setExpanded((v) => !v)}>
           💬 {postComments.length}

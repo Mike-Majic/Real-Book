@@ -1,20 +1,37 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import MediaEditor from './social/MediaEditor';
-import { SEED_PHOTOS } from '../data/artePhotos';
 import { MOCK_USERS } from '../data/mockUsers';
 import { GROUPS } from '../data/groups';
-import { publishPhotoPost } from '../data/socialPostsBridge';
+import { publishContent, listContentsForPlacement, toggleContentLike } from '../data/contents';
+import { analyzeImageElement } from '../data/localVision';
 import './FotografiaColumn.css';
 
 const SOCIAL_USERS = MOCK_USERS.filter((u) => u.worlds.includes('social'));
 
-function loadStored(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
+function loadImageElement(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+// Rifà un File da una dataURL (serve dopo un'eventuale modifica con
+// MediaEditor, che lavora su canvas/dataURL): publishContent carica un
+// File vero sullo storage, non una stringa.
+function dataUrlToFile(dataUrl, filename) {
+  const [header, base64] = dataUrl.split(',');
+  const mime = header.match(/data:(.*?);base64/)?.[1] ?? 'image/png';
+  const bin = atob(base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+  return new File([bytes], filename, { type: mime });
+}
+
+// Chiave che identifica un posizionamento (mondo + categoria + sottofamiglia).
+function placementKey(p) {
+  return `${p.world}:${p.category ?? ''}:${p.subfamily ?? ''}`;
 }
 
 // Selettore dei tag: persone e gruppi del mondo Blu, filtrabili per nome,
@@ -63,24 +80,34 @@ function TagPicker({ selectedUserIds, selectedGroupIds, onToggleUser, onToggleGr
 }
 
 // Fotografia in stile Pinterest (mondo Arte & Musica): griglia a mattoni di
-// foto, con caricamento SOLO da qui (mai dal mondo Social direttamente). Se
-// una foto viene taggata a persone/gruppi del mondo Blu, compare anche
-// nella sua bacheca (vedi publishPhotoPost) — resta comunque un caricamento
-// del mondo Arte, non social.
+// foto vere, caricate su Supabase (data/contents.js) e condivise con le
+// altre posizioni dello stesso contenuto (stesso like ovunque compaia). Al
+// caricamento, un'analisi gratuita nel browser (data/localVision.js)
+// suggerisce tag e — se riconosce un tramonto — la sottofamiglia "Tramonti";
+// se la foto viene taggata a persone/gruppi del mondo Social, compare anche
+// nella sua bacheca (un vero posizionamento condiviso, non solo una copia).
 export default function FotografiaColumn({ user, onOpenAuth }) {
-  const [photos, setPhotos] = useState(() => loadStored('rb-arte-photos', []));
+  const [photos, setPhotos] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [draftSrc, setDraftSrc] = useState(null);
   const [caption, setCaption] = useState('');
   const [tagUserIds, setTagUserIds] = useState([]);
   const [tagGroupIds, setTagGroupIds] = useState([]);
   const [editing, setEditing] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [suggestedTags, setSuggestedTags] = useState([]);
+  const [suggestedSubfamily, setSuggestedSubfamily] = useState(null);
+  const [extraPlacements, setExtraPlacements] = useState([]);
+  const [confirmedPlacements, setConfirmedPlacements] = useState(new Set());
+  const [manualTagsText, setManualTagsText] = useState('');
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState(null);
   const fileInputRef = useRef(null);
 
-  const persist = (next) => {
-    setPhotos(next);
-    localStorage.setItem('rb-arte-photos', JSON.stringify(next));
+  const refresh = () => {
+    listContentsForPlacement({ world: 'arte', category: 'fotografia' }).then(setPhotos);
   };
+  useEffect(refresh, []);
 
   const openPicker = () => {
     if (!user) {
@@ -95,11 +122,35 @@ export default function FotografiaColumn({ user, onOpenAuth }) {
     e.target.value = '';
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       setDraftSrc(reader.result);
       setShowForm(true);
+      setAnalyzing(true);
+      try {
+        const img = await loadImageElement(reader.result);
+        const result = await analyzeImageElement(img);
+        setSuggestedTags(result.tags);
+        const ownPlacement = result.placements.find((p) => p.world === 'arte' && p.category === 'fotografia');
+        setSuggestedSubfamily(ownPlacement?.subfamily ?? null);
+        const others = result.placements.filter((p) => !(p.world === 'arte' && p.category === 'fotografia'));
+        setExtraPlacements(others);
+        setConfirmedPlacements(new Set(others.map(placementKey)));
+      } catch {
+        // Analisi non riuscita: si può comunque pubblicare, solo senza suggerimenti.
+      } finally {
+        setAnalyzing(false);
+      }
     };
     reader.readAsDataURL(file);
+  };
+
+  const togglePlacement = (key) => {
+    setConfirmedPlacements((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   };
 
   const resetForm = () => {
@@ -108,31 +159,48 @@ export default function FotografiaColumn({ user, onOpenAuth }) {
     setCaption('');
     setTagUserIds([]);
     setTagGroupIds([]);
+    setSuggestedTags([]);
+    setSuggestedSubfamily(null);
+    setExtraPlacements([]);
+    setConfirmedPlacements(new Set());
+    setManualTagsText('');
+    setPublishError(null);
   };
 
-  const publish = () => {
-    if (!draftSrc) return;
-    const newPhoto = {
-      id: `photo-${Date.now()}`,
-      dataUrl: draftSrc,
-      caption: caption.trim(),
-      creatorName: user?.name ?? 'Tu',
-      height: 240 + Math.round(Math.random() * 120),
-      data: new Date().toISOString(),
-    };
-    persist([newPhoto, ...photos]);
-
-    if (tagUserIds.length > 0 || tagGroupIds.length > 0) {
-      const userLabels = SOCIAL_USERS.filter((u) => tagUserIds.includes(u.id)).map((u) => u.name);
-      const groupLabels = GROUPS.filter((g) => tagGroupIds.includes(g.id)).map((g) => g.name);
-      publishPhotoPost({
-        testo: caption.trim(),
-        foto: draftSrc,
-        gruppoId: tagGroupIds[0] ?? null,
-        fotoTagLabels: [...userLabels, ...groupLabels],
-      });
+  const publish = async () => {
+    if (!draftSrc || publishing) return;
+    setPublishing(true);
+    setPublishError(null);
+    const manualTags = manualTagsText.split(',').map((t) => t.trim()).filter(Boolean);
+    const allTags = Array.from(new Set([...suggestedTags, ...manualTags]));
+    const hasSocialTag = tagUserIds.length > 0 || tagGroupIds.length > 0;
+    const chosenExtra = extraPlacements.filter((p) => confirmedPlacements.has(placementKey(p)));
+    const placements = [
+      { world: 'arte', category: 'fotografia', subfamily: suggestedSubfamily },
+      ...chosenExtra,
+      ...(hasSocialTag ? [{ world: 'social' }] : []),
+    ];
+    const file = dataUrlToFile(draftSrc, `foto-${Date.now()}.png`);
+    const { error } = await publishContent({ file, type: 'foto', caption: caption.trim(), tags: allTags, placements });
+    setPublishing(false);
+    if (error) {
+      setPublishError(error);
+      return;
     }
     resetForm();
+    refresh();
+  };
+
+  const handleLike = async (photo) => {
+    if (!user) {
+      onOpenAuth();
+      return;
+    }
+    const { liked, error } = await toggleContentLike(photo.id, photo.likedByMe);
+    if (error) return;
+    setPhotos((prev) =>
+      prev.map((p) => (p.id === photo.id ? { ...p, likedByMe: liked, likeCount: p.likeCount + (liked ? 1 : -1) } : p))
+    );
   };
 
   return (
@@ -151,6 +219,32 @@ export default function FotografiaColumn({ user, onOpenAuth }) {
         <div className="rb-foto-form">
           <img className="rb-foto-form-preview" src={draftSrc} alt="Anteprima" />
           <button type="button" className="rb-foto-edit-btn" onClick={() => setEditing(true)}>✏️ Modifica</button>
+
+          {analyzing && <p className="rb-foto-form-hint">Sto analizzando il contenuto (gratis, nel browser)...</p>}
+          {!analyzing && suggestedTags.length > 0 && (
+            <p className="rb-foto-form-hint">Tag suggeriti: {suggestedTags.map((t) => `#${t}`).join(' ')}</p>
+          )}
+          {!analyzing && suggestedSubfamily && (
+            <p className="rb-foto-form-hint">Riconosciuto: Fotografia · {suggestedSubfamily}</p>
+          )}
+          {!analyzing &&
+            extraPlacements.map((p) => {
+              const key = placementKey(p);
+              return (
+                <label key={key} className="rb-foto-placement-row">
+                  <input type="checkbox" checked={confirmedPlacements.has(key)} onChange={() => togglePlacement(key)} />
+                  Pubblica anche in {p.label}
+                </label>
+              );
+            })}
+          <input
+            type="text"
+            className="rb-foto-manual-tags-input"
+            placeholder="Aggiungi i tuoi tag, separati da virgola (facoltativo)"
+            value={manualTagsText}
+            onChange={(e) => setManualTagsText(e.target.value)}
+          />
+
           <textarea
             placeholder="Didascalia (facoltativa)"
             value={caption}
@@ -166,31 +260,30 @@ export default function FotografiaColumn({ user, onOpenAuth }) {
           {(tagUserIds.length > 0 || tagGroupIds.length > 0) && (
             <p className="rb-foto-form-hint">Con almeno un tag, questa foto comparirà anche nella bacheca del mondo Social.</p>
           )}
+          {publishError && <p className="rb-foto-form-error">⚠️ {publishError}</p>}
           <div className="rb-foto-form-actions">
             <button type="button" className="rb-foto-form-cancel" onClick={resetForm}>Annulla</button>
-            <button type="button" className="rb-foto-form-publish" onClick={publish}>Pubblica</button>
+            <button type="button" className="rb-foto-form-publish" onClick={publish} disabled={publishing}>
+              {publishing ? 'Pubblicazione...' : 'Pubblica'}
+            </button>
           </div>
         </div>
       )}
 
       <div className="rb-foto-masonry">
-        {photos.map((p) => (
-          <figure key={p.id} className="rb-foto-card" style={{ height: p.height }}>
-            <img src={p.dataUrl} alt={p.caption || 'Foto'} />
+        {photos.map((p, i) => (
+          <figure key={p.id} className="rb-foto-card" style={{ height: 220 + (i % 4) * 40 }}>
+            <img src={p.url} alt={p.caption || 'Foto'} />
             <figcaption>
               {p.caption && <span className="rb-foto-caption">{p.caption}</span>}
-              <span className="rb-foto-creator">{p.creatorName}</span>
+              {p.subfamily && <span className="rb-foto-caption">{p.subfamily}</span>}
+              <button type="button" className="rb-foto-like-btn" onClick={() => handleLike(p)}>
+                {p.likedByMe ? '❤️' : '🤍'} {p.likeCount}
+              </button>
             </figcaption>
           </figure>
         ))}
-        {SEED_PHOTOS.map((p) => (
-          <figure key={p.id} className="rb-foto-card" style={{ height: p.height, background: p.gradient }}>
-            <figcaption>
-              <span className="rb-foto-caption">{p.caption}</span>
-              <span className="rb-foto-creator">{p.creatorName}</span>
-            </figcaption>
-          </figure>
-        ))}
+        {photos.length === 0 && <p className="rb-foto-empty">Nessuna foto ancora in questa categoria.</p>}
       </div>
 
       {editing && (
