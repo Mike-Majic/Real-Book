@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { registerAccount, loginAccount, resendConfirmationEmail } from '../data/accounts';
+import ModalOverlay from './ModalOverlay';
 import './AuthModal.css';
 
 // Accedi/Registrati con account veri, salvati su Supabase (non più solo
@@ -119,7 +120,7 @@ export default function AuthModal({ open, onClose, onLogin }) {
   };
 
   return (
-    <div className="rb-modal-overlay" onClick={onClose}>
+    <ModalOverlay onClose={onClose}>
       <form
         className="rb-auth-card"
         onClick={(e) => e.stopPropagation()}
@@ -225,6 +226,6 @@ export default function AuthModal({ open, onClose, onLogin }) {
           {busy ? 'Un attimo…' : mode === 'login' ? 'Entra' : 'Crea account'}
         </button>
       </form>
-    </div>
+    </ModalOverlay>
   );
 }

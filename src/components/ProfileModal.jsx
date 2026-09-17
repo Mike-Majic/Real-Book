@@ -1,10 +1,11 @@
+import ModalOverlay from './ModalOverlay';
 import './ProfileModal.css';
 
 export default function ProfileModal({ user, world, onClose }) {
   if (!user) return null;
 
   return (
-    <div className="rb-modal-overlay" onClick={onClose}>
+    <ModalOverlay onClose={onClose}>
       <div className="rb-profile-card" style={{ '--accent': world.color }} onClick={(e) => e.stopPropagation()}>
         <button className="rb-close-btn" onClick={onClose} aria-label="Chiudi">✕</button>
 
@@ -48,6 +49,6 @@ export default function ProfileModal({ user, world, onClose }) {
           </div>
         )}
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

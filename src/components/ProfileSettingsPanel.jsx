@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { updateNickname, updateName, nicknameCooldownRemaining, nameCooldownRemaining } from '../data/accounts';
 import { sendMailboxMessage } from '../data/modMailbox';
+import ModalOverlay from './ModalOverlay';
 import './ProfileSettingsPanel.css';
 
 const NICKNAME_RULE_TEXT =
@@ -84,7 +85,7 @@ function FieldGroup({
       )}
 
       {showConfirm && (
-        <div className="rb-profile-confirm-overlay" onClick={() => setShowConfirm(false)}>
+        <ModalOverlay onClose={() => setShowConfirm(false)} className="rb-profile-confirm-overlay">
           <div className="rb-profile-confirm-card" onClick={(e) => e.stopPropagation()}>
             <p>{ruleText}</p>
             <p className="rb-profile-confirm-question">Confermi la modifica?</p>
@@ -102,7 +103,7 @@ function FieldGroup({
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );
@@ -169,7 +170,7 @@ export default function ProfileSettingsPanel({ open, onClose, user, onUpdateUser
   };
 
   return (
-    <div className="rb-modal-overlay" onClick={onClose}>
+    <ModalOverlay onClose={onClose}>
       <div className="rb-profile-settings-card" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="rb-close-btn" onClick={onClose} aria-label="Chiudi">✕</button>
         <h2>Il mio profilo</h2>
@@ -204,7 +205,7 @@ export default function ProfileSettingsPanel({ open, onClose, user, onUpdateUser
         </FieldGroup>
 
         {urgentField && (
-          <div className="rb-profile-confirm-overlay" onClick={() => setUrgentField(null)}>
+          <ModalOverlay onClose={() => setUrgentField(null)} className="rb-profile-confirm-overlay">
             <div className="rb-profile-confirm-card" onClick={(e) => e.stopPropagation()}>
               {urgentSent ? (
                 <>
@@ -234,9 +235,9 @@ export default function ProfileSettingsPanel({ open, onClose, user, onUpdateUser
                 </>
               )}
             </div>
-          </div>
+          </ModalOverlay>
         )}
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

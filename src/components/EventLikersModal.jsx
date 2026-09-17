@@ -1,4 +1,5 @@
 import { resolveAuthor } from './social/resolveAuthor';
+import ModalOverlay from './ModalOverlay';
 import './EventLikersModal.css';
 
 // Elenco di chi ha messo "mi piace" a un evento: si apre sia dal badge sul
@@ -29,7 +30,7 @@ export default function EventLikersModal({
   };
 
   return (
-    <div className="rb-modal-overlay" onClick={onClose}>
+    <ModalOverlay onClose={onClose}>
       <div className="rb-event-likers-card" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="rb-close-btn" onClick={onClose} aria-label="Chiudi">✕</button>
         <h3>Mi piace</h3>
@@ -59,6 +60,6 @@ export default function EventLikersModal({
           {likers.length === 0 && <p className="rb-event-likers-empty">Nessun mi piace ancora.</p>}
         </ul>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

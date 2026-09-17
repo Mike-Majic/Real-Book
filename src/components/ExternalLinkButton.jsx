@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ModalOverlay from './ModalOverlay';
 import './social/LinkPreview.css';
 
 // Stesso pattern di conferma già usato per i link nei post del mondo Social
@@ -20,7 +21,7 @@ export default function ExternalLinkButton({ url, className, children }) {
       </button>
 
       {confirmOpen && (
-        <div className="rb-link-confirm-overlay" onClick={() => setConfirmOpen(false)}>
+        <ModalOverlay onClose={() => setConfirmOpen(false)} className="rb-link-confirm-overlay">
           <div className="rb-link-confirm-card" onClick={(e) => e.stopPropagation()}>
             <p>Stai uscendo dall'app per aprire un link esterno. Sei sicuro?</p>
             <p className="rb-link-confirm-url">{url}</p>
@@ -33,7 +34,7 @@ export default function ExternalLinkButton({ url, className, children }) {
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </>
   );

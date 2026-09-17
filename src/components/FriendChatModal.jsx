@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { resolveAuthor, formatRelativeDate } from './social/resolveAuthor';
+import ModalOverlay from './ModalOverlay';
 import './FriendChatModal.css';
 
 function loadStored(key, fallback) {
@@ -32,7 +33,7 @@ export default function FriendChatModal({ friendId, user, onClose }) {
   };
 
   return (
-    <div className="rb-modal-overlay" onClick={onClose}>
+    <ModalOverlay onClose={onClose}>
       <div className="rb-friend-chat-card" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="rb-close-btn" onClick={onClose} aria-label="Chiudi">✕</button>
         <div className="rb-friend-chat-header">
@@ -55,6 +56,6 @@ export default function FriendChatModal({ friendId, user, onClose }) {
           <button type="submit">Invia</button>
         </form>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

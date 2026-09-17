@@ -4,6 +4,7 @@ import { getMailboxMessages, markMessageRead } from '../data/modMailbox';
 import { supabase } from '../data/supabaseClient';
 import { computeAge } from '../data/age';
 import { ROLES } from '../data/roles';
+import ModalOverlay from './ModalOverlay';
 import './AdminPanel.css';
 
 const ROLE_LABELS = { [ROLES.OWNER]: 'Owner', [ROLES.MODERATOR]: 'Moderatore', [ROLES.USER]: 'Utente' };
@@ -96,7 +97,7 @@ export default function AdminPanel({ user, onClose }) {
   };
 
   return (
-    <div className="rb-modal-overlay" onClick={onClose}>
+    <ModalOverlay onClose={onClose}>
       <div className="rb-admin-card" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="rb-close-btn" onClick={onClose} aria-label="Chiudi">✕</button>
         <h2>Backend</h2>
@@ -210,7 +211,7 @@ export default function AdminPanel({ user, onClose }) {
       </div>
 
       {resetSentTo && (
-        <div className="rb-admin-reset-overlay" onClick={() => setResetSentTo(null)}>
+        <ModalOverlay onClose={() => setResetSentTo(null)} className="rb-admin-reset-overlay">
           <div className="rb-admin-reset-card" onClick={(e) => e.stopPropagation()}>
             <h3>Mail di reset inviata</h3>
             <p>
@@ -219,8 +220,8 @@ export default function AdminPanel({ user, onClose }) {
             </p>
             <button type="button" onClick={() => setResetSentTo(null)}>Ho preso nota, chiudi</button>
           </div>
-        </div>
+        </ModalOverlay>
       )}
-    </div>
+    </ModalOverlay>
   );
 }

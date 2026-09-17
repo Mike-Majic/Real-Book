@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import ModalOverlay from '../ModalOverlay';
 import './LinkPreview.css';
 
 // Fase D: se il link e' di un servizio con un endpoint di anteprima pubblico
@@ -91,7 +92,7 @@ export default function LinkPreview({ url }) {
       )}
 
       {confirmOpen && (
-        <div className="rb-link-confirm-overlay" onClick={() => setConfirmOpen(false)}>
+        <ModalOverlay onClose={() => setConfirmOpen(false)} className="rb-link-confirm-overlay">
           <div className="rb-link-confirm-card" onClick={(e) => e.stopPropagation()}>
             <p>Stai uscendo dall'app per aprire un link esterno. Sei sicuro?</p>
             <p className="rb-link-confirm-url">{url}</p>
@@ -104,7 +105,7 @@ export default function LinkPreview({ url }) {
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

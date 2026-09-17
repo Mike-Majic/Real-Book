@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CONTINENTS, REGIONS } from '../data/geo';
 import { ARTE_CATEGORIES } from '../data/arteCategories';
+import ModalOverlay from './ModalOverlay';
 import './SettingsPanel.css';
 
 // Vista "Filtri avanzati": una seconda schermata dentro lo stesso pannello,
@@ -83,16 +84,16 @@ export default function SettingsPanel({
 
   if (view === 'advanced') {
     return (
-      <div className="rb-settings-overlay" onClick={onClose}>
+      <ModalOverlay onClose={onClose} className="rb-settings-overlay">
         <aside className="rb-settings-panel" onClick={(e) => e.stopPropagation()}>
           <AdvancedFiltersView onBack={() => setView('main')} arteFilter={arteFilter} setArteFilter={setArteFilter} />
         </aside>
-      </div>
+      </ModalOverlay>
     );
   }
 
   return (
-    <div className="rb-settings-overlay" onClick={onClose}>
+    <ModalOverlay onClose={onClose} className="rb-settings-overlay">
       <aside className="rb-settings-panel" onClick={(e) => e.stopPropagation()}>
         <div className="rb-settings-header">
           <h2>Impostazioni</h2>
@@ -236,6 +237,6 @@ export default function SettingsPanel({
 
         <p className="rb-settings-footnote">I filtri sono salvati solo su questo dispositivo, per ora. In arrivo: account veri e ricerca in tempo reale.</p>
       </aside>
-    </div>
+    </ModalOverlay>
   );
 }

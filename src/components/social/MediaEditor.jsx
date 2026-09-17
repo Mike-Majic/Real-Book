@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import ModalOverlay from '../ModalOverlay';
 import './MediaEditor.css';
 
 // Editor gratuito "scalato" (non un vero CapCut, l'utente lo sapeva già
@@ -246,7 +247,7 @@ function VideoEditor({ src, onCancel, onSave }) {
 // {src, trimStart, trimEnd} (video).
 export default function MediaEditor({ type, src, onCancel, onSave }) {
   return (
-    <div className="rb-media-editor-overlay" onClick={onCancel}>
+    <ModalOverlay onClose={onCancel} className="rb-media-editor-overlay">
       <div className="rb-media-editor-panel" onClick={(e) => e.stopPropagation()}>
         <h3 className="rb-media-editor-title">{type === 'video' ? 'Modifica video' : 'Modifica foto'}</h3>
         {type === 'video' ? (
@@ -255,6 +256,6 @@ export default function MediaEditor({ type, src, onCancel, onSave }) {
           <PhotoEditor src={src} onCancel={onCancel} onSave={onSave} />
         )}
       </div>
-    </div>
+    </ModalOverlay>
   );
 }
