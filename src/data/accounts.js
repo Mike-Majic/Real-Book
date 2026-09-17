@@ -84,6 +84,12 @@ export async function registerAccount({ username, nickname, email, password, pho
     email: cleanEmail,
     password,
     options: {
+      // Senza questo, il link nella mail di conferma riporta a una pagina
+      // generica di Supabase invece che a Versemove: qui gli si dice dove
+      // tornare dopo la verifica (Supabase deve avere questo indirizzo
+      // nell'elenco "Redirect URLs" delle impostazioni Auth, altrimenti lo
+      // ignora e torna comunque alla pagina generica).
+      emailRedirectTo: window.location.origin + import.meta.env.BASE_URL,
       data: {
         username: username.trim(),
         nickname: nickname.trim(),

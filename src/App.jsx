@@ -115,6 +115,7 @@ export default function App() {
   // sessione (login/logout/refresh token), così lo stato resta sempre
   // coerente anche se scade o cambia altrove.
   const [user, setUser] = useState(null);
+  const [justConfirmedEmail, setJustConfirmedEmail] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -197,8 +198,15 @@ export default function App() {
 
   // Ripristina la sessione già salvata dal browser (se c'è) e resta in
   // ascolto di login/logout/refresh — vedi il commento sopra alla
-  // dichiarazione di `user`.
+  // dichiarazione di `user`. Se si arriva qui dal link di conferma mail,
+  // Supabase mette i token di sessione nell'hash dell'URL: supabase-js li
+  // legge da solo e logga subito, qui si nota solo che è successo (per il
+  // banner) e si ripulisce l'hash dalla barra degli indirizzi.
   useEffect(() => {
+    if (window.location.hash.includes('type=signup')) {
+      setJustConfirmedEmail(true);
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
     let cancelled = false;
     getCurrentAccount().then((account) => {
       if (!cancelled) setUser(account);
@@ -209,6 +217,12 @@ export default function App() {
       unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!justConfirmedEmail) return undefined;
+    const timer = setTimeout(() => setJustConfirmedEmail(false), 6000);
+    return () => clearTimeout(timer);
+  }, [justConfirmedEmail]);
 
   useEffect(() => localStorage.setItem('rb-filters', JSON.stringify(filters)), [filters]);
   useEffect(() => localStorage.setItem('rb-location-filters', JSON.stringify(locationFilters)), [locationFilters]);
@@ -447,6 +461,10 @@ export default function App() {
         onOpenAdmin={() => setAdminOpen(true)}
         onOpenProfile={() => setProfileSettingsOpen(true)}
       />
+
+      {justConfirmedEmail && (
+        <div className="rb-email-confirmed-banner">✅ Mail confermata, bentornato su Versemove!</div>
+      )}
 
       <WorldGlobe
         world={world}
