@@ -23,10 +23,14 @@ function mapProfile(row) {
     tipoAccount: row.tipo_account ?? 'persona',
     ragioneSociale: row.ragione_sociale ?? '',
     partitaIva: row.partita_iva ?? '',
-    genere: row.genere ?? 'preferisco_non_dire',
+    codiceFiscale: row.codice_fiscale ?? '',
+    pec: row.pec ?? '',
+    codiceSdi: row.codice_sdi ?? '',
+    genere: row.genere ?? '',
     pronomi: row.pronomi ?? '',
     terminiAccettatiAt: row.termini_accettati_at,
     consensoMarketing: row.consenso_marketing ?? false,
+    mondiAbilitati: row.mondi_abilitati ?? [],
     ruolo: row.ruolo,
     verificato: row.verificato,
     avatar: row.avatar_url,
@@ -93,14 +97,24 @@ export async function registerAccount({
   tipoAccount,
   ragioneSociale,
   partitaIva,
+  codiceFiscale,
+  pec,
+  codiceSdi,
   genere,
   pronomi,
   termsAcceptedAt,
   consensoMarketing,
+  mondiAbilitati,
 }) {
   const cleanEmail = (email ?? '').trim().toLowerCase();
   if (!username?.trim() || !nickname?.trim() || !cleanEmail || !password || !dataNascita) {
     return { error: 'Nome utente, nickname, mail, password e data di nascita sono obbligatori.' };
+  }
+  if (!genere) {
+    return { error: 'Seleziona il genere.' };
+  }
+  if (!mondiAbilitati?.length) {
+    return { error: 'Scegli almeno un mondo da abilitare.' };
   }
   if (!termsAcceptedAt) {
     return { error: 'Devi accettare i Termini di servizio e l\'Informativa Privacy per registrarti.' };
@@ -128,10 +142,14 @@ export async function registerAccount({
         tipoAccount: tipoAccount === 'azienda' ? 'azienda' : 'persona',
         ragioneSociale: ragioneSociale?.trim() || '',
         partitaIva: partitaIva?.trim() || '',
-        genere: genere || 'preferisco_non_dire',
+        codiceFiscale: codiceFiscale?.trim() || '',
+        pec: pec?.trim() || '',
+        codiceSdi: codiceSdi?.trim() || '',
+        genere,
         pronomi: pronomi?.trim() || '',
         termsAcceptedAt,
         consensoMarketing: Boolean(consensoMarketing),
+        mondiAbilitati,
       },
     },
   });
@@ -266,14 +284,36 @@ export async function resetAccountPassword(email) {
 // Aggiorna tipo account, ragione sociale/P.IVA, genere e pronomi dopo la
 // registrazione (es. dal pannello Impostazioni). La funzione lato server
 // valida i valori consentiti e tocca solo la riga di chi chiama.
-export async function updateAccountDetails(accountId, { tipoAccount, ragioneSociale, partitaIva, genere, pronomi }) {
+export async function updateAccountDetails(accountId, {
+  tipoAccount,
+  ragioneSociale,
+  partitaIva,
+  codiceFiscale,
+  pec,
+  codiceSdi,
+  genere,
+  pronomi,
+}) {
   const { error } = await supabase.rpc('update_own_account_details', {
     p_tipo_account: tipoAccount,
     p_ragione_sociale: ragioneSociale ?? '',
     p_partita_iva: partitaIva ?? '',
+    p_codice_fiscale: codiceFiscale ?? '',
+    p_pec: pec ?? '',
+    p_codice_sdi: codiceSdi ?? '',
     p_genere: genere,
     p_pronomi: pronomi ?? '',
   });
+  if (error) return { error: error.message };
+  return { account: await fetchOwnProfile() };
+}
+
+// Cambia i mondi abilitati per l'account (dalle Impostazioni). La funzione
+// lato server applica il limite di 4 cambi a settimana e valida gli id dei
+// mondi — qui si passa semplicemente l'elenco completo desiderato (non un
+// singolo toggle), più semplice da tenere sincronizzato con la UI.
+export async function setOwnWorlds(mondi) {
+  const { error } = await supabase.rpc('set_own_worlds', { p_mondi: mondi });
   if (error) return { error: error.message };
   return { account: await fetchOwnProfile() };
 }

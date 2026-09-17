@@ -28,7 +28,7 @@ import { INCONTRI_CATEGORIES, resolveCategoryQuery as resolveIncontriCategoryQue
 import { SOCIAL_CATEGORIES, resolveCategoryQuery as resolveSocialCategoryQuery } from './data/socialCategories';
 import { FAKE_PROFILES } from './data/fakeProfiles';
 import IncontriLiveExplorer from './components/incontri/IncontriLiveExplorer';
-import AgeGate from './components/AgeGate';
+import AccessGate from './components/AccessGate';
 import { isAdult } from './data/age';
 import { SEED_EVENTS, isEventExpired } from './data/events';
 import { isStaff } from './data/roles';
@@ -444,6 +444,13 @@ export default function App() {
     else setActiveArteCategory(id);
   };
 
+  // Priorità dei gate sul mondo corrente: prima serve un account, poi (solo
+  // su Incontri/Lavoro) serve essere maggiorenni, solo dopo conta se
+  // l'utente ha scelto di disattivare questo mondo dalle Impostazioni.
+  const needsAuthForWorld = !user;
+  const ageBlockedForWorld = isAgeGatedWorld && !needsAuthForWorld && !isAdult(user?.dataNascita);
+  const worldDisabledByUser = !needsAuthForWorld && !ageBlockedForWorld && !(user.mondiAbilitati ?? []).includes(world.id);
+
   return (
     <div className="rb-app" style={{ '--accent': world.color }}>
       <TopBar
@@ -533,11 +540,20 @@ export default function App() {
         />
       )}
 
-      {isAgeGatedWorld && !isAdult(user?.dataNascita) && (
-        <AgeGate
+      {/* Ogni mondo richiede un account per essere esplorato: su Incontri e
+          Lavoro si aggiunge anche il controllo dei 18 anni. Nascosto mentre
+          AuthModal è aperto (authOpen) — prima restava sopra il modulo
+          (z-index più alto) rendendolo inutilizzabile: sembrava che il
+          modulo "non si aprisse", e l'unica cosa cliccabile rimaneva
+          "Torna indietro", che riportava al mondo Blu. */}
+      {!authOpen && !profileSettingsOpen && (needsAuthForWorld || ageBlockedForWorld || worldDisabledByUser) && (
+        <AccessGate
           world={world}
           user={user}
+          requireAdult={isAgeGatedWorld}
+          disabledByUser={worldDisabledByUser}
           onOpenAuth={() => setAuthOpen(true)}
+          onOpenSettings={() => setProfileSettingsOpen(true)}
           onDecline={() => setIndex(DEFAULT_WORLD_INDEX)}
         />
       )}
@@ -628,6 +644,8 @@ export default function App() {
         onClose={() => setProfileSettingsOpen(false)}
         user={user}
         onUpdateUser={(account) => setUser({ ...account, name: account.nickname })}
+        friends={friends}
+        onUnfriend={(id) => setFriends((prev) => prev.filter((f) => f !== id))}
       />
 
       <AuthModal

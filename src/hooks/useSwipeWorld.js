@@ -12,9 +12,29 @@ import { useEffect, useRef, useState } from 'react';
 // del mondo Bambini che usano le stesse frecce/tocchi per controllare il
 // gioco (es. Snake), altrimenti ArrowLeft/ArrowRight cambierebbero mondo
 // invece di muovere il personaggio.
+const WORLD_INDEX_KEY = 'rb-world-index';
+
 export function useSwipeWorld(count, initialIndex = 0, disabled = false) {
   const isTouchDevice = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
-  const [index, setIndex] = useState(initialIndex);
+  // Ricorda il mondo corrente per la scheda: senza, ogni volta che <App/>
+  // viene rimontato da zero (es. il redirect della mail di conferma torna
+  // alla root del sito) si ripartiva sempre dal mondo di default (Social),
+  // anche se si stava esplorando un altro mondo — sembrava un "teletrasporto"
+  // a caso.
+  const [index, setIndex] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem(WORLD_INDEX_KEY);
+      // getItem torna null quando la chiave non c'è ancora (prima visita
+      // di questa scheda): Number(null) vale 0, un indice valido come un
+      // altro, quindi senza questo controllo esplicito si finiva sempre nel
+      // primo mondo (Bambini) invece che in quello di default (Social).
+      if (raw === null) return initialIndex;
+      const stored = Number(raw);
+      return Number.isInteger(stored) && stored >= 0 && stored < count ? stored : initialIndex;
+    } catch {
+      return initialIndex;
+    }
+  });
   const containerRef = useRef(null);
   const cooldownRef = useRef(false);
   const touchStartRef = useRef(null);
@@ -26,6 +46,11 @@ export function useSwipeWorld(count, initialIndex = 0, disabled = false) {
   const goTo = (next) => {
     const clamped = ((next % count) + count) % count;
     setIndex(clamped);
+    try {
+      sessionStorage.setItem(WORLD_INDEX_KEY, String(clamped));
+    } catch {
+      // Storage non disponibile (privacy mode, ecc.): pazienza, si perde solo il "ricordo" tra un remount e l'altro.
+    }
   };
 
   const triggerCooldown = () => {

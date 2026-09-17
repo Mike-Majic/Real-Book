@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { registerAccount, loginAccount, resendConfirmationEmail } from '../data/accounts';
+import { WORLDS } from '../data/worlds';
 import ModalOverlay from './ModalOverlay';
 import TermsModal from './TermsModal';
 import './AuthModal.css';
@@ -16,6 +17,9 @@ const PRONOMI_PRESETS = [
 ];
 
 const PARTITA_IVA_PATTERN = /^\d{11}$/;
+const CODICE_FISCALE_PATTERN = /^[A-Za-z0-9]{11,16}$/;
+const PEC_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SDI_PATTERN = /^([A-Za-z0-9]{7}|0000000)$/;
 
 // Accedi/Registrati con account veri, salvati su Supabase (non più solo
 // localStorage): la registrazione raccoglie nome utente, nickname, mail,
@@ -31,6 +35,7 @@ export default function AuthModal({ open, onClose, onLogin }) {
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [dataNascita, setDataNascita] = useState('');
   const [phone, setPhone] = useState('');
   const [backupEmail, setBackupEmail] = useState('');
@@ -38,9 +43,18 @@ export default function AuthModal({ open, onClose, onLogin }) {
   const [tipoAccount, setTipoAccount] = useState('persona');
   const [ragioneSociale, setRagioneSociale] = useState('');
   const [partitaIva, setPartitaIva] = useState('');
-  const [genere, setGenere] = useState('preferisco_non_dire');
+  const [codiceFiscale, setCodiceFiscale] = useState('');
+  const [pec, setPec] = useState('');
+  const [codiceSdi, setCodiceSdi] = useState('');
+  // Niente valore di default valido: costringe a una scelta esplicita,
+  // niente "Altro"/"Preferisco non specificare" (richiesta esplicita).
+  const [genere, setGenere] = useState('');
   const [pronomiPreset, setPronomiPreset] = useState('non_specificato');
   const [pronomiCustom, setPronomiCustom] = useState('');
+  // Tutti i mondi abilitati di default: chi si registra può deselezionarne
+  // alcuni (es. vuole usare solo il mondo Nerd), non deve spuntarli a mano
+  // uno per uno per averli tutti.
+  const [mondiAbilitati, setMondiAbilitati] = useState(WORLDS.map((w) => w.id));
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [consensoMarketing, setConsensoMarketing] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
@@ -124,6 +138,18 @@ export default function AuthModal({ open, onClose, onLogin }) {
     e.preventDefault();
     setError('');
 
+    if (password !== passwordConfirm) {
+      setError('Le due password non coincidono.');
+      return;
+    }
+    if (!genere) {
+      setError('Seleziona il genere.');
+      return;
+    }
+    if (!mondiAbilitati.length) {
+      setError('Scegli almeno un mondo da abilitare.');
+      return;
+    }
     if (!termsAccepted) {
       setError('Devi accettare i Termini di servizio e l\'Informativa Privacy per registrarti.');
       return;
@@ -135,6 +161,22 @@ export default function AuthModal({ open, onClose, onLogin }) {
       }
       if (!PARTITA_IVA_PATTERN.test(partitaIva.trim())) {
         setError('La partita IVA deve essere di 11 cifre numeriche.');
+        return;
+      }
+      if (codiceFiscale.trim() && !CODICE_FISCALE_PATTERN.test(codiceFiscale.trim())) {
+        setError('Il codice fiscale non è in un formato valido.');
+        return;
+      }
+      if (!pec.trim() && !codiceSdi.trim()) {
+        setError('Per la fatturazione elettronica serve almeno uno tra PEC e Codice SDI.');
+        return;
+      }
+      if (pec.trim() && !PEC_PATTERN.test(pec.trim())) {
+        setError('La PEC non è un indirizzo mail valido.');
+        return;
+      }
+      if (codiceSdi.trim() && !SDI_PATTERN.test(codiceSdi.trim())) {
+        setError('Il Codice SDI deve essere di 7 caratteri alfanumerici (o "0000000" se usi solo la PEC).');
         return;
       }
     }
@@ -156,10 +198,14 @@ export default function AuthModal({ open, onClose, onLogin }) {
       tipoAccount,
       ragioneSociale: tipoAccount === 'azienda' ? ragioneSociale : '',
       partitaIva: tipoAccount === 'azienda' ? partitaIva : '',
+      codiceFiscale: tipoAccount === 'azienda' ? codiceFiscale : '',
+      pec: tipoAccount === 'azienda' ? pec : '',
+      codiceSdi: tipoAccount === 'azienda' ? codiceSdi : '',
       genere,
       pronomi,
       termsAcceptedAt: new Date().toISOString(),
       consensoMarketing,
+      mondiAbilitati,
     });
     setBusy(false);
     if (err) {
@@ -241,6 +287,15 @@ export default function AuthModal({ open, onClose, onLogin }) {
               />
             </label>
             <label className="rb-field">
+              <span>Conferma password</span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={passwordConfirm}
+                onChange={(e) => setPasswordConfirm(e.target.value)}
+              />
+            </label>
+            <label className="rb-field">
               <span>Data di nascita</span>
               <input
                 type="date"
@@ -310,16 +365,39 @@ export default function AuthModal({ open, onClose, onLogin }) {
                   />
                   <span className="rb-auth-field-hint">11 cifre numeriche, senza spazi né prefisso IT.</span>
                 </label>
+                <label className="rb-field">
+                  <span>Codice fiscale (facoltativo)</span>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    value={codiceFiscale}
+                    onChange={(e) => setCodiceFiscale(e.target.value.toUpperCase())}
+                  />
+                </label>
+                <label className="rb-field">
+                  <span>PEC</span>
+                  <input type="email" autoComplete="off" value={pec} onChange={(e) => setPec(e.target.value)} />
+                </label>
+                <label className="rb-field">
+                  <span>Codice SDI</span>
+                  <input
+                    type="text"
+                    maxLength={7}
+                    autoComplete="off"
+                    value={codiceSdi}
+                    onChange={(e) => setCodiceSdi(e.target.value.toUpperCase())}
+                  />
+                  <span className="rb-auth-field-hint">Serve almeno uno tra PEC e Codice SDI, per la fatturazione elettronica.</span>
+                </label>
               </>
             )}
 
             <label className="rb-field">
               <span>Genere</span>
               <select value={genere} onChange={(e) => setGenere(e.target.value)}>
-                <option value="preferisco_non_dire">Preferisco non specificare</option>
+                <option value="" disabled>Seleziona...</option>
                 <option value="uomo">Uomo</option>
                 <option value="donna">Donna</option>
-                <option value="altro">Altro</option>
               </select>
             </label>
 
@@ -340,6 +418,30 @@ export default function AuthModal({ open, onClose, onLogin }) {
                 />
               )}
             </label>
+
+            <div className="rb-field">
+              <span>Mondi da abilitare</span>
+              <div className="rb-auth-worlds-box">
+                {WORLDS.map((w) => (
+                  <label key={w.id} className="rb-auth-world-row">
+                    <input
+                      type="checkbox"
+                      checked={mondiAbilitati.includes(w.id)}
+                      onChange={() =>
+                        setMondiAbilitati((prev) =>
+                          prev.includes(w.id) ? prev.filter((id) => id !== w.id) : [...prev, w.id]
+                        )
+                      }
+                    />
+                    <span className="rb-auth-world-dot" style={{ background: w.color }} />
+                    <span>{w.label}</span>
+                  </label>
+                ))}
+              </div>
+              <span className="rb-auth-field-hint">
+                Potrai attivarli o disattivarli in qualsiasi momento dalle Impostazioni (fino a 4 volte a settimana).
+              </span>
+            </div>
 
             <label className="rb-field rb-auth-checkbox-field">
               <input
