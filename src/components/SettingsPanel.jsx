@@ -9,7 +9,7 @@ import './SettingsPanel.css';
 // principali. Oggi ospita solo la scorciatoia a una categoria di Arte &
 // Musica, ma è pensata per accogliere altri filtri via via che si
 // aggiungono, senza affollare la schermata principale.
-function AdvancedFiltersView({ onBack, arteFilter, setArteFilter }) {
+function AdvancedFiltersView({ onBack, onClose, arteFilter, setArteFilter }) {
   const selectedArteCategory = ARTE_CATEGORIES.find((c) => c.id === arteFilter.category) ?? null;
 
   return (
@@ -18,6 +18,7 @@ function AdvancedFiltersView({ onBack, arteFilter, setArteFilter }) {
         <button type="button" className="rb-settings-back-btn" onClick={onBack}>
           ← Impostazioni
         </button>
+        <button className="rb-close-btn" onClick={onClose} aria-label="Chiudi">✕</button>
       </div>
       <h2 className="rb-settings-subtitle">Filtri avanzati</h2>
 
@@ -86,7 +87,7 @@ export default function SettingsPanel({
     return (
       <ModalOverlay onClose={onClose} className="rb-settings-overlay">
         <aside className="rb-settings-panel" onClick={(e) => e.stopPropagation()}>
-          <AdvancedFiltersView onBack={() => setView('main')} arteFilter={arteFilter} setArteFilter={setArteFilter} />
+          <AdvancedFiltersView onBack={() => setView('main')} onClose={onClose} arteFilter={arteFilter} setArteFilter={setArteFilter} />
         </aside>
       </ModalOverlay>
     );

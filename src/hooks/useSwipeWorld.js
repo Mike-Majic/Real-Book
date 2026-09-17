@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 
 // Gestisce il passaggio tra i "mondi" (0..count-1) tramite:
-// - swipe orizzontale a due dita su touchscreen
 // - scroll orizzontale a due dita su trackpad (evento wheel con deltaX prevalente)
 // - frecce sinistra/destra da tastiera, come alternativa accessibile
+// - su touchscreen NON tramite gesti: le due dita sul globo servono solo a
+//   zoomare/ruotarlo (OrbitControls), altrimenti lo stesso gesto verrebbe
+//   letto sia come "cambia mondo" che come "zooma", un conflitto fastidioso.
+//   Su mobile si cambia mondo toccando le icone in basso (rb-world-dots).
 //
 // disabled: quando true, ignora tutti questi gesti — serve per i minigiochi
 // del mondo Bambini che usano le stesse frecce/tocchi per controllare il
 // gioco (es. Snake), altrimenti ArrowLeft/ArrowRight cambierebbero mondo
 // invece di muovere il personaggio.
 export function useSwipeWorld(count, initialIndex = 0, disabled = false) {
+  const isTouchDevice = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
   const [index, setIndex] = useState(initialIndex);
   const containerRef = useRef(null);
   const cooldownRef = useRef(false);
@@ -82,9 +86,11 @@ export function useSwipeWorld(count, initialIndex = 0, disabled = false) {
     };
 
     el.addEventListener('wheel', onWheel, { passive: false });
-    el.addEventListener('touchstart', onTouchStart, { passive: true });
-    el.addEventListener('touchmove', onTouchMove, { passive: true });
-    el.addEventListener('touchend', onTouchEnd, { passive: true });
+    if (!isTouchDevice) {
+      el.addEventListener('touchstart', onTouchStart, { passive: true });
+      el.addEventListener('touchmove', onTouchMove, { passive: true });
+      el.addEventListener('touchend', onTouchEnd, { passive: true });
+    }
     window.addEventListener('keydown', onKeyDown);
 
     return () => {
