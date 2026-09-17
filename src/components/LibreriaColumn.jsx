@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { MOCK_USERS } from '../data/mockUsers';
 import { CONTENT_INTERACTIONS } from '../data/contentInteractions';
-import { findCityMatch, getCityInfo, distanceKm } from '../data/geo';
+import { findCityMatch, getCityInfo, distanceKm, isUnlimitedDistance } from '../data/geo';
 import { useIsDesktopLayout } from '../hooks/useIsDesktopLayout';
 import TwoColumnSwitcher from './layout/TwoColumnSwitcher';
 import FreeBooksCatalog from './FreeBooksCatalog';
@@ -50,6 +50,7 @@ export default function LibreriaColumn({ category, initialSubfamily = '', locati
       .filter(Boolean)
       .filter(({ person }) => person.visibleNearby)
       .filter(({ person }) => {
+        if (isUnlimitedDistance(maxDistanceKm)) return true;
         const info = getCityInfo(person.city);
         if (!info) return false;
         return distanceKm(myCity.lat, myCity.lng, info.lat, info.lng) <= maxDistanceKm;

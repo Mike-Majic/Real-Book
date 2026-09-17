@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { CONTINENTS, REGIONS } from '../data/geo';
+import { CONTINENTS, REGIONS, MAX_DISTANCE_KM } from '../data/geo';
 import { ARTE_CATEGORIES } from '../data/arteCategories';
 import { MOCK_USERS } from '../data/mockUsers';
 import { WORLDS } from '../data/worlds';
 import { listBlockedContacts, blockContact, unblockContact } from '../data/blockedContacts';
 import { resetAccountPassword, setOwnWorlds } from '../data/accounts';
 import ModalOverlay from './ModalOverlay';
+import InfoBadge from './InfoBadge';
 import './SettingsPanel.css';
 
 function contactName(id) {
@@ -15,28 +16,34 @@ function contactName(id) {
 
 // Riga di titolo cliccabile che apre/chiude il contenuto sotto — stesso
 // linguaggio visivo di rb-settings-nav-btn (che porta a un'altra vista),
-// qui invece resta nella stessa schermata e mostra/nasconde i campi.
+// qui invece resta nella stessa schermata e mostra/nasconde i campi. Le
+// spiegazioni non stanno più in un paragrafo sempre visibile: sono dentro
+// la (i), per occupare meno spazio (richiesta esplicita). Titolo, (i) e
+// freccetta sono tre elementi affiancati invece di un unico bottone: la
+// (i) apre una sua vignetta, non deve anche aprire/chiudere la voce.
 // "level" distingue la fisarmonica di primo livello (Luogo, Personalizza,
-// Privacy) da quella annidata dentro (le sue "sotto impostazioni"): senza
-// questo secondo livello, cliccando una voce comparivano subito tutti i
-// suoi campi tutti insieme — con più voci dentro diventava una colonna
-// lunghissima da scorrere. Ora si apre una voce alla volta.
-function CollapsibleSection({ title, hint, open, onToggle, children, level = 'group' }) {
+// Privacy) da quella annidata dentro (le sue "sotto impostazioni").
+function CollapsibleSection({ title, infoText, open, onToggle, children, level = 'group' }) {
   const Wrapper = level === 'group' ? 'section' : 'div';
+  const rowClass = level === 'group' ? 'rb-settings-accordion-row' : 'rb-settings-subaccordion-row';
+  const titleClass = level === 'group' ? 'rb-settings-accordion-header' : 'rb-settings-subaccordion-header';
   return (
     <Wrapper className={level === 'group' ? 'rb-settings-section' : 'rb-settings-subaccordion'}>
-      <button
-        type="button"
-        className={level === 'group' ? 'rb-settings-accordion-header' : 'rb-settings-subaccordion-header'}
-        onClick={onToggle}
-        aria-expanded={open}
-      >
-        <span>
-          <strong>{title}</strong>
-          {hint && <p>{hint}</p>}
-        </span>
-        <span className="rb-settings-accordion-chevron" aria-hidden="true">{open ? '−' : '+'}</span>
-      </button>
+      <div className={rowClass}>
+        <button type="button" className={titleClass} onClick={onToggle} aria-expanded={open}>
+          {title}
+        </button>
+        {infoText && <InfoBadge text={infoText} />}
+        <button
+          type="button"
+          className="rb-settings-accordion-chevron-btn"
+          onClick={onToggle}
+          tabIndex={-1}
+          aria-hidden="true"
+        >
+          {open ? '−' : '+'}
+        </button>
+      </div>
       {open && (
         <div className={level === 'group' ? 'rb-settings-accordion-body' : 'rb-settings-subaccordion-body'}>
           {children}
@@ -46,11 +53,7 @@ function CollapsibleSection({ title, hint, open, onToggle, children, level = 'gr
   );
 }
 
-// Vista "Filtri avanzati": una seconda schermata dentro lo stesso pannello,
-// raggiunta con un pulsante e richiusa con "Indietro" verso le Impostazioni
-// principali. Oggi ospita solo la scorciatoia a una categoria di Arte &
-// Musica, ma è pensata per accogliere altri filtri via via che si
-// aggiungono, senza affollare la schermata principale.
+// Vista "Filtri avanzati": lasciata com'era, non tocchiamo questa per ora.
 function AdvancedFiltersView({ onBack, onClose, arteFilter, setArteFilter }) {
   const selectedArteCategory = ARTE_CATEGORIES.find((c) => c.id === arteFilter.category) ?? null;
 
@@ -149,10 +152,6 @@ function WorldsSubsection({ user, onOpenAuth, onUpdateUser }) {
 
   return (
     <>
-      <p className="rb-settings-hint">
-        Dove togli la spunta, il mondo sparisce per te e il tuo profilo non comparirà più agli altri in
-        quel mondo. Puoi cambiare idea quando vuoi, fino a 4 volte a settimana.
-      </p>
       <div className="rb-settings-worlds-list">
         {WORLDS.map((w) => (
           <label key={w.id} className="rb-settings-world-row">
@@ -240,7 +239,13 @@ function PrivacyView({ onBack, onClose, user, onOpenAuth, friends, onUnfriend, v
       </div>
       <h2 className="rb-settings-subtitle">Privacy</h2>
 
-      <CollapsibleSection level="sub" title="Utenti" hint="Contatti bloccati" open={sub === 'utenti'} onToggle={() => toggleSub('utenti')}>
+      <CollapsibleSection
+        level="sub"
+        title="Utenti"
+        infoText="Un contatto bloccato non può più scriverti né vederti tra i tuoi amici. Puoi sbloccarlo quando vuoi."
+        open={sub === 'utenti'}
+        onToggle={() => toggleSub('utenti')}
+      >
         {!user ? (
           <button type="button" className="rb-settings-nav-btn" onClick={onOpenAuth}>
             <span><strong>Accedi per gestire i contatti bloccati</strong></span>
@@ -250,9 +255,6 @@ function PrivacyView({ onBack, onClose, user, onOpenAuth, friends, onUnfriend, v
           <p className="rb-settings-hint">Caricamento...</p>
         ) : (
           <>
-            <p className="rb-settings-hint">
-              Un contatto bloccato non può più scriverti né vederti tra i tuoi amici. Puoi sbloccarlo quando vuoi.
-            </p>
             {error && <p className="rb-privacy-error">{error}</p>}
             {blocked.length > 0 && (
               <ul className="rb-privacy-contact-list">
@@ -285,11 +287,17 @@ function PrivacyView({ onBack, onClose, user, onOpenAuth, friends, onUnfriend, v
         )}
       </CollapsibleSection>
 
-      <CollapsibleSection level="sub" title="Posizione" hint="Chi ti vede vicino e la posizione in tempo reale" open={sub === 'posizione'} onToggle={() => toggleSub('posizione')}>
+      <CollapsibleSection
+        level="sub"
+        title="Posizione"
+        infoText="Chi vede la tua presenza e la tua posizione nei mondi."
+        open={sub === 'posizione'}
+        onToggle={() => toggleSub('posizione')}
+      >
         <label className="rb-toggle-row">
-          <span className="rb-toggle-text">
+          <span className="rb-toggle-text-row">
             <strong>Visibile agli altri utenti vicino a te</strong>
-            <p>Se attivo, chi ti è vicino può vedere nella colonna "Persone vicine" che hai messo mi piace o parteciperò a un contenuto. Mai la posizione esatta, solo la città. Di default è spento.</p>
+            <InfoBadge text='Se attivo, chi ti è vicino può vedere nella colonna "Persone vicine" che hai messo mi piace o parteciperò a un contenuto. Mai la posizione esatta, solo la città. Di default è spento.' />
           </span>
           <span className="rb-toggle">
             <input
@@ -301,14 +309,14 @@ function PrivacyView({ onBack, onClose, user, onOpenAuth, friends, onUnfriend, v
           </span>
         </label>
 
-        <p className="rb-settings-hint" style={{ marginTop: 14 }}>
-          {user
-            ? 'Se attivo, il pallino sul tuo marker nel mondo diventa verde e segue la tua posizione reale, aggiornata in tempo reale. Se spento, il pallino resta quello standard e nessuna posizione viene condivisa o richiesta al browser.'
-            : 'Accedi per poter condividere la tua posizione in tempo reale.'}
-        </p>
         <label className="rb-toggle-row">
-          <span className="rb-toggle-text">
+          <span className="rb-toggle-text-row">
             <strong>Condividi la mia posizione in tempo reale</strong>
+            <InfoBadge text={
+              user
+                ? 'Se attivo, il pallino sul tuo marker nel mondo diventa verde e segue la tua posizione reale, aggiornata in tempo reale. Se spento, il pallino resta quello standard e nessuna posizione viene condivisa o richiesta al browser.'
+                : 'Accedi per poter condividere la tua posizione in tempo reale.'
+            } />
           </span>
           <span className="rb-toggle">
             <input
@@ -328,8 +336,13 @@ function PrivacyView({ onBack, onClose, user, onOpenAuth, friends, onUnfriend, v
         </label>
       </CollapsibleSection>
 
-      <CollapsibleSection level="sub" title="Sicurezza e accesso" hint="Password dell'account" open={sub === 'sicurezza'} onToggle={() => toggleSub('sicurezza')}>
-        <p className="rb-settings-hint">Ti mandiamo una mail con un link per scegliere una nuova password.</p>
+      <CollapsibleSection
+        level="sub"
+        title="Sicurezza e accesso"
+        infoText="Ti mandiamo una mail con un link per scegliere una nuova password."
+        open={sub === 'sicurezza'}
+        onToggle={() => toggleSub('sicurezza')}
+      >
         {!user ? (
           <button type="button" className="rb-settings-nav-btn" onClick={onOpenAuth}>
             <span><strong>Accedi per gestire la sicurezza dell'account</strong></span>
@@ -378,6 +391,7 @@ export default function SettingsPanel({
   const updateFilter = (key, value) => setFilters((f) => ({ ...f, [key]: value }));
   const updateLocation = (key, value) => setLocationFilters((f) => ({ ...f, [key]: value }));
   const togglePersonalizzaSub = (name) => setPersonalizzaSub((s) => (s === name ? '' : name));
+  const distanzaUnlimited = locationFilters.distance >= MAX_DISTANCE_KM;
 
   if (view === 'advanced') {
     return (
@@ -427,7 +441,7 @@ export default function SettingsPanel({
 
         <CollapsibleSection
           title="Luogo"
-          hint="Continente, regione e città: valido per tutti i mondi."
+          infoText="Continente, regione e città: valido per tutti i mondi."
           open={luogoOpen}
           onToggle={() => setLuogoOpen((v) => !v)}
         >
@@ -462,19 +476,28 @@ export default function SettingsPanel({
           </label>
 
           <label className="rb-field">
-            <span>Distanza: {locationFilters.distance} km</span>
-            <input type="range" min={1} max={500} value={locationFilters.distance}
+            <span className="rb-field-label-row">
+              Distanza: {distanzaUnlimited ? 'tutto il mondo' : `${locationFilters.distance} km`}
+              <InfoBadge text="Trascina la barra tutta a destra per non avere nessun limite di distanza: verranno considerate le persone di tutto il mondo, non solo quelle entro un certo raggio dalla città impostata sopra." />
+            </span>
+            <input type="range" min={1} max={MAX_DISTANCE_KM} value={locationFilters.distance}
               onChange={(e) => updateLocation('distance', Number(e.target.value))} />
           </label>
         </CollapsibleSection>
 
         <CollapsibleSection
           title="Personalizza il tuo Versemove"
-          hint="Chi vuoi vedere e quali mondi usare — tutto gratuito, nessuna funzione a pagamento."
+          infoText="Chi vuoi vedere e quali mondi usare, valido per tutti i mondi."
           open={personalizzaOpen}
           onToggle={() => setPersonalizzaOpen((v) => !v)}
         >
-          <CollapsibleSection level="sub" title="Mostrami ed età" hint="Genere ed età di chi vuoi vedere" open={personalizzaSub === 'mostrami'} onToggle={() => togglePersonalizzaSub('mostrami')}>
+          <CollapsibleSection
+            level="sub"
+            title="Mostrami ed età"
+            infoText="Genere ed età di chi vuoi vedere."
+            open={personalizzaSub === 'mostrami'}
+            onToggle={() => togglePersonalizzaSub('mostrami')}
+          >
             <label className="rb-field">
               <span>Mostrami</span>
               <div className="rb-chip-group">
@@ -501,7 +524,13 @@ export default function SettingsPanel({
             </label>
           </CollapsibleSection>
 
-          <CollapsibleSection level="sub" title="Mondi" hint="Quali mondi abilitare per il tuo account" open={personalizzaSub === 'mondi'} onToggle={() => togglePersonalizzaSub('mondi')}>
+          <CollapsibleSection
+            level="sub"
+            title="Mondi"
+            infoText="Dove togli la spunta, il mondo sparisce per te e il tuo profilo non comparirà più agli altri in quel mondo. Puoi cambiare idea quando vuoi, fino a 4 volte a settimana."
+            open={personalizzaSub === 'mondi'}
+            onToggle={() => togglePersonalizzaSub('mondi')}
+          >
             <WorldsSubsection user={user} onOpenAuth={onOpenAuth} onUpdateUser={onUpdateUser} />
           </CollapsibleSection>
         </CollapsibleSection>

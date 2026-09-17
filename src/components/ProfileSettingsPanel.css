@@ -97,42 +97,8 @@
   font-size: 13px;
 }
 
-.rb-info-badge-wrap {
-  position: relative;
-}
-
-.rb-info-badge {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 1px solid rgba(245, 245, 247, 0.4);
-  background: transparent;
-  color: rgba(245, 245, 247, 0.7);
-  font-size: 11px;
-  font-style: italic;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-.rb-info-bubble {
-  position: absolute;
-  top: 24px;
-  left: 0;
-  z-index: 5;
-  width: 220px;
-  background: #1c1c24;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 11.5px;
-  line-height: 1.4;
-  color: rgba(245, 245, 247, 0.85);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-}
+/* .rb-info-badge-wrap/.rb-info-badge/.rb-info-bubble vivono in
+   src/styles/shared.css: li usa anche SettingsPanel. */
 
 .rb-profile-field-group input {
   width: 100%;

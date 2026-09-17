@@ -9,4 +9,15 @@ const SUPABASE_URL = 'https://bxcwwtydlaodntvilhik.supabase.co';
 const SUPABASE_ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4Y3d3dHlkbGFvZG50dmlsaGlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2MTU5NzQsImV4cCI6MjEwNTE5MTk3NH0.XJwgOKIkcAwoMaQdaQQacTQ5wdokzQAEkkZ5H4Ba7iQ';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Questi sono già i valori di default di supabase-js, ma li scriviamo
+// esplicitamente: la sessione va salvata nel browser (persistSession) e
+// rinnovata da sola prima di scadere (autoRefreshToken), così un
+// aggiornamento della pagina non deve richiedere un nuovo login a chi ha
+// già una sessione valida.
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});

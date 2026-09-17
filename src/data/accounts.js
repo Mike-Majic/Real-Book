@@ -41,9 +41,14 @@ function mapProfile(row) {
 }
 
 async function fetchOwnProfile() {
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth?.user) return null;
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', auth.user.id).single();
+  // getSession() legge la sessione già salvata dal browser (e la rinnova da
+  // sola se serve), senza dover per forza contattare il server come fa
+  // invece getUser(): se quella singola chiamata di rete era lenta o falliva
+  // per un attimo, l'app sembrava aver "dimenticato" il login a ogni
+  // ricarica della pagina, anche con una sessione ancora valida.
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.user) return null;
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
   if (error) return null;
   return mapProfile(data);
 }

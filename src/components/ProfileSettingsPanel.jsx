@@ -8,6 +8,7 @@ import {
 } from '../data/accounts';
 import { sendMailboxMessage } from '../data/modMailbox';
 import ModalOverlay from './ModalOverlay';
+import InfoBadge from './InfoBadge';
 import './ProfileSettingsPanel.css';
 
 const NICKNAME_RULE_TEXT =
@@ -24,30 +25,6 @@ const PRONOMI_PRESETS = [
 
 function daysLeft(ms) {
   return Math.ceil(ms / (24 * 60 * 60 * 1000));
-}
-
-// Icona "i" cerchiata: al click mostra una vignetta con la regola. Chi la
-// legge qui non vede più la conferma extra al salvataggio (vedi
-// FieldEditor sotto) — chi salva senza averla aperta la vede comunque,
-// dentro alla finestra di conferma.
-function InfoBadge({ text, onSeen }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <span className="rb-info-badge-wrap">
-      <button
-        type="button"
-        className="rb-info-badge"
-        onClick={() => {
-          setOpen((v) => !v);
-          onSeen();
-        }}
-        aria-label="Come funziona"
-      >
-        i
-      </button>
-      {open && <div className="rb-info-bubble">{text}</div>}
-    </span>
-  );
 }
 
 function FieldGroup({

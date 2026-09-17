@@ -24,6 +24,16 @@ export const CITIES = {
 
 export const CONTINENTS = ['Europa', 'Nord America', 'Sud America', 'Asia', 'Africa', 'Oceania'];
 
+// Valore massimo dello slider "Distanza" nelle Impostazioni: a differenza
+// di un valore intermedio, non significa "entro 500 km" ma "nessun
+// limite, considera tutto il mondo" — chi usa il filtro lo controlla con
+// isUnlimitedDistance() invece di confrontare il numero direttamente.
+export const MAX_DISTANCE_KM = 500;
+
+export function isUnlimitedDistance(maxDistanceKm) {
+  return maxDistanceKm >= MAX_DISTANCE_KM;
+}
+
 export const REGIONS = Object.values(CITIES)
   .map((c) => c.region)
   .filter((r, i, arr) => arr.indexOf(r) === i)

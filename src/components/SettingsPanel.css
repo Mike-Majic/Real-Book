@@ -156,17 +156,22 @@
   margin-bottom: 4px;
 }
 
-.rb-toggle-text strong {
-  display: block;
+.rb-toggle-text-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rb-toggle-text-row strong {
   font-size: 13px;
   color: #f5f5f7;
 }
 
-.rb-toggle-text p {
-  margin: 3px 0 0;
-  font-size: 11.5px;
-  color: rgba(245, 245, 247, 0.55);
-  line-height: 1.4;
+.rb-field-label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .rb-toggle {
@@ -281,41 +286,53 @@
   flex-shrink: 0;
 }
 
-/* Stesso linguaggio visivo di rb-settings-nav-btn, ma per una riga che
-   apre/chiude il contenuto sotto di sé invece di portare a un'altra
-   schermata (vedi CollapsibleSection in SettingsPanel.jsx). */
-.rb-settings-accordion-header {
-  width: 100%;
+/* Riga di titolo di una voce a fisarmonica: titolo (bottone che
+   apre/chiude), (i) facoltativa con la spiegazione, freccetta (altro
+   bottone, stessa azione del titolo) — tre elementi affiancati, non un
+   unico bottone, perché la (i) apre una sua vignetta e non deve anche
+   aprire/chiudere la voce (vedi CollapsibleSection in SettingsPanel.jsx). */
+.rb-settings-accordion-row,
+.rb-settings-subaccordion-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  gap: 8px;
+}
+
+.rb-settings-accordion-header {
+  flex: 1;
+  min-width: 0;
   background: transparent;
   border: none;
   padding: 0;
   color: #f5f5f7;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
   text-align: left;
 }
 
-.rb-settings-accordion-header strong {
-  display: block;
-  font-size: 15px;
+.rb-settings-subaccordion-header {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #f5f5f7;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
 }
 
-.rb-settings-accordion-header p {
-  margin: 4px 0 0;
-  font-size: 12.5px;
-  color: rgba(245, 245, 247, 0.55);
-  line-height: 1.4;
-}
-
-.rb-settings-accordion-chevron {
-  font-size: 18px;
-  color: rgba(245, 245, 247, 0.5);
+.rb-settings-accordion-chevron-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  width: 22px;
   flex-shrink: 0;
-  width: 24px;
-  text-align: center;
+  color: rgba(245, 245, 247, 0.5);
+  font-size: 18px;
+  cursor: pointer;
 }
 
 .rb-settings-accordion-body {
@@ -373,32 +390,6 @@
 .rb-settings-subaccordion:first-child {
   border-top: none;
   padding-top: 2px;
-}
-
-.rb-settings-subaccordion-header {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  background: transparent;
-  border: none;
-  padding: 0;
-  color: #f5f5f7;
-  cursor: pointer;
-  text-align: left;
-}
-
-.rb-settings-subaccordion-header strong {
-  display: block;
-  font-size: 13px;
-}
-
-.rb-settings-subaccordion-header p {
-  margin: 3px 0 0;
-  font-size: 11.5px;
-  color: rgba(245, 245, 247, 0.5);
-  line-height: 1.4;
 }
 
 .rb-settings-subaccordion-body {
