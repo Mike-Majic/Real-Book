@@ -76,6 +76,29 @@
   padding: 8px 10px;
 }
 
+.rb-auth-resend-btn {
+  display: block;
+  width: 100%;
+  margin: 0 0 10px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #f5f5f7;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 9px 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.rb-auth-resend-btn:hover {
+  border-color: #fff;
+}
+
+.rb-auth-resend-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .rb-auth-info {
   margin: 0 0 10px;
   font-size: 12px;

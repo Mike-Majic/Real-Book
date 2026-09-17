@@ -129,6 +129,9 @@ export async function loginAccount(email, password) {
     password,
   });
   if (error) {
+    if (error.code === 'email_not_confirmed') {
+      return { error: 'Devi prima confermare la mail: controlla la posta (anche spam).', needsEmailConfirmation: true };
+    }
     return { error: 'Mail o password non corretti.' };
   }
   const account = await fetchOwnProfile();
@@ -140,6 +143,20 @@ export async function loginAccount(email, password) {
 
 export async function logoutAccount() {
   await supabase.auth.signOut();
+}
+
+// Rimanda la mail di conferma: serve se il link della prima è scaduto, è
+// già stato aperto senza completare la conferma, o semplicemente non è
+// arrivata. Non serve rifare la registrazione: l'account esiste già, solo
+// non confermato.
+export async function resendConfirmationEmail(email) {
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email: (email ?? '').trim().toLowerCase(),
+    options: { emailRedirectTo: window.location.origin + import.meta.env.BASE_URL },
+  });
+  if (error) return { error: error.message };
+  return {};
 }
 
 // Carica un file nel bucket privato "attachments" (sotto il proprio uid,

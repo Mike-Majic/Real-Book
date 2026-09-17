@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { registerAccount, loginAccount } from '../data/accounts';
+import { registerAccount, loginAccount, resendConfirmationEmail } from '../data/accounts';
 import './AuthModal.css';
 
 // Accedi/Registrati con account veri, salvati su Supabase (non più solo
@@ -22,6 +22,11 @@ export default function AuthModal({ open, onClose, onLogin }) {
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [busy, setBusy] = useState(false);
+  // Mail per cui serve ancora confermare l'indirizzo: se valorizzata, sotto
+  // al messaggio compare un pulsante per rimandare la mail (niente bisogno
+  // di rifare la registrazione — l'account esiste già, solo non confermato).
+  const [pendingConfirmEmail, setPendingConfirmEmail] = useState('');
+  const [resendOk, setResendOk] = useState(false);
 
   // Ogni volta che si riapre, si riparte dalla scheda Accedi: altrimenti
   // chi ha lasciato aperta "Registrati" senza inviare (es. per ripensarci)
@@ -31,6 +36,8 @@ export default function AuthModal({ open, onClose, onLogin }) {
       setMode('login');
       setError('');
       setInfo('');
+      setPendingConfirmEmail('');
+      setResendOk(false);
     }
   }, [open]);
 
@@ -55,13 +62,26 @@ export default function AuthModal({ open, onClose, onLogin }) {
   const submitLogin = async (e) => {
     e.preventDefault();
     setBusy(true);
-    const { account, error: err } = await loginAccount(loginEmail, loginPassword);
+    setResendOk(false);
+    const { account, error: err, needsEmailConfirmation } = await loginAccount(loginEmail, loginPassword);
+    setBusy(false);
+    if (err) {
+      setError(err);
+      setPendingConfirmEmail(needsEmailConfirmation ? loginEmail : '');
+      return;
+    }
+    finishAuth(account);
+  };
+
+  const resendConfirmation = async () => {
+    setBusy(true);
+    const { error: err } = await resendConfirmationEmail(pendingConfirmEmail);
     setBusy(false);
     if (err) {
       setError(err);
       return;
     }
-    finishAuth(account);
+    setResendOk(true);
   };
 
   const onFilesChosen = (e) => {
@@ -90,6 +110,8 @@ export default function AuthModal({ open, onClose, onLogin }) {
     }
     if (needsEmailConfirmation) {
       setInfo('Account creato: controlla la tua mail e conferma l\'indirizzo, poi accedi da qui con mail e password.');
+      setPendingConfirmEmail(email);
+      setResendOk(false);
       setMode('login');
       return;
     }
@@ -174,6 +196,13 @@ export default function AuthModal({ open, onClose, onLogin }) {
 
         {error && <p className="rb-auth-error">{error}</p>}
         {info && <p className="rb-auth-info">{info}</p>}
+
+        {pendingConfirmEmail && !resendOk && (
+          <button type="button" className="rb-auth-resend-btn" onClick={resendConfirmation} disabled={busy}>
+            Rinvia mail di conferma a {pendingConfirmEmail}
+          </button>
+        )}
+        {resendOk && <p className="rb-auth-info">Mail inviata di nuovo: controlla la posta (anche spam).</p>}
 
         <button type="submit" className="rb-btn-primary rb-auth-submit" disabled={busy}>
           {busy ? 'Un attimo…' : mode === 'login' ? 'Entra' : 'Crea account'}
