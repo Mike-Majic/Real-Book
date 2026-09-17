@@ -141,35 +141,52 @@ export default function AuthModal({ open, onClose, onLogin }) {
           <>
             <label className="rb-field">
               <span>Mail</span>
-              <input type="email" autoFocus value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
+              <input
+                type="email"
+                autoFocus
+                autoComplete="email"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+              />
             </label>
             <label className="rb-field">
               <span>Password</span>
-              <input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
+              <input
+                type="password"
+                autoComplete="current-password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+              />
             </label>
           </>
         ) : (
           <>
             <label className="rb-field">
               <span>Nome utente</span>
-              <input type="text" autoFocus value={username} onChange={(e) => setUsername(e.target.value)} />
+              <input type="text" autoFocus autoComplete="off" value={username} onChange={(e) => setUsername(e.target.value)} />
             </label>
             <label className="rb-field">
               <span>Nickname</span>
-              <input type="text" value={nickname} onChange={(e) => setNickname(e.target.value)} />
+              <input type="text" autoComplete="off" value={nickname} onChange={(e) => setNickname(e.target.value)} />
             </label>
             <label className="rb-field">
               <span>Mail</span>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </label>
             <label className="rb-field">
               <span>Password</span>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </label>
             <label className="rb-field">
               <span>Data di nascita</span>
               <input
                 type="date"
+                autoComplete="off"
                 value={dataNascita}
                 max={new Date().toISOString().slice(0, 10)}
                 onChange={(e) => setDataNascita(e.target.value)}
@@ -178,7 +195,7 @@ export default function AuthModal({ open, onClose, onLogin }) {
             </label>
             <label className="rb-field">
               <span>Cellulare (facoltativo)</span>
-              <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <input type="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </label>
             <label className="rb-field">
               <span>Mail di backup (facoltativa)</span>
