@@ -1,3 +1,9 @@
+/* Guscio condiviso da ogni "explorer" per categoria sul globo (Arte &
+   Musica, Bambini, Incontri, Social): il contenitore fisso a schermo
+   intero, i controlli in alto (ricerca categoria + bottone "chiudi tutto").
+   Il contenuto vero e proprio (griglia categorie, colonne, sottofamiglie)
+   sta in CategoryColumn.css — qui c'è solo la cornice, uguale ovunque. */
+
 /* z-index 1015+ (non solo il minimo per stare sopra alla topbar/tagline):
    il globo (react-globe.gl) assegna ai marker HTML uno z-index inline
    dinamico proporzionale al numero di marker visibili in quel momento, che

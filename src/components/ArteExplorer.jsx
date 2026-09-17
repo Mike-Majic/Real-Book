@@ -3,7 +3,7 @@ import CategoryColumn from './CategoryColumn';
 import LibreriaColumn from './LibreriaColumn';
 import FotografiaColumn from './FotografiaColumn';
 import VideoColumn from './VideoColumn';
-import './ArteExplorer.css';
+import './shared/categoryExplorerShell.css';
 
 // Guscio di navigazione categorie, generico per qualunque mondo che abbia un
 // proprio set di categorie (categorySet = { categories, featured, results,

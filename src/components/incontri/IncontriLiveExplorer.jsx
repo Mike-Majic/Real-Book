@@ -4,7 +4,7 @@ import TwoColumnSwitcher from '../layout/TwoColumnSwitcher';
 import LiveUsersList from './LiveUsersList';
 import LiveChatRoom from './LiveChatRoom';
 import MatchColumn from './MatchColumn';
-import '../ArteExplorer.css';
+import '../shared/categoryExplorerShell.css';
 import './IncontriLiveExplorer.css';
 
 // Guscio di navigazione del mondo Incontri: stesso pattern di ArteExplorer

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { SOCIAL_CATEGORIES, resolveCategoryQuery } from '../../data/socialCategories';
 import SocialFeed from './SocialFeed';
-import '../ArteExplorer.css';
+import '../shared/categoryExplorerShell.css';
 
 // Guscio di navigazione del mondo Social: stesso pattern di ArteExplorer/
 // IncontriLiveExplorer (X + ricerca in alto, chiuso finché non si sceglie

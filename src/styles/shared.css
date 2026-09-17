@@ -1,0 +1,44 @@
+/* Stili di base condivisi da più pannelli/componenti, caricati una sola
+   volta e sempre (importato da main.jsx, non da un singolo componente):
+   se vivessero nel CSS di un componente qualsiasi, un domani diviso in
+   pezzi caricati solo all'occorrenza (es. React.lazy), chi lo usa per
+   primo trascinerebbe con sé lo stile di tutti gli altri — o peggio,
+   arriverebbe senza, con pulsanti/sfondi senza stile finché quel pezzo
+   non viene caricato. */
+
+/* Bottone di chiusura "✕": lo stile visivo è unico, ma dove sta nello
+   schermo dipende da come lo mette il markup di ciascun pannello — in riga
+   dentro un header flex (si posiziona da solo) o come primo figlio di una
+   card (serve position:absolute, aggiunta nel CSS di quella card). */
+.rb-close-btn {
+  background: transparent;
+  border: none;
+  color: #f5f5f7;
+  font-size: 16px;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.rb-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Sfondo scuro dietro ogni pannello a comparsa (vedi ModalOverlay.jsx). */
+.rb-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 1060;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: rb-fade-in 0.15s ease;
+}
+
+@keyframes rb-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

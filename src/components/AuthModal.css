@@ -11,6 +11,16 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
+/* Mancava: il bottone stava in flusso normale in cima al form invece che
+   nell'angolo come in tutte le altre card — su schermi larghi finiva
+   troppo vicino alla barra in alto (bug trovato mentre si toglievano i
+   duplicati di questo stile sparsi nei vari pannelli). */
+.rb-auth-card .rb-close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+}
+
 .rb-auth-card h2 {
   margin: 0 0 6px;
   font-size: 20px;

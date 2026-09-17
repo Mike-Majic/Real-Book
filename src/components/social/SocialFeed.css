@@ -1,5 +1,6 @@
-/* Stesso margine di ArteExplorer.css sopra i marker del globo: vedi il
-   commento lì per il perché di 1015 invece di un piccolo valore fisso. */
+/* Stesso margine di shared/categoryExplorerShell.css sopra i marker del
+   globo: vedi il commento lì per il perché di 1015 invece di un piccolo
+   valore fisso. */
 .rb-social-feed {
   position: fixed;
   inset: 0;

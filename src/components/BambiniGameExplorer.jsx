@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { MINIGAMES, resolveCategoryQuery } from '../games/registry';
 import MiniGameShell from './minigames/MiniGameShell';
-import './ArteExplorer.css';
+import './shared/categoryExplorerShell.css';
 import './BambiniGameExplorer.css';
 
 // Guscio di navigazione per il mondo Bambini: stesso pattern di
