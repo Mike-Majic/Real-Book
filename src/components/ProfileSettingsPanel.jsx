@@ -127,8 +127,8 @@ export default function ProfileSettingsPanel({ open, onClose, user, onUpdateUser
 
   if (!open || !user) return null;
 
-  const saveNickname = () => {
-    const { account, error } = updateNickname(user.id, nickname);
+  const saveNickname = async () => {
+    const { account, error } = await updateNickname(user.id, nickname);
     if (error) {
       setNickErr(error);
       setNickOk('');
@@ -139,8 +139,8 @@ export default function ProfileSettingsPanel({ open, onClose, user, onUpdateUser
     onUpdateUser(account);
   };
 
-  const saveName = () => {
-    const { account, error } = updateName(user.id, nome, cognome);
+  const saveName = async () => {
+    const { account, error } = await updateName(user.id, nome, cognome);
     if (error) {
       setNameErr(error);
       setNameOk('');
@@ -157,15 +157,15 @@ export default function ProfileSettingsPanel({ open, onClose, user, onUpdateUser
     setUrgentSent(false);
   };
 
-  const sendUrgent = () => {
+  const sendUrgent = async () => {
     if (!urgentBody.trim()) return;
-    sendMailboxMessage({
+    const { error } = await sendMailboxMessage({
       fromAccountId: user.id,
       fromNickname: user.nickname,
       subject: urgentField === 'nickname' ? 'Richiesta urgente: cambio nickname' : 'Richiesta urgente: cambio nome/cognome',
       body: urgentBody.trim(),
     });
-    setUrgentSent(true);
+    if (!error) setUrgentSent(true);
   };
 
   return (

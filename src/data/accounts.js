@@ -1,188 +1,205 @@
-import { OWNER_EMAIL, ROLES, roleForEmail } from './roles';
-
-const STORAGE_KEY = 'rb-accounts';
+import { supabase } from './supabaseClient';
 
 const NICKNAME_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 1 settimana
 const NAME_COOLDOWN_MS = 90 * 24 * 60 * 60 * 1000; // 3 mesi
 
-function loadAccounts() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+// Converte la riga di public.profiles (snake_case, come arriva da Supabase)
+// nella forma camelCase che il resto dell'app già si aspetta — così i
+// componenti (TopBar, AgeGate, ProfileSettingsPanel, AdminPanel...) non
+// hanno dovuto cambiare nomi di campo passando da localStorage a Supabase.
+function mapProfile(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    username: row.username,
+    nickname: row.nickname,
+    nome: row.nome ?? '',
+    cognome: row.cognome ?? '',
+    email: row.email,
+    phone: row.phone ?? '',
+    backupEmail: row.backup_email ?? '',
+    dataNascita: row.data_nascita,
+    attachments: row.attachments ?? [],
+    ruolo: row.ruolo,
+    verificato: row.verificato,
+    avatar: row.avatar_url,
+    createdAt: row.created_at,
+    lastNicknameChangeAt: row.last_nickname_change_at,
+    lastNameChangeAt: row.last_name_change_at,
+  };
 }
 
-function saveAccounts(list) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+async function fetchOwnProfile() {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth?.user) return null;
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', auth.user.id).single();
+  if (error) return null;
+  return mapProfile(data);
 }
 
-function randomPassword(len = 10) {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-  let out = '';
-  for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
-  return out;
+// Account attualmente loggato (se una sessione Supabase è già salvata dal
+// browser): usato all'avvio dell'app al posto del vecchio
+// loadStored('rb-user', null) su localStorage.
+export async function getCurrentAccount() {
+  return fetchOwnProfile();
 }
 
-export function getAccounts() {
-  return loadAccounts();
+// Notifica ad ogni cambio di sessione (login, logout, refresh token,
+// scadenza): l'app tiene lo stato utente sempre coerente con quello che
+// Supabase pensa sia vero, invece di fidarsi solo dello stato locale.
+export function subscribeAuthChanges(callback) {
+  const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    if (!session) {
+      callback(null);
+      return;
+    }
+    callback(await fetchOwnProfile());
+  });
+  return () => sub.subscription.unsubscribe();
 }
 
-export function findAccountByEmail(email) {
-  const q = (email ?? '').trim().toLowerCase();
-  if (!q) return null;
-  return loadAccounts().find((a) => a.email === q) ?? null;
+// Elenco account: la RLS di Supabase decide da sola cosa restituire (solo
+// la propria riga per un utente normale, tutte per owner/moderatori) — non
+// serve nessun controllo qui.
+export async function getAccounts() {
+  const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: true });
+  if (error) return [];
+  return data.map(mapProfile);
 }
 
-function isNicknameTaken(nickname, excludeId) {
-  const q = nickname.trim().toLowerCase();
-  return loadAccounts().some((a) => a.id !== excludeId && a.nickname.trim().toLowerCase() === q);
-}
-
-// Registra un nuovo account. Nessun vero backend: password, mail e data di
-// nascita vivono solo in questo browser (localStorage), come il resto dei
-// dati dell'app — vedi il commento in roles.js sui limiti di questo per
-// l'owner. nome/cognome non si chiedono qui (si aggiungono più avanti nel
-// profilo): solo nickname è obbligatorio da subito, è quello con cui si
-// appare nell'app.
-export function registerAccount({ username, nickname, email, password, phone, backupEmail, attachments, dataNascita }) {
+// Registra un nuovo account con Supabase Auth (email+password reale). Il
+// ruolo (owner per m.colurci@gmail.com, altrimenti utente) e la riga in
+// profiles li crea da soli un trigger lato server alla registrazione.
+// Se il progetto richiede la conferma via mail, signUp non restituisce
+// subito una sessione: in quel caso avatar ed eventuali allegati non
+// possono essere caricati adesso (serve essere autenticati) e vanno gestiti
+// dopo la conferma, al primo login.
+export async function registerAccount({ username, nickname, email, password, phone, backupEmail, attachments, dataNascita }) {
   const cleanEmail = (email ?? '').trim().toLowerCase();
   if (!username?.trim() || !nickname?.trim() || !cleanEmail || !password || !dataNascita) {
     return { error: 'Nome utente, nickname, mail, password e data di nascita sono obbligatori.' };
   }
-  if (findAccountByEmail(cleanEmail)) {
-    return { error: 'Questa mail ha già un account.' };
-  }
-  if (isNicknameTaken(nickname, null)) {
-    return { error: 'Questo nickname è già in uso.' };
-  }
-  const accounts = loadAccounts();
-  const account = {
-    id: `acc-${Date.now()}`,
-    username: username.trim(),
-    nickname: nickname.trim(),
-    nome: '',
-    cognome: '',
+
+  const { data, error } = await supabase.auth.signUp({
     email: cleanEmail,
     password,
-    phone: phone?.trim() || '',
-    backupEmail: backupEmail?.trim().toLowerCase() || '',
-    dataNascita,
-    attachments: attachments ?? [],
-    ruolo: roleForEmail(cleanEmail),
-    verificato: false,
-    avatar: `https://i.pravatar.cc/150?u=${encodeURIComponent(cleanEmail)}`,
-    createdAt: new Date().toISOString(),
-    lastNicknameChangeAt: null,
-    lastNameChangeAt: null,
-  };
-  accounts.push(account);
-  saveAccounts(accounts);
+    options: {
+      data: {
+        username: username.trim(),
+        nickname: nickname.trim(),
+        phone: phone?.trim() || '',
+        backupEmail: backupEmail?.trim().toLowerCase() || '',
+        dataNascita,
+      },
+    },
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  if (!data.session) {
+    return { needsEmailConfirmation: true };
+  }
+
+  // Sessione subito attiva: l'avatar di default (nessun vero upload) e gli
+  // eventuali allegati caricati in registrazione si possono sistemare ora.
+  const avatar = `https://i.pravatar.cc/150?u=${encodeURIComponent(cleanEmail)}`;
+  await supabase.rpc('update_own_avatar', { p_avatar_url: avatar });
+
+  if (attachments?.length) {
+    for (const att of attachments) {
+      await uploadAttachment(data.user.id, att);
+    }
+  }
+
+  const account = await fetchOwnProfile();
   return { account };
 }
 
-export function loginAccount(email, password) {
-  const account = findAccountByEmail(email);
-  if (!account || account.password !== password) {
+export async function loginAccount(email, password) {
+  const { error } = await supabase.auth.signInWithPassword({
+    email: (email ?? '').trim().toLowerCase(),
+    password,
+  });
+  if (error) {
     return { error: 'Mail o password non corretti.' };
   }
+  const account = await fetchOwnProfile();
+  if (!account) {
+    return { error: 'Account non trovato.' };
+  }
   return { account };
 }
 
-// Solo l'owner può chiamare questa (il controllo va fatto da chi la usa,
-// qui c'è comunque una guardia): il ruolo dell'owner stesso non si tocca
-// mai, nemmeno da un altro account che provasse a farlo.
-export function updateAccountRole(accountId, newRole) {
-  const accounts = loadAccounts();
-  const idx = accounts.findIndex((a) => a.id === accountId);
-  if (idx === -1) return { error: 'Utente non trovato.' };
-  if (accounts[idx].email === OWNER_EMAIL || accounts[idx].ruolo === ROLES.OWNER) {
-    return { error: "Il ruolo dell'owner non è modificabile." };
-  }
-  if (newRole !== ROLES.MODERATOR && newRole !== ROLES.USER) {
-    return { error: 'Ruolo non valido.' };
-  }
-  accounts[idx] = { ...accounts[idx], ruolo: newRole };
-  saveAccounts(accounts);
-  return { account: accounts[idx] };
+export async function logoutAccount() {
+  await supabase.auth.signOut();
+}
+
+// Carica un file nel bucket privato "attachments" (sotto il proprio uid,
+// imposto dalle policy di storage) e lo registra nel profilo tramite la
+// funzione add_own_attachment. `file` è un File/Blob del browser.
+export async function uploadAttachment(userId, file) {
+  const path = `${userId}/${Date.now()}-${file.name}`;
+  const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file);
+  if (uploadError) return { error: uploadError.message };
+  const { error: rpcError } = await supabase.rpc('add_own_attachment', { p_name: file.name, p_path: path });
+  if (rpcError) return { error: rpcError.message };
+  return { attachment: { name: file.name, path } };
+}
+
+// Solo l'owner può chiamare questa con successo (lo garantisce la funzione
+// lato server: verifica il ruolo di chi chiama e blocca comunque la riga
+// dell'owner, chiunque provi a toccarla).
+export async function updateAccountRole(accountId, newRole) {
+  const { error } = await supabase.rpc('set_account_role', { p_id: accountId, p_ruolo: newRole });
+  if (error) return { error: error.message };
+  return {};
+}
+
+export async function setAccountVerified(accountId, verificato) {
+  const { error } = await supabase.rpc('set_account_verified', { p_id: accountId, p_verificato: Boolean(verificato) });
+  if (error) return { error: error.message };
+  return {};
 }
 
 // Quanto manca (ms) al prossimo cambio nickname consentito: 0 se libero.
+// Solo per la UI (badge/countdown) — il limite vero lo applica la funzione
+// update_own_nickname lato server, non ci si può fidare del client per
+// questo.
 export function nicknameCooldownRemaining(account) {
   if (!account?.lastNicknameChangeAt) return 0;
   const elapsed = Date.now() - new Date(account.lastNicknameChangeAt).getTime();
   return Math.max(0, NICKNAME_COOLDOWN_MS - elapsed);
 }
 
-// Quanto manca (ms) al prossimo cambio nome/cognome consentito: 0 se libero.
 export function nameCooldownRemaining(account) {
   if (!account?.lastNameChangeAt) return 0;
   const elapsed = Date.now() - new Date(account.lastNameChangeAt).getTime();
   return Math.max(0, NAME_COOLDOWN_MS - elapsed);
 }
 
-export function updateNickname(accountId, newNickname) {
-  const accounts = loadAccounts();
-  const idx = accounts.findIndex((a) => a.id === accountId);
-  if (idx === -1) return { error: 'Utente non trovato.' };
-  const account = accounts[idx];
-  const trimmed = (newNickname ?? '').trim();
-  if (!trimmed) return { error: 'Il nickname non può essere vuoto.' };
-  if (nicknameCooldownRemaining(account) > 0) {
-    return { error: 'Puoi cambiare nickname solo una volta a settimana.' };
-  }
-  if (isNicknameTaken(trimmed, accountId)) {
-    return { error: 'Questo nickname è già in uso.' };
-  }
-  accounts[idx] = { ...account, nickname: trimmed, lastNicknameChangeAt: new Date().toISOString() };
-  saveAccounts(accounts);
-  return { account: accounts[idx] };
+export async function updateNickname(accountId, newNickname) {
+  const { error } = await supabase.rpc('update_own_nickname', { p_nickname: (newNickname ?? '').trim() });
+  if (error) return { error: error.message };
+  return { account: await fetchOwnProfile() };
 }
 
-// Prima volta che si imposta nome/cognome (erano vuoti) non c'è cooldown:
-// la regola vale per i CAMBI, non per il primo inserimento.
-export function updateName(accountId, nome, cognome) {
-  const accounts = loadAccounts();
-  const idx = accounts.findIndex((a) => a.id === accountId);
-  if (idx === -1) return { error: 'Utente non trovato.' };
-  const account = accounts[idx];
-  const hadName = Boolean(account.nome || account.cognome);
-  if (hadName && nameCooldownRemaining(account) > 0) {
-    return { error: 'Puoi cambiare nome e cognome solo una volta ogni 3 mesi.' };
-  }
-  accounts[idx] = {
-    ...account,
-    nome: (nome ?? '').trim(),
-    cognome: (cognome ?? '').trim(),
-    lastNameChangeAt: new Date().toISOString(),
-  };
-  saveAccounts(accounts);
-  return { account: accounts[idx] };
+export async function updateName(accountId, nome, cognome) {
+  const { error } = await supabase.rpc('update_own_name', {
+    p_nome: (nome ?? '').trim(),
+    p_cognome: (cognome ?? '').trim(),
+  });
+  if (error) return { error: error.message };
+  return { account: await fetchOwnProfile() };
 }
 
-// Genera una password temporanea e la sostituisce: senza un vero server non
-// si può inviarla per mail, va comunicata a mano (es. dalla casella
-// condivisa dei moderatori) — per questo viene restituita una sola volta,
-// non resta consultabile da nessuna parte dopo.
-export function resetAccountPassword(accountId) {
-  const accounts = loadAccounts();
-  const idx = accounts.findIndex((a) => a.id === accountId);
-  if (idx === -1) return { error: 'Utente non trovato.' };
-  const newPassword = randomPassword();
-  accounts[idx] = { ...accounts[idx], password: newPassword };
-  saveAccounts(accounts);
-  return { account: accounts[idx], newPassword };
-}
-
-// Verifica tramite documento: senza un vero servizio di controllo identità
-// è owner/moderatori a esaminare gli allegati caricati in registrazione e
-// segnare l'account come verificato a mano.
-export function setAccountVerified(accountId, verificato) {
-  const accounts = loadAccounts();
-  const idx = accounts.findIndex((a) => a.id === accountId);
-  if (idx === -1) return { error: 'Utente non trovato.' };
-  accounts[idx] = { ...accounts[idx], verificato: Boolean(verificato) };
-  saveAccounts(accounts);
-  return { account: accounts[idx] };
+// Non genera più una password temporanea: usa il reset nativo di Supabase
+// Auth, che invia una mail con un link all'indirizzo dell'account. Chi
+// chiama (owner/moderatore dal pannello, o l'utente stesso dal login) non
+// vede mai una password in chiaro.
+export async function resetAccountPassword(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail((email ?? '').trim().toLowerCase());
+  if (error) return { error: error.message };
+  return {};
 }

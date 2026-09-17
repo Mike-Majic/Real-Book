@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { registerAccount, loginAccount } from '../data/accounts';
 import './AuthModal.css';
 
-// Accedi/Registrati con account veri (non più solo un nickname): la
-// registrazione raccoglie nome utente, nickname, mail, password, cellulare,
-// mail di backup e allegati facoltativi. Il ruolo si assegna da solo in
-// base alla mail (vedi roles.js/accounts.js) — qui non si sceglie mai.
-// Restano dati locali a questo browser, nessun server reale dietro.
+// Accedi/Registrati con account veri, salvati su Supabase (non più solo
+// localStorage): la registrazione raccoglie nome utente, nickname, mail,
+// password, data di nascita, cellulare, mail di backup e allegati
+// facoltativi. Il ruolo si assegna da solo in base alla mail (lato server,
+// vedi la funzione di registrazione su Supabase) — qui non si sceglie mai.
 export default function AuthModal({ open, onClose, onLogin }) {
   const [mode, setMode] = useState('login');
   const [loginEmail, setLoginEmail] = useState('');
@@ -20,6 +20,8 @@ export default function AuthModal({ open, onClose, onLogin }) {
   const [backupEmail, setBackupEmail] = useState('');
   const [attachments, setAttachments] = useState([]);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+  const [busy, setBusy] = useState(false);
 
   // Ogni volta che si riapre, si riparte dalla scheda Accedi: altrimenti
   // chi ha lasciato aperta "Registrati" senza inviare (es. per ripensarci)
@@ -28,6 +30,7 @@ export default function AuthModal({ open, onClose, onLogin }) {
     if (open) {
       setMode('login');
       setError('');
+      setInfo('');
     }
   }, [open]);
 
@@ -36,21 +39,24 @@ export default function AuthModal({ open, onClose, onLogin }) {
   const switchMode = (next) => {
     setMode(next);
     setError('');
+    setInfo('');
   };
 
   const finishAuth = (account) => {
-    // user.name/user.avatar restano popolati (dal nickname) per compatibilità
-    // con tutto il resto dell'app, che già li usa ovunque. La password non
-    // serve fuori da accounts.js: non la si porta nello stato "user" (che
-    // finisce anche in localStorage rb-user), un posto in meno dove trovarla.
-    const { password, ...safeAccount } = account;
-    onLogin({ ...safeAccount, name: account.nickname });
+    // user.name resta popolato (dal nickname) per compatibilità con tutto
+    // il resto dell'app, che già lo usa ovunque. Niente password nello
+    // stato "user": qui arriva già il profilo (senza password, Supabase
+    // Auth la tiene per conto suo, non passa mai dal client in chiaro).
+    onLogin({ ...account, name: account.nickname });
     setError('');
+    setInfo('');
   };
 
-  const submitLogin = (e) => {
+  const submitLogin = async (e) => {
     e.preventDefault();
-    const { account, error: err } = loginAccount(loginEmail, loginPassword);
+    setBusy(true);
+    const { account, error: err } = await loginAccount(loginEmail, loginPassword);
+    setBusy(false);
     if (err) {
       setError(err);
       return;
@@ -61,21 +67,13 @@ export default function AuthModal({ open, onClose, onLogin }) {
   const onFilesChosen = (e) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = '';
-    Promise.all(
-      files.map(
-        (f) =>
-          new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve({ name: f.name, dataUrl: reader.result });
-            reader.readAsDataURL(f);
-          })
-      )
-    ).then((results) => setAttachments((prev) => [...prev, ...results]));
+    setAttachments((prev) => [...prev, ...files]);
   };
 
-  const submitRegister = (e) => {
+  const submitRegister = async (e) => {
     e.preventDefault();
-    const { account, error: err } = registerAccount({
+    setBusy(true);
+    const { account, error: err, needsEmailConfirmation } = await registerAccount({
       username,
       nickname,
       email,
@@ -85,8 +83,14 @@ export default function AuthModal({ open, onClose, onLogin }) {
       attachments,
       dataNascita,
     });
+    setBusy(false);
     if (err) {
       setError(err);
+      return;
+    }
+    if (needsEmailConfirmation) {
+      setInfo('Account creato: controlla la tua mail e conferma l\'indirizzo, poi accedi da qui con mail e password.');
+      setMode('login');
       return;
     }
     finishAuth(account);
@@ -101,9 +105,6 @@ export default function AuthModal({ open, onClose, onLogin }) {
       >
         <button type="button" className="rb-close-btn" onClick={onClose} aria-label="Chiudi">✕</button>
         <h2>{mode === 'login' ? 'Accedi a Versemove' : 'Crea un account'}</h2>
-        <p className="rb-auth-hint">
-          Demo senza server reale: i dati (mail, password inclusa) restano solo in questo browser.
-        </p>
 
         <div className="rb-auth-tabs">
           <button type="button" className={mode === 'login' ? 'active' : ''} onClick={() => switchMode('login')}>
@@ -172,9 +173,10 @@ export default function AuthModal({ open, onClose, onLogin }) {
         )}
 
         {error && <p className="rb-auth-error">{error}</p>}
+        {info && <p className="rb-auth-info">{info}</p>}
 
-        <button type="submit" className="rb-btn-primary rb-auth-submit">
-          {mode === 'login' ? 'Entra' : 'Crea account'}
+        <button type="submit" className="rb-btn-primary rb-auth-submit" disabled={busy}>
+          {busy ? 'Un attimo…' : mode === 'login' ? 'Entra' : 'Crea account'}
         </button>
       </form>
     </div>

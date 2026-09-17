@@ -276,16 +276,6 @@
   color: rgba(245, 245, 247, 0.6);
 }
 
-.rb-admin-reset-card code {
-  display: block;
-  font-size: 18px;
-  font-weight: 700;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 10px;
-  margin-bottom: 14px;
-  letter-spacing: 1px;
-}
 
 .rb-admin-reset-card button {
   background: var(--accent, #1d9bf0);

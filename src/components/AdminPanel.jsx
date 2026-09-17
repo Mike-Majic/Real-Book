@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getAccounts, updateAccountRole, setAccountVerified, resetAccountPassword } from '../data/accounts';
 import { getMailboxMessages, markMessageRead } from '../data/modMailbox';
+import { supabase } from '../data/supabaseClient';
 import { computeAge } from '../data/age';
 import { ROLES } from '../data/roles';
 import './AdminPanel.css';
@@ -12,19 +13,15 @@ const ADMIN_TABS = [
   { id: 'posta', label: 'Posta' },
 ];
 
-// Apre un allegato (dataURL) in una nuova scheda: è così che owner/
-// moderatori guardano il documento caricato in registrazione prima di
-// segnare un account come verificato — nessun servizio di controllo
-// automatico dietro, solo revisione umana.
-function openAttachment(att) {
-  const w = window.open();
-  if (!w) return;
-  const isImage = att.dataUrl.startsWith('data:image');
-  w.document.write(
-    isImage
-      ? `<title>${att.name}</title><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${att.dataUrl}" style="max-width:100%;max-height:100vh" /></body>`
-      : `<title>${att.name}</title><body><a href="${att.dataUrl}" download="${att.name}">Scarica ${att.name}</a></body>`
-  );
+// Apre un allegato in una nuova scheda: il bucket "attachments" è privato,
+// quindi serve un URL firmato temporaneo (valido 60 secondi) invece di un
+// link diretto — è così che owner/moderatori guardano il documento caricato
+// in registrazione prima di segnare un account come verificato, nessun
+// servizio di controllo automatico dietro, solo revisione umana.
+async function openAttachment(att) {
+  const { data, error } = await supabase.storage.from('attachments').createSignedUrl(att.path, 60);
+  if (error || !data?.signedUrl) return;
+  window.open(data.signedUrl, '_blank', 'noopener');
 }
 
 function MailboxPane({ messages, onMarkRead }) {
@@ -61,38 +58,41 @@ function MailboxPane({ messages, onMarkRead }) {
 // moderatori). Solo l'owner può cambiare i ruoli; verifica e reset
 // password sono aperti anche ai moderatori, tranne che sulla riga
 // dell'owner — quella resta intoccabile da chiunque non sia l'owner
-// stesso (vedi anche le guardie in accounts.js).
+// stesso (le regole vere le applica Supabase lato server, qui è solo UI).
 export default function AdminPanel({ user, onClose }) {
   const [tab, setTab] = useState('utenti');
-  const [accounts, setAccounts] = useState(() => getAccounts());
-  const [messages, setMessages] = useState(() => getMailboxMessages());
-  const [resetInfo, setResetInfo] = useState(null);
+  const [accounts, setAccounts] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [resetSentTo, setResetSentTo] = useState(null);
   const isOwner = user?.ruolo === ROLES.OWNER;
   const unreadCount = messages.filter((m) => !m.letto).length;
 
-  const refreshAccounts = () => setAccounts(getAccounts());
+  const refreshAccounts = () => getAccounts().then(setAccounts);
+  const refreshMessages = () => getMailboxMessages().then(setMessages);
 
-  const changeRole = (accountId, newRole) => {
-    const { error } = updateAccountRole(accountId, newRole);
+  useEffect(() => {
+    refreshAccounts();
+    refreshMessages();
+  }, []);
+
+  const changeRole = async (accountId, newRole) => {
+    const { error } = await updateAccountRole(accountId, newRole);
     if (!error) refreshAccounts();
   };
 
-  const toggleVerified = (account) => {
-    const { error } = setAccountVerified(account.id, !account.verificato);
+  const toggleVerified = async (account) => {
+    const { error } = await setAccountVerified(account.id, !account.verificato);
     if (!error) refreshAccounts();
   };
 
-  const doResetPassword = (account) => {
-    const { newPassword, error } = resetAccountPassword(account.id);
-    if (!error) {
-      refreshAccounts();
-      setResetInfo({ nickname: account.nickname, newPassword });
-    }
+  const doResetPassword = async (account) => {
+    const { error } = await resetAccountPassword(account.email);
+    if (!error) setResetSentTo(account);
   };
 
-  const markRead = (messageId) => {
-    markMessageRead(messageId);
-    setMessages(getMailboxMessages());
+  const markRead = async (messageId) => {
+    await markMessageRead(messageId);
+    refreshMessages();
   };
 
   return (
@@ -114,8 +114,8 @@ export default function AdminPanel({ user, onClose }) {
           <>
             <p className="rb-admin-hint">
               {isOwner
-                ? 'Elenco di chi si è registrato. Puoi cambiare ruolo, verificare un documento o resettare una password.'
-                : "Elenco di chi si è registrato. Puoi verificare un documento o resettare una password; solo l'owner cambia i ruoli."}
+                ? 'Elenco di chi si è registrato. Puoi cambiare ruolo, verificare un documento o inviare una mail di reset password.'
+                : "Elenco di chi si è registrato. Puoi verificare un documento o inviare una mail di reset password; solo l'owner cambia i ruoli."}
             </p>
 
             <div className="rb-admin-table-wrap">
@@ -209,13 +209,15 @@ export default function AdminPanel({ user, onClose }) {
         {tab === 'posta' && <MailboxPane messages={messages} onMarkRead={markRead} />}
       </div>
 
-      {resetInfo && (
-        <div className="rb-admin-reset-overlay" onClick={() => setResetInfo(null)}>
+      {resetSentTo && (
+        <div className="rb-admin-reset-overlay" onClick={() => setResetSentTo(null)}>
           <div className="rb-admin-reset-card" onClick={(e) => e.stopPropagation()}>
-            <h3>Nuova password per {resetInfo.nickname}</h3>
-            <p>Comunicala tu all'utente (non c'è invio automatico via mail): è l'unica volta che viene mostrata.</p>
-            <code>{resetInfo.newPassword}</code>
-            <button type="button" onClick={() => setResetInfo(null)}>Ho preso nota, chiudi</button>
+            <h3>Mail di reset inviata</h3>
+            <p>
+              A {resetSentTo.nickname} ({resetSentTo.email}) è arrivata una mail con il link per scegliere una
+              nuova password — nessuna password passa da qui, in chiaro o no.
+            </p>
+            <button type="button" onClick={() => setResetSentTo(null)}>Ho preso nota, chiudi</button>
           </div>
         </div>
       )}

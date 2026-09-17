@@ -36,6 +36,7 @@ import EventLikersModal from './components/EventLikersModal';
 import FriendChatModal from './components/FriendChatModal';
 import AdminPanel from './components/AdminPanel';
 import ProfileSettingsPanel from './components/ProfileSettingsPanel';
+import { getCurrentAccount, subscribeAuthChanges, logoutAccount } from './data/accounts';
 import './App.css';
 
 // Test di scala richiesto dall'utente: nel mondo Incontri aggiunge ~1800
@@ -108,7 +109,12 @@ export default function App() {
   // dichiarazione con un pulsante.
   const isAgeGatedWorld = world.id === 'incontri' || world.id === 'lavoro';
 
-  const [user, setUser] = useState(() => loadStored('rb-user', null));
+  // L'account loggato vive su Supabase Auth, non più in localStorage: alla
+  // partenza si controlla se il browser ha già una sessione valida
+  // (persistita da supabase-js per conto suo) e ci si iscrive ai cambi di
+  // sessione (login/logout/refresh token), così lo stato resta sempre
+  // coerente anche se scade o cambia altrove.
+  const [user, setUser] = useState(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -189,7 +195,21 @@ export default function App() {
     if (adminOpen && !isStaff(user?.ruolo)) setAdminOpen(false);
   }, [user, adminOpen]);
 
-  useEffect(() => localStorage.setItem('rb-user', JSON.stringify(user)), [user]);
+  // Ripristina la sessione già salvata dal browser (se c'è) e resta in
+  // ascolto di login/logout/refresh — vedi il commento sopra alla
+  // dichiarazione di `user`.
+  useEffect(() => {
+    let cancelled = false;
+    getCurrentAccount().then((account) => {
+      if (!cancelled) setUser(account);
+    });
+    const unsubscribe = subscribeAuthChanges((account) => setUser(account));
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
+
   useEffect(() => localStorage.setItem('rb-filters', JSON.stringify(filters)), [filters]);
   useEffect(() => localStorage.setItem('rb-location-filters', JSON.stringify(locationFilters)), [locationFilters]);
   useEffect(() => localStorage.setItem('rb-arte-filter', JSON.stringify(arteFilter)), [arteFilter]);
@@ -416,7 +436,10 @@ export default function App() {
         world={world}
         user={user}
         onOpenAuth={() => setAuthOpen(true)}
-        onLogout={() => setUser(null)}
+        onLogout={() => {
+          logoutAccount();
+          setUser(null);
+        }}
         onOpenSettings={() => {
           if (activeArteCategory) toggleArteCategory(activeArteCategory);
           setSettingsOpen(true);
