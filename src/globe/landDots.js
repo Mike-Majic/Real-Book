@@ -31,7 +31,7 @@ export function loadLandDots() {
       resolve(points);
     };
     img.onerror = reject;
-    // BASE_URL tiene conto del sottopercorso di pubblicazione (es. /Real-Book/ su GitHub Pages).
+    // BASE_URL tiene conto del sottopercorso di pubblicazione (es. /Versemove/ su GitHub Pages).
     img.src = `${import.meta.env.BASE_URL}textures/earth-water.png`;
   });
 
