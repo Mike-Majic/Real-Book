@@ -5,10 +5,8 @@ import {
   nicknameCooldownRemaining,
   nameCooldownRemaining,
   updateAccountDetails,
-  setOwnWorlds,
 } from '../data/accounts';
 import { sendMailboxMessage } from '../data/modMailbox';
-import { WORLDS } from '../data/worlds';
 import ModalOverlay from './ModalOverlay';
 import './ProfileSettingsPanel.css';
 
@@ -265,72 +263,9 @@ function AccountTab({ user, onUpdateUser }) {
   );
 }
 
-// Scheda "Mondi": scelta di quali mondi restano abilitati per l'account.
-// Cambio applicabile in ogni momento, con un limite di 4 volte a settimana
-// applicato lato server (qui si mostra solo l'eventuale errore che torna
-// indietro se il limite è già stato raggiunto).
-function WorldsTab({ user, onUpdateUser }) {
-  const [selected, setSelected] = useState(user.mondiAbilitati?.length ? user.mondiAbilitati : WORLDS.map((w) => w.id));
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const toggle = (id) => {
-    setError('');
-    setSuccess('');
-    setSelected((prev) => (prev.includes(id) ? prev.filter((w) => w !== id) : [...prev, id]));
-  };
-
-  const save = async () => {
-    setError('');
-    setSuccess('');
-    if (!selected.length) {
-      setError('Devi lasciare abilitato almeno un mondo.');
-      return;
-    }
-    const ordered = WORLDS.map((w) => w.id).filter((id) => selected.includes(id));
-    setBusy(true);
-    const { account, error: err } = await setOwnWorlds(ordered);
-    setBusy(false);
-    if (err) {
-      setError(err);
-      return;
-    }
-    setSuccess('Mondi abilitati aggiornati.');
-    onUpdateUser(account);
-  };
-
-  return (
-    <div className="rb-profile-field-group">
-      <div className="rb-profile-field-title">
-        <strong>Mondi abilitati</strong>
-        <InfoBadge text="Puoi scegliere quali mondi restano visibili per il tuo account. Puoi cambiare idea in qualsiasi momento, fino a 4 volte a settimana." onSeen={() => {}} />
-      </div>
-      <p className="rb-profile-worlds-hint">
-        Scegli quali mondi vuoi esplorare. Puoi riattivarne uno disattivato in qualsiasi momento, fino a 4
-        cambi a settimana.
-      </p>
-      <div className="rb-profile-worlds-list">
-        {WORLDS.map((w) => (
-          <label key={w.id} className="rb-profile-world-row">
-            <input type="checkbox" checked={selected.includes(w.id)} onChange={() => toggle(w.id)} />
-            <span className="rb-profile-world-dot" style={{ background: w.color }} />
-            <span>{w.label}</span>
-          </label>
-        ))}
-      </div>
-      {error && <p className="rb-profile-field-error">{error}</p>}
-      {success && <p className="rb-profile-field-success">{success}</p>}
-      <button type="button" className="rb-profile-save-btn" onClick={save} disabled={busy}>
-        {busy ? 'Un attimo…' : 'Salva'}
-      </button>
-    </div>
-  );
-}
-
-// Pannello "Il mio profilo": nickname/nome (con cooldown), dati account
-// (tipo/fatturazione/genere/pronomi) e mondi abilitati, organizzati in
-// schede per restare leggibile. Il blocco contatti vive nel pannello
+// Pannello "Il mio profilo": nickname/nome (con cooldown) e dati account
+// (tipo/fatturazione/genere/pronomi), organizzati in schede per restare
+// leggibile. Mondi abilitati e blocco contatti vivono nel pannello
 // Impostazioni generale (SettingsPanel), insieme al resto della privacy.
 export default function ProfileSettingsPanel({ open, onClose, user, onUpdateUser }) {
   const [tab, setTab] = useState('profilo');
@@ -401,7 +336,6 @@ export default function ProfileSettingsPanel({ open, onClose, user, onUpdateUser
         <div className="rb-profile-tabs">
           <button type="button" className={tab === 'profilo' ? 'active' : ''} onClick={() => setTab('profilo')}>Profilo</button>
           <button type="button" className={tab === 'account' ? 'active' : ''} onClick={() => setTab('account')}>Account</button>
-          <button type="button" className={tab === 'mondi' ? 'active' : ''} onClick={() => setTab('mondi')}>Mondi</button>
         </div>
 
         {tab === 'profilo' && (
@@ -438,7 +372,6 @@ export default function ProfileSettingsPanel({ open, onClose, user, onUpdateUser
         )}
 
         {tab === 'account' && <AccountTab user={user} onUpdateUser={onUpdateUser} />}
-        {tab === 'mondi' && <WorldsTab user={user} onUpdateUser={onUpdateUser} />}
 
         {urgentField && (
           <ModalOverlay onClose={() => setUrgentField(null)} className="rb-profile-confirm-overlay">

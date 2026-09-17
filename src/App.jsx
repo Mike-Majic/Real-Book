@@ -329,9 +329,13 @@ export default function App() {
   // Il proprio marker (quando si condivide la posizione in tempo reale) si
   // aggiunge SOPRA ai risultati già filtrati, non dentro: i propri filtri
   // (genere/età/posizione) servono a scoprire gli altri, non a nascondere
-  // se stessi dal globo.
+  // se stessi dal globo. Se però il mondo corrente non è tra quelli
+  // abilitati dall'account (Impostazioni → Personalizza → Mondi), il
+  // marker non deve comparire lì per nessuno: disattivare un mondo vuol
+  // dire anche sparire da quel mondo agli occhi degli altri.
   const globeUsers = useMemo(() => {
     if (!user || !visibility.shareLiveLocation || !ownPosition) return worldUsers;
+    if (!(user.mondiAbilitati ?? []).includes(world.id)) return worldUsers;
     const ownMarker = {
       id: 'me-live',
       name: user.nickname ?? user.name ?? 'Io',
@@ -601,6 +605,7 @@ export default function App() {
         }}
         user={user}
         onOpenAuth={() => setAuthOpen(true)}
+        onUpdateUser={(account) => setUser({ ...account, name: account.nickname })}
         filters={filters}
         setFilters={setFilters}
         locationFilters={locationFilters}

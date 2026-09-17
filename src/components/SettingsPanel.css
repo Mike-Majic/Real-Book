@@ -354,3 +354,74 @@
   font-size: 11.5px;
   color: #ff8080;
 }
+
+.rb-privacy-success {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  color: #22c55e;
+}
+
+/* Fisarmonica di secondo livello (le "sotto impostazioni" dentro una voce
+   già aperta, es. Mostrami/Mondi dentro Personalizza, o Utenti/Posizione/
+   Sicurezza dentro Privacy): stesso concetto della prima, ma più piccola e
+   rientrata, per lasciar capire visivamente che sta dentro un'altra voce. */
+.rb-settings-subaccordion {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 10px 0 10px 10px;
+}
+
+.rb-settings-subaccordion:first-child {
+  border-top: none;
+  padding-top: 2px;
+}
+
+.rb-settings-subaccordion-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #f5f5f7;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rb-settings-subaccordion-header strong {
+  display: block;
+  font-size: 13px;
+}
+
+.rb-settings-subaccordion-header p {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  color: rgba(245, 245, 247, 0.5);
+  line-height: 1.4;
+}
+
+.rb-settings-subaccordion-body {
+  margin-top: 12px;
+}
+
+.rb-settings-worlds-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.rb-settings-world-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.rb-settings-world-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
