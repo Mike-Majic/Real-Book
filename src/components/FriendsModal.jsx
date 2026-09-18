@@ -22,7 +22,7 @@ const TABS = [
 // richieste, vedere la propria lista amici e aprire una chat con uno di
 // loro. Prima non esisteva nessun posto in cui vedere le richieste
 // ricevute — senza questo, accettarle sarebbe stato irraggiungibile.
-export default function FriendsModal({ onClose, onOpenChat, onFriendsChanged }) {
+export default function FriendsModal({ onClose, onOpenChat, onFriendsChanged, unreadByFriend }) {
   const [tab, setTab] = useState('amici');
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -214,6 +214,9 @@ export default function FriendsModal({ onClose, onOpenChat, onFriendsChanged }) 
                   <li key={f.id} className="rb-friends-row">
                     <img src={f.avatar} alt="" />
                     <strong>{f.name}</strong>
+                    {Boolean(unreadByFriend?.get(f.id)) && (
+                      <span className="rb-friends-tab-badge">{unreadByFriend.get(f.id)}</span>
+                    )}
                     <div className="rb-friends-row-actions">
                       <button type="button" onClick={() => onOpenChat(f.id)}>Messaggio</button>
                       <button type="button" className="rb-friends-decline" disabled={busyId === f.id} onClick={() => handleRemoveFriend(f.id)}>

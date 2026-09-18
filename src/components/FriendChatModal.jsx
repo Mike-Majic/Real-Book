@@ -1,16 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatRelativeDate } from './social/resolveAuthor';
 import { fetchProfilesMap } from '../data/posts';
-import { startDirectConversation, fetchMessages, sendMessage, markConversationRead } from '../data/directChat';
+import {
+  startDirectConversation,
+  fetchMessages,
+  sendMessage,
+  markConversationRead,
+  subscribeToConversationMessages,
+} from '../data/directChat';
+import { supabase } from '../data/supabaseClient';
 import ModalOverlay from './ModalOverlay';
 import './FriendChatModal.css';
 
 // Messaggi privati con un altro utente reale: apre (o riusa) una vera
 // conversazione diretta su Supabase (start_direct_conversation), non più
 // una copia locale per browser — chi scrive e chi legge vedono davvero lo
-// stesso scambio. Non c'è aggiornamento in tempo reale: riaprendo la chat
-// si rivedono anche i messaggi arrivati nel frattempo dall'altra parte.
-export default function FriendChatModal({ friendId, user, onClose }) {
+// stesso scambio. In tempo reale via un canale Supabase per la conversazione
+// aperta: se la connessione realtime cade e si ristabilisce, i messaggi
+// vengono ricaricati dal DB per non perderne nel frattempo.
+export default function FriendChatModal({ friendId, user, onClose, onMessagesRead }) {
   const [conversationId, setConversationId] = useState(null);
   const [friend, setFriend] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -23,6 +31,7 @@ export default function FriendChatModal({ friendId, user, onClose }) {
     let cancelled = false;
     setLoading(true);
     setError('');
+    setConversationId(null);
 
     const load = async () => {
       const [{ conversationId: convId, error: convError }, profilesMap] = await Promise.all([
@@ -47,6 +56,7 @@ export default function FriendChatModal({ friendId, user, onClose }) {
       setMessages(fetched);
       setLoading(false);
       markConversationRead(convId);
+      onMessagesRead?.();
     };
     load();
 
@@ -54,6 +64,47 @@ export default function FriendChatModal({ friendId, user, onClose }) {
       cancelled = true;
     };
   }, [friendId]);
+
+  // "Ultimo valore" di friend leggibile dalla callback del canale realtime
+  // sotto (che altrimenti vedrebbe sempre il friend della sottoscrizione
+  // iniziale), senza riaprire il canale ogni volta che friend cambia.
+  const friendRef = useRef(friend);
+  useEffect(() => {
+    friendRef.current = friend;
+  }, [friend]);
+
+  // Canale realtime per la conversazione aperta: rimosso a chiusura/cambio
+  // chat, così non ne resta nessuno appeso.
+  useEffect(() => {
+    if (!conversationId) return undefined;
+
+    const channel = subscribeToConversationMessages(
+      conversationId,
+      (row) => {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === row.id)) return prev;
+          const isMine = row.sender_id === user.id;
+          const author = isMine
+            ? { id: user.id, name: user.nickname || user.username || 'Tu', avatar: user.avatar || '' }
+            : friendRef.current ?? { id: row.sender_id, name: 'Utente', avatar: '' };
+          return [...prev, { id: row.id, conversationId: row.conversation_id, senderId: row.sender_id, author, testo: row.testo, data: row.created_at }];
+        });
+        markConversationRead(conversationId);
+        onMessagesRead?.();
+      },
+      () => {
+        // Riconnessione dopo una caduta della connessione realtime: ricarica
+        // dal DB per non perdere messaggi arrivati nel frattempo.
+        fetchMessages(conversationId).then(({ messages: fetched, error: msgError }) => {
+          if (!msgError) setMessages(fetched);
+        });
+      }
+    );
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId, user.id]);
 
   const send = async (e) => {
     e.preventDefault();

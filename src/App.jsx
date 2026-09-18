@@ -44,6 +44,8 @@ import {
   sendFriendRequest as sendFriendRequestApi,
   removeFriend as removeFriendApi,
 } from './data/friends';
+import { getUnreadCounts, getDirectConversationsMap, subscribeToOwnMessages } from './data/directChat';
+import { supabase } from './data/supabaseClient';
 import './App.css';
 
 const DEFAULT_FILTERS = { gender: 'Tutti', ageMin: 18, ageMax: 60 };
@@ -149,6 +151,11 @@ export default function App() {
   const [friends, setFriends] = useState([]);
   const [friendRequestsSent, setFriendRequestsSent] = useState([]);
   const [receivedRequestsCount, setReceivedRequestsCount] = useState(0);
+  // Non letti per conversazione diretta (id conversazione -> numero) e
+  // mappa amico -> conversazione, per mostrare il badge sulla riga giusta
+  // nella lista Amici e il totale sull'icona 👥.
+  const [unreadByConversation, setUnreadByConversation] = useState(new Map());
+  const [friendConversations, setFriendConversations] = useState(new Map());
   const [friendsModalOpen, setFriendsModalOpen] = useState(false);
   const [eventLikersId, setEventLikersId] = useState(null);
   const [activeFriendChatId, setActiveFriendChatId] = useState(null);
@@ -252,6 +259,45 @@ export default function App() {
     getReceivedRequests().then((list) => setReceivedRequestsCount(list.length));
   };
   useEffect(refreshFriendsState, [user?.id]);
+
+  // Badge "non letti": ricaricati ad ogni login/logout, poi aggiornati in
+  // tempo reale da un canale globale (RLS limita già ai messaggi delle
+  // proprie conversazioni) così il totale sull'icona 👥 e i badge per amico
+  // si aggiornano anche a chat chiusa.
+  const refreshUnread = () => {
+    if (!user) {
+      setUnreadByConversation(new Map());
+      setFriendConversations(new Map());
+      return;
+    }
+    getUnreadCounts().then(setUnreadByConversation);
+    getDirectConversationsMap().then(setFriendConversations);
+  };
+  useEffect(refreshUnread, [user?.id]);
+
+  useEffect(() => {
+    if (!user) return undefined;
+    const channel = subscribeToOwnMessages(() => refreshUnread());
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  const totalUnreadMessages = useMemo(() => {
+    let total = 0;
+    for (const n of unreadByConversation.values()) total += n;
+    return total;
+  }, [unreadByConversation]);
+
+  const unreadByFriend = useMemo(() => {
+    const map = new Map();
+    for (const [friendId, convId] of friendConversations) {
+      const n = unreadByConversation.get(convId);
+      if (n) map.set(friendId, n);
+    }
+    return map;
+  }, [friendConversations, unreadByConversation]);
 
   // Traccia la posizione reale del dispositivo solo mentre l'utente ha
   // attivato "Condividi la mia posizione in tempo reale" nelle Impostazioni:
@@ -489,7 +535,7 @@ export default function App() {
         onOpenAdmin={() => setAdminOpen(true)}
         onOpenProfile={() => setProfileSettingsOpen(true)}
         onOpenFriends={() => setFriendsModalOpen(true)}
-        pendingFriendRequestsCount={receivedRequestsCount}
+        pendingFriendRequestsCount={receivedRequestsCount + totalUnreadMessages}
       />
 
       {justConfirmedEmail && (
@@ -654,6 +700,7 @@ export default function App() {
             setActiveFriendChatId(friendId);
           }}
           onFriendsChanged={refreshFriendsState}
+          unreadByFriend={unreadByFriend}
         />
       )}
 
@@ -680,7 +727,12 @@ export default function App() {
       />
 
       {activeFriendChatId && (
-        <FriendChatModal friendId={activeFriendChatId} user={user} onClose={() => setActiveFriendChatId(null)} />
+        <FriendChatModal
+          friendId={activeFriendChatId}
+          user={user}
+          onClose={() => setActiveFriendChatId(null)}
+          onMessagesRead={refreshUnread}
+        />
       )}
 
       {adminOpen && <AdminPanel user={user} onClose={() => setAdminOpen(false)} />}

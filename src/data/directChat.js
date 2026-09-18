@@ -67,19 +67,77 @@ export async function sendMessage(conversationId, testo) {
   }
 }
 
-// Segna la conversazione come letta fino ad ora (per un futuro badge "non
-// letti" — qui basta aggiornare la propria riga in chat_participants).
+// Segna la conversazione come letta fino ad ora, per il badge "non letti"
+// (RPC lato server: aggiorna solo la propria riga e solo se si è davvero
+// partecipanti, vedi mark_conversation_read).
 export async function markConversationRead(conversationId) {
   try {
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth?.user) return {};
-    await supabase
-      .from('chat_participants')
-      .update({ last_read_at: new Date().toISOString() })
-      .eq('conversation_id', conversationId)
-      .eq('user_id', auth.user.id);
+    const { error } = await supabase.rpc('mark_conversation_read', { p_conv: conversationId });
+    if (error) return { error: error.message };
     return {};
+  } catch (err) {
+    return { error: err?.message ?? 'Errore di rete.' };
+  }
+}
+
+// Non letti per conversazione (mappa conversationId -> numero), per i badge.
+export async function getUnreadCounts() {
+  try {
+    const { data, error } = await supabase.rpc('get_unread_counts');
+    if (error || !data) return new Map();
+    return new Map(data.map((row) => [row.conversation_id, row.non_letti]));
   } catch {
-    return {};
+    return new Map();
+  }
+}
+
+// Un canale per chat aperta: notifica ogni nuovo messaggio di quella
+// conversazione (mia o dell'altro), e onReconnect se la connessione realtime
+// cade e si ristabilisce (per ricaricare i messaggi dal DB e non perderne).
+// Va rimosso con supabase.removeChannel alla chiusura/cambio chat, altrimenti
+// resta appeso.
+export function subscribeToConversationMessages(conversationId, onInsert, onReconnect) {
+  let everSubscribed = false;
+  return supabase
+    .channel(`chat-messages-${conversationId}`)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `conversation_id=eq.${conversationId}` },
+      (payload) => onInsert(payload.new)
+    )
+    .subscribe((status) => {
+      if (status !== 'SUBSCRIBED') return;
+      if (everSubscribed) onReconnect?.();
+      everSubscribed = true;
+    });
+}
+
+// Un canale globale senza filtro (RLS limita già ai messaggi delle proprie
+// conversazioni) per aggiornare i badge "non letti" anche a chat chiusa.
+export function subscribeToOwnMessages(onInsert) {
+  return supabase
+    .channel('chat-messages-own')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => onInsert(payload.new))
+    .subscribe();
+}
+
+// Mappa amico -> conversazione diretta già esistente (non ne crea di nuove:
+// serve solo ad abbinare i conteggi di getUnreadCounts, per conversation_id,
+// alla riga giusta nella lista amici, che è per friendId).
+export async function getDirectConversationsMap() {
+  try {
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth?.user) return new Map();
+    const myId = auth.user.id;
+    const { data, error } = await supabase.from('chat_participants').select('conversation_id, user_id');
+    if (error || !data) return new Map();
+    const myConvIds = new Set(data.filter((r) => r.user_id === myId).map((r) => r.conversation_id));
+    const map = new Map();
+    for (const row of data) {
+      if (row.user_id !== myId && myConvIds.has(row.conversation_id)) map.set(row.user_id, row.conversation_id);
+    }
+    return map;
+  } catch {
+    return new Map();
   }
 }
