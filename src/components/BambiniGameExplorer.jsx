@@ -35,13 +35,13 @@ export default function BambiniGameExplorer({ world, activeCategory, onToggleCat
   };
 
   return (
-    <div className="rb-arte-explorer" style={{ '--accent': world.color }}>
+    <div className="rb-arte-explorer rb-bambini-explorer" style={{ '--accent': world.color }}>
       {game && (
         <>
           <div className="rb-arte-top-controls">
             <button
               type="button"
-              className="rb-arte-close-all-btn"
+              className="rb-arte-close-all-btn rb-bambini-close-btn"
               onClick={() => onToggleCategory(null)}
               aria-label="Chiudi il gioco"
               title="Chiudi il gioco"
@@ -52,7 +52,7 @@ export default function BambiniGameExplorer({ world, activeCategory, onToggleCat
             <form className="rb-arte-category-search" onSubmit={submitSearch}>
               <input
                 type="text"
-                placeholder="Cerca un gioco (es. snake)..."
+                placeholder="🔍 Cerca un gioco (es. snake)..."
                 value={query}
                 onChange={(e) => {
                   setQuery(e.target.value);

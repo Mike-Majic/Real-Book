@@ -26,28 +26,38 @@ function shuffle(arr) {
   return a;
 }
 
-function buildQuestions() {
+// Livello: più è difficile, meno note si sentono in anteprima (solo l'inizio
+// del motivo) e meno tempo c'è per rispondere.
+const SETTINGS = {
+  facile: { time: 20, melodyShare: 1 },
+  medio: { time: 15, melodyShare: 1 },
+  difficile: { time: 10, melodyShare: 0.5 },
+};
+
+function buildQuestions(melodyShare) {
   const picked = shuffle(SONGS).slice(0, 6);
   return picked.map((song) => {
     const distractors = shuffle(SONGS.filter((s) => s.title !== song.title)).slice(0, 3).map((s) => s.title);
     const options = shuffle([song.title, ...distractors]);
+    const notesToPlay = Math.max(2, Math.round(song.melody.length * melodyShare));
     return {
       text: 'Quale motivo hai appena ascoltato?',
       options,
       correctIndex: options.indexOf(song.title),
-      melody: song.melody,
+      melody: song.melody.slice(0, notesToPlay),
     };
   });
 }
 
 // Stesso motore di Quiz lampo (Famiglia 1): cambiano solo i dati e il
 // preview audio, mostrato sopra la domanda tramite renderQuestionMedia.
-export default function IndovinaCanzone({ onFinish }) {
-  const [questions] = useState(buildQuestions);
+export default function IndovinaCanzone({ onFinish, difficulty = 'medio' }) {
+  const { time, melodyShare } = SETTINGS[difficulty] ?? SETTINGS.medio;
+  const [questions] = useState(() => buildQuestions(melodyShare));
   return (
     <QuizEngine
       questions={questions}
-      timePerQuestion={15}
+      timePerQuestion={time}
       onFinish={onFinish}
       renderQuestionMedia={(q) => (
         <button type="button" className="rb-song-play-btn" onClick={() => playMelody(q.melody)}>

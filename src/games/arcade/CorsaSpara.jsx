@@ -10,6 +10,14 @@ const CANVAS_W = 380;
 const CANVAS_H = 200;
 const PLAYER_X = 46;
 
+// Livello: quanto sono veloci/frequenti i droni all'inizio, quanto in
+// fretta la difficoltà sale nel tempo, e quante vite si hanno.
+const SETTINGS = {
+  facile: { enemySpeed: 1.6, spawnEvery: 1800, minSpawnEvery: 950, rampDivisor: 30000, lives: 4 },
+  medio: { enemySpeed: 2.2, spawnEvery: 1400, minSpawnEvery: 650, rampDivisor: 20000, lives: 3 },
+  difficile: { enemySpeed: 2.9, spawnEvery: 1050, minSpawnEvery: 420, rampDivisor: 12000, lives: 2 },
+};
+
 function makeEnemy(speed) {
   return {
     lane: Math.floor(Math.random() * 3),
@@ -20,12 +28,13 @@ function makeEnemy(speed) {
   };
 }
 
-export default function CorsaSpara({ onFinish }) {
+export default function CorsaSpara({ onFinish, difficulty = 'medio' }) {
   const canvasRef = useRef(null);
   const rafRef = useRef(null);
+  const settings = SETTINGS[difficulty] ?? SETTINGS.medio;
   const [started, setStarted] = useState(false);
   const [score, setScore] = useState(0);
-  const [lives, setLives] = useState(3);
+  const [lives, setLives] = useState(settings.lives);
   const stateRef = useRef(null);
 
   if (!stateRef.current) {
@@ -34,10 +43,10 @@ export default function CorsaSpara({ onFinish }) {
       enemies: [],
       bullets: [],
       score: 0,
-      lives: 3,
+      lives: settings.lives,
       spawnTimer: 0,
-      spawnEvery: 1400,
-      enemySpeed: 2.2,
+      spawnEvery: settings.spawnEvery,
+      enemySpeed: settings.enemySpeed,
       elapsed: 0,
       over: false,
     };
@@ -83,11 +92,11 @@ export default function CorsaSpara({ onFinish }) {
       s.elapsed += dt;
 
       // difficoltà crescente nel tempo
-      s.enemySpeed = 2.2 + s.elapsed / 20000;
+      s.enemySpeed = settings.enemySpeed + s.elapsed / settings.rampDivisor;
       s.spawnTimer += dt;
       if (s.spawnTimer > s.spawnEvery) {
         s.spawnTimer = 0;
-        s.spawnEvery = Math.max(650, s.spawnEvery - 15);
+        s.spawnEvery = Math.max(settings.minSpawnEvery, s.spawnEvery - 15);
         s.enemies.push(makeEnemy(s.enemySpeed));
       }
 

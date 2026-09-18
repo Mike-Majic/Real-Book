@@ -15,7 +15,15 @@ const PROMPTS = [
   'inventa la scusa più buffa',
   'vince a un gioco da tavolo',
   'fa ridere tutti a tavola',
+  'arriva sempre in ritardo',
+  'sa tutte le risposte di un quiz',
+  'organizza i giochi per tutti',
+  'si sporca di più giocando fuori',
 ];
+
+// Livello: quante situazioni si votano in una partita — più round vuol
+// dire una sessione più lunga e impegnativa.
+const ROUNDS_BY_DIFFICULTY = { facile: 5, medio: 8, difficile: 12 };
 
 function shuffle(arr) {
   const a = [...arr];
@@ -26,14 +34,13 @@ function shuffle(arr) {
   return a;
 }
 
-const ROUNDS = 8;
-
 // Famiglia 4 (sociale/gruppo): party game di votazione a rotazione, sessione
 // locale "passa il dispositivo". Per ogni situazione, ogni giocatore vota (a
 // turno, passandosi il telefono) chi tra il gruppo la rappresenta meglio;
 // alla fine si somma chi ha ricevuto più voti in totale. Nessuna chat
 // libera: solo il tocco su un nome.
-export default function ChiEPiuProbabile({ onFinish }) {
+export default function ChiEPiuProbabile({ onFinish, difficulty = 'medio' }) {
+  const rounds = ROUNDS_BY_DIFFICULTY[difficulty] ?? ROUNDS_BY_DIFFICULTY.medio;
   const [players, setPlayers] = useState(null);
   const [prompts, setPrompts] = useState([]);
   const [roundIndex, setRoundIndex] = useState(0);
@@ -45,7 +52,7 @@ export default function ChiEPiuProbabile({ onFinish }) {
     const initialTally = {};
     names.forEach((n) => { initialTally[n] = 0; });
     setPlayers(names);
-    setPrompts(shuffle(PROMPTS).slice(0, ROUNDS));
+    setPrompts(shuffle(PROMPTS).slice(0, Math.min(rounds, PROMPTS.length)));
     setTally(initialTally);
     setRoundIndex(0);
     setVoterIndex(0);

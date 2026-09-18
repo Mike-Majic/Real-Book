@@ -2,11 +2,22 @@ import { useEffect, useRef, useState } from 'react';
 import PlayerSetup from './PlayerSetup';
 import './DisegnaIndovina.css';
 
-const WORDS = [
-  'cane', 'gatto', 'sole', 'casa', 'albero', 'pallone', 'pesce', 'fiore',
-  'stella', 'nuvola', 'bicicletta', 'farfalla', 'montagna', 'barca',
-  'ombrello', 'gelato', 'libro', 'gufo', 'castello', 'arcobaleno',
-];
+// Livello: parole facili da disegnare (oggetti semplici e riconoscibili) a
+// via via più difficili (azioni ed emozioni, molto meno dirette da rendere
+// con un disegno).
+const WORDS_BY_DIFFICULTY = {
+  facile: ['cane', 'gatto', 'sole', 'casa', 'pallone', 'pesce', 'fiore', 'stella', 'ombrello', 'gelato'],
+  medio: [
+    'cane', 'gatto', 'sole', 'casa', 'albero', 'pallone', 'pesce', 'fiore',
+    'stella', 'nuvola', 'bicicletta', 'farfalla', 'montagna', 'barca',
+    'ombrello', 'gelato', 'libro', 'gufo', 'castello', 'arcobaleno',
+  ],
+  difficile: [
+    'sorpresa', 'nuotare', 'amicizia', 'coraggio', 'inciampare', 'festeggiare',
+    'addormentarsi', 'nascondino', 'terremoto', 'orchestra', 'vulcano',
+    'imbarazzo', 'competizione', 'avventura', 'esploratore', 'gentilezza',
+  ],
+};
 
 const ROUND_SECONDS = 60;
 
@@ -24,7 +35,8 @@ function shuffle(arr) {
 // parola segreta, gli altri guardano lo stesso schermo e indovinano a voce;
 // alla fine del round si segna chi ha indovinato. Nessuna chat libera: solo
 // le interazioni previste dal gioco (disegno + spunta di chi ha indovinato).
-export default function DisegnaIndovina({ onFinish }) {
+export default function DisegnaIndovina({ onFinish, difficulty = 'medio' }) {
+  const wordsPool = WORDS_BY_DIFFICULTY[difficulty] ?? WORDS_BY_DIFFICULTY.medio;
   const [players, setPlayers] = useState(null);
   const [order, setOrder] = useState([]);
   const [round, setRound] = useState(0);
@@ -42,7 +54,7 @@ export default function DisegnaIndovina({ onFinish }) {
     names.forEach((n) => { initialScores[n] = 0; });
     setPlayers(names);
     setOrder(shuffle(names.map((_, i) => i)));
-    setWords(shuffle(WORDS));
+    setWords(shuffle(wordsPool));
     setScores(initialScores);
     setRound(0);
     setGuessed([]);

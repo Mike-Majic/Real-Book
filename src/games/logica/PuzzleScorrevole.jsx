@@ -1,33 +1,39 @@
 import { useRef, useState } from 'react';
 import './PuzzleScorrevole.css';
 
-const SIZE = 4;
+// Livello: dimensione della griglia — più caselle da rimettere in ordine,
+// più tessere si mescolano (shuffleBoard scala di conseguenza).
+const SETTINGS = {
+  facile: { size: 3, cell: 70 },
+  medio: { size: 4, cell: 60 },
+  difficile: { size: 5, cell: 48 },
+};
 
-function makeSolved() {
-  const arr = Array.from({ length: SIZE * SIZE - 1 }, (_, i) => i + 1);
+function makeSolved(size) {
+  const arr = Array.from({ length: size * size - 1 }, (_, i) => i + 1);
   arr.push(0); // 0 = casella vuota
   return arr;
 }
 
-function neighbors(pos) {
-  const row = Math.floor(pos / SIZE);
-  const col = pos % SIZE;
+function neighbors(pos, size) {
+  const row = Math.floor(pos / size);
+  const col = pos % size;
   const n = [];
-  if (row > 0) n.push(pos - SIZE);
-  if (row < SIZE - 1) n.push(pos + SIZE);
+  if (row > 0) n.push(pos - size);
+  if (row < size - 1) n.push(pos + size);
   if (col > 0) n.push(pos - 1);
-  if (col < SIZE - 1) n.push(pos + 1);
+  if (col < size - 1) n.push(pos + 1);
   return n;
 }
 
 // Mescola facendo mosse valide a partire dalla soluzione (mai lo scambio
 // diretto di due tessere a caso): garantisce che il puzzle resti risolvibile.
-function shuffleBoard(board, steps = 150) {
+function shuffleBoard(board, size, steps) {
   const b = [...board];
   let emptyPos = b.indexOf(0);
   let lastPos = -1;
   for (let i = 0; i < steps; i++) {
-    const options = neighbors(emptyPos).filter((p) => p !== lastPos);
+    const options = neighbors(emptyPos, size).filter((p) => p !== lastPos);
     const swapWith = options[Math.floor(Math.random() * options.length)];
     [b[emptyPos], b[swapWith]] = [b[swapWith], b[emptyPos]];
     lastPos = emptyPos;
@@ -42,14 +48,15 @@ function isSolved(board) {
 
 // Famiglia 2 (costruttivo/logico): fai scorrere le tessere per rimettere in
 // ordine i numeri, nessun timer che mette fretta, solo mosse.
-export default function PuzzleScorrevole({ onFinish }) {
-  const [board, setBoard] = useState(() => shuffleBoard(makeSolved()));
+export default function PuzzleScorrevole({ onFinish, difficulty = 'medio' }) {
+  const { size, cell } = SETTINGS[difficulty] ?? SETTINGS.medio;
+  const [board, setBoard] = useState(() => shuffleBoard(makeSolved(size), size, size * size * 12));
   const [moves, setMoves] = useState(0);
   const startRef = useRef(Date.now());
 
   const tryMove = (pos) => {
     const emptyPos = board.indexOf(0);
-    if (!neighbors(emptyPos).includes(pos)) return;
+    if (!neighbors(emptyPos, size).includes(pos)) return;
     const next = [...board];
     [next[emptyPos], next[pos]] = [next[pos], next[emptyPos]];
     setBoard(next);
@@ -57,7 +64,7 @@ export default function PuzzleScorrevole({ onFinish }) {
     setMoves(newMoves);
     if (isSolved(next)) {
       const seconds = Math.round((Date.now() - startRef.current) / 1000);
-      const score = Math.max(10, 500 - newMoves * 3 - seconds);
+      const score = Math.max(10, size * size * 40 - newMoves * 3 - seconds);
       setTimeout(() => onFinish(score, { detail: `${newMoves} mosse in ${seconds}s` }), 400);
     }
   };
@@ -65,7 +72,7 @@ export default function PuzzleScorrevole({ onFinish }) {
   return (
     <div className="rb-puzzle15">
       <p className="rb-puzzle15-moves">Mosse: {moves}</p>
-      <div className="rb-puzzle15-grid">
+      <div className="rb-puzzle15-grid" style={{ gridTemplateColumns: `repeat(${size}, ${cell}px)`, gridTemplateRows: `repeat(${size}, ${cell}px)` }}>
         {board.map((v, i) => (
           <button
             key={i}

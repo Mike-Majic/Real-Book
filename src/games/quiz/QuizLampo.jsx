@@ -30,11 +30,20 @@ function shuffle(arr) {
   return a;
 }
 
-// Trivia veloce a tempo: 8 domande pescate a caso, 10 secondi a domanda,
-// punteggio più alto quanto più si risponde in fretta.
-export default function QuizLampo({ onFinish }) {
+// Livello: quante domande e quanti secondi a testa — più difficile vuol
+// dire più domande da fare e meno tempo per rispondere.
+const SETTINGS = {
+  facile: { count: 6, time: 15 },
+  medio: { count: 8, time: 10 },
+  difficile: { count: 10, time: 6 },
+};
+
+// Trivia veloce a tempo: domande pescate a caso, punteggio più alto quanto
+// più si risponde in fretta.
+export default function QuizLampo({ onFinish, difficulty = 'medio' }) {
+  const { count, time } = SETTINGS[difficulty] ?? SETTINGS.medio;
   // useState(() => ...) invece di ricalcolarlo a ogni render: altrimenti le
   // domande cambierebbero sotto ai piedi del motore a ogni nuovo render.
-  const [questions] = useState(() => shuffle(QUESTIONS).slice(0, 8));
-  return <QuizEngine questions={questions} timePerQuestion={10} onFinish={onFinish} />;
+  const [questions] = useState(() => shuffle(QUESTIONS).slice(0, Math.min(count, QUESTIONS.length)));
+  return <QuizEngine questions={questions} timePerQuestion={time} onFinish={onFinish} />;
 }

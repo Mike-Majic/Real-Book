@@ -45,7 +45,6 @@
 .rb-memory-grid {
   display: grid;
   grid-template-columns: repeat(4, 56px);
-  grid-template-rows: repeat(4, 56px);
   gap: 6px;
 }
 
@@ -74,9 +73,3 @@
   cursor: default;
 }
 
-@media (max-width: 380px) {
-  .rb-memory-grid {
-    grid-template-columns: repeat(4, 48px);
-    grid-template-rows: repeat(4, 48px);
-  }
-}

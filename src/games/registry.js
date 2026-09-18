@@ -107,6 +107,17 @@ export const MINIGAMES = [
     Component: lazy(() => import('./arcade/TorreBlocchi.jsx')),
   },
   {
+    id: 'forza-quattro',
+    nome: 'Forza 4',
+    famiglia: 'logica',
+    fasciaEtaMinima: 8,
+    meccanica: 'Incolonna le pedine e fai 4 in fila prima del computer — livello difficile con una vera CPU strategica',
+    icon: '🔴',
+    anchor: { lat: 45, lng: 40 },
+    aliases: ['forza 4', 'forza quattro', 'connect four'],
+    Component: lazy(() => import('./logica/ForzaQuattro.jsx')),
+  },
+  {
     id: 'disegna-indovina',
     nome: 'Disegna e indovina',
     famiglia: 'sociale',

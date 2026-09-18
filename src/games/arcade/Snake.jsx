@@ -5,6 +5,14 @@ const GRID = 16;
 const CELL = 18;
 const CANVAS_SIZE = GRID * CELL;
 
+// Livello: velocità di partenza e quanto può diventare rapido il serpente
+// (più basso il numero, più veloce il tick).
+const SETTINGS = {
+  facile: { start: 180, min: 100 },
+  medio: { start: 140, min: 70 },
+  difficile: { start: 100, min: 45 },
+};
+
 function randomFood(snake) {
   let pos;
   do {
@@ -15,11 +23,12 @@ function randomFood(snake) {
 
 // Famiglia 3 (loop in tempo reale su canvas): arcade classico, leggero — solo
 // canvas 2D nativo e requestAnimationFrame, nessuna libreria di game engine.
-export default function Snake({ onFinish }) {
+export default function Snake({ onFinish, difficulty = 'medio' }) {
   const canvasRef = useRef(null);
   const stateRef = useRef(null);
   const rafRef = useRef(null);
   const lastTickRef = useRef(0);
+  const settings = SETTINGS[difficulty] ?? SETTINGS.medio;
   const [score, setScore] = useState(0);
   const [started, setStarted] = useState(false);
 
@@ -31,7 +40,8 @@ export default function Snake({ onFinish }) {
       nextDir: { x: 1, y: 0 },
       food: randomFood(snake),
       score: 0,
-      speed: 140,
+      speed: settings.start,
+      minSpeed: settings.min,
       over: false,
     };
   }
@@ -47,7 +57,7 @@ export default function Snake({ onFinish }) {
     if (newHead.x === s.food.x && newHead.y === s.food.y) {
       s.score += 10;
       s.food = randomFood(s.snake);
-      s.speed = Math.max(70, s.speed - 3);
+      s.speed = Math.max(s.minSpeed, s.speed - 3);
       setScore(s.score);
     } else {
       s.snake.pop();

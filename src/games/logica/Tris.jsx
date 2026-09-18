@@ -14,9 +14,13 @@ function checkWinner(board) {
   return board.every(Boolean) ? 'draw' : null;
 }
 
-// CPU semplice: vince se può, blocca l'avversario se serve, altrimenti
+function freeCells(board) {
+  return board.map((v, i) => (v ? null : i)).filter((v) => v !== null);
+}
+
+// CPU "medio": vince se può, blocca l'avversario se serve, altrimenti
 // preferisce il centro, poi gli angoli, altrimenti una casella a caso.
-function cpuMove(board, cpuSymbol, humanSymbol) {
+function cpuMoveMedio(board, cpuSymbol, humanSymbol) {
   const tryEach = (symbol) => {
     for (let i = 0; i < 9; i++) {
       if (board[i]) continue;
@@ -34,15 +38,53 @@ function cpuMove(board, cpuSymbol, humanSymbol) {
     if (corners.length) move = corners[Math.floor(Math.random() * corners.length)];
   }
   if (move === -1) {
-    const free = board.map((v, i) => (v ? null : i)).filter((v) => v !== null);
+    const free = freeCells(board);
     move = free[Math.floor(Math.random() * free.length)];
   }
   return move;
 }
 
+// CPU "difficile": minimax con gioco perfetto — non perde mai, vince ogni
+// errore dell'avversario. Sulla griglia 3x3 (al massimo 9 mosse) esplorare
+// tutto l'albero è istantaneo, nessun bisogno di potatura alpha-beta.
+function minimaxScore(board, isCpuTurn, cpuSymbol, humanSymbol) {
+  const winner = checkWinner(board);
+  if (winner === cpuSymbol) return 10;
+  if (winner === humanSymbol) return -10;
+  if (winner === 'draw') return 0;
+
+  const symbol = isCpuTurn ? cpuSymbol : humanSymbol;
+  const scores = freeCells(board).map((i) => {
+    const b = [...board];
+    b[i] = symbol;
+    return minimaxScore(b, !isCpuTurn, cpuSymbol, humanSymbol);
+  });
+  return isCpuTurn ? Math.max(...scores) : Math.min(...scores);
+}
+
+function cpuMoveDifficile(board, cpuSymbol, humanSymbol) {
+  let best = { index: -1, score: -Infinity };
+  for (const i of freeCells(board)) {
+    const b = [...board];
+    b[i] = cpuSymbol;
+    const score = minimaxScore(b, false, cpuSymbol, humanSymbol);
+    if (score > best.score) best = { index: i, score };
+  }
+  return best.index;
+}
+
+function cpuMove(board, cpuSymbol, humanSymbol, difficulty) {
+  if (difficulty === 'facile') {
+    const free = freeCells(board);
+    return free[Math.floor(Math.random() * free.length)];
+  }
+  if (difficulty === 'difficile') return cpuMoveDifficile(board, cpuSymbol, humanSymbol);
+  return cpuMoveMedio(board, cpuSymbol, humanSymbol);
+}
+
 // Famiglia 2 (logica a turni/griglia): 2 giocatori locali o contro una CPU
 // semplice, nessun timer, stato locale immutabile a ogni mossa.
-export default function Tris({ onFinish }) {
+export default function Tris({ onFinish, difficulty = 'medio' }) {
   const [mode, setMode] = useState(null); // null | '2p' | 'cpu'
   const [board, setBoard] = useState(Array(9).fill(null));
   const [turn, setTurn] = useState('X');
@@ -74,7 +116,7 @@ export default function Tris({ onFinish }) {
   useEffect(() => {
     if (mode !== 'cpu' || winner || turn !== 'O') return undefined;
     const t = setTimeout(() => {
-      const move = cpuMove(board, 'O', 'X');
+      const move = cpuMove(board, 'O', 'X', difficulty);
       if (move !== undefined && move !== -1) playAt(move);
     }, 500);
     return () => clearTimeout(t);

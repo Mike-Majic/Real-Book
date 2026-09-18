@@ -11,9 +11,19 @@ const CANVAS_H = 380;
 const BLOCK_H = 24;
 const COLORS = ['#22c55e', '#4ade80', '#86efac', '#facc15', '#38bdf8'];
 
-export default function TorreBlocchi({ onFinish }) {
+// Livello: quanto è veloce (e quanto accelera) il blocco che oscilla, e
+// quanto sovrapposizione minima serve per non sbagliare (più alta = più
+// facile fallire anche con un buon tiro).
+const SETTINGS = {
+  facile: { base: 1.3, growth: 0.08, max: 3.2, failThreshold: 2 },
+  medio: { base: 1.6, growth: 0.12, max: 4.5, failThreshold: 4 },
+  difficile: { base: 2.2, growth: 0.16, max: 6, failThreshold: 8 },
+};
+
+export default function TorreBlocchi({ onFinish, difficulty = 'medio' }) {
   const canvasRef = useRef(null);
   const rafRef = useRef(null);
+  const settings = SETTINGS[difficulty] ?? SETTINGS.medio;
   const [started, setStarted] = useState(false);
   const [height, setHeight] = useState(0);
   const stateRef = useRef(null);
@@ -22,7 +32,7 @@ export default function TorreBlocchi({ onFinish }) {
     const baseWidth = 140;
     stateRef.current = {
       stack: [{ x: (CANVAS_W - baseWidth) / 2, width: baseWidth }],
-      moving: { x: 0, width: baseWidth, dir: 1, speed: 1.6 },
+      moving: { x: 0, width: baseWidth, dir: 1, speed: settings.base },
       cameraOffset: 0,
       over: false,
       height: 0,
@@ -31,7 +41,7 @@ export default function TorreBlocchi({ onFinish }) {
 
   const spawnMoving = (s) => {
     const top = s.stack[s.stack.length - 1];
-    s.moving = { x: 0, width: top.width, dir: 1, speed: Math.min(4.5, 1.6 + s.height * 0.12) };
+    s.moving = { x: 0, width: top.width, dir: 1, speed: Math.min(settings.max, settings.base + s.height * settings.growth) };
   };
 
   useEffect(() => {
@@ -53,7 +63,7 @@ export default function TorreBlocchi({ onFinish }) {
       const overlapRight = Math.min(movingRight, topRight);
       const overlapWidth = overlapRight - overlapLeft;
 
-      if (overlapWidth <= 4) {
+      if (overlapWidth <= settings.failThreshold) {
         s.over = true;
         onFinish(s.height * 10, { detail: `Torre alta ${s.height} blocchi` });
         return;
