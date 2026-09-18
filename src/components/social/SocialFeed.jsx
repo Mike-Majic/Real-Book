@@ -112,7 +112,14 @@ export default function SocialFeed({
   const [savedPosts, setSavedPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [feedError, setFeedError] = useState(null);
-  const [followError, setFollowError] = useState('');
+  // Errore transitorio di una singola azione (segui, mi piace...), separato
+  // da feedError che è per il caricamento del feed intero (ha un suo
+  // pulsante "Riprova" che non avrebbe senso qui).
+  const [actionError, setActionError] = useState('');
+  const showActionError = (message) => {
+    setActionError(message);
+    window.setTimeout(() => setActionError(''), 4000);
+  };
 
   const [feedTab, setFeedTab] = useState('foryou');
   const [activeGroupId, setActiveGroupId] = useState(null);
@@ -250,7 +257,10 @@ export default function SocialFeed({
     if (!target) return;
     const currentlyLiked = target.mi_piace.includes(user.id);
     const { liked, error } = await togglePostLikeApi(postId, currentlyLiked);
-    if (error) return;
+    if (error) {
+      showActionError(error);
+      return;
+    }
     setPosts((prev) =>
       prev.map((p) =>
         p.id === postId
@@ -269,7 +279,10 @@ export default function SocialFeed({
       return;
     }
     const { liked, error } = await toggleContentLikeApi(post.contentId, post.contentLiked);
-    if (error) return;
+    if (error) {
+      showActionError(error);
+      return;
+    }
     setPosts((prev) =>
       prev.map((p) =>
         p.id === post.id ? { ...p, contentLiked: liked, contentLikeCount: p.contentLikeCount + (liked ? 1 : -1) } : p
@@ -376,12 +389,10 @@ export default function SocialFeed({
       onOpenAuth();
       return;
     }
-    setFollowError('');
     const isFollowing = following.includes(userId);
     const { error } = isFollowing ? await unfollowUser(userId) : await followUser(userId);
     if (error) {
-      setFollowError(error);
-      window.setTimeout(() => setFollowError(''), 4000);
+      showActionError(error);
       return;
     }
     setFollowing((prev) => (isFollowing ? prev.filter((id) => id !== userId) : [...prev, userId]));
@@ -552,8 +563,8 @@ export default function SocialFeed({
         </p>
       )}
 
-      {followError && (
-        <p className="rb-social-error">⚠️ {followError}</p>
+      {actionError && (
+        <p className="rb-social-error">⚠️ {actionError}</p>
       )}
 
       <div className="rb-feed-tabs">
@@ -644,7 +655,17 @@ export default function SocialFeed({
       ) : (
         <>
           {feedTab !== 'saved' && (
-            <PostComposer user={user} onOpenAuth={onOpenAuth} onSubmit={createPost} groups={groupsList} defaultGroupId={activeGroupId} />
+            isGroupView && activeGroup && !joinedGroups.includes(activeGroup.id) ? (
+              <button
+                type="button"
+                className="rb-group-join-btn"
+                onClick={() => (user ? toggleJoinGroup(activeGroup.id) : onOpenAuth())}
+              >
+                Unisciti per pubblicare
+              </button>
+            ) : (
+              <PostComposer user={user} onOpenAuth={onOpenAuth} onSubmit={createPost} groups={groupsList} defaultGroupId={activeGroupId} />
+            )
           )}
 
           {loading && posts.length === 0 && <p className="rb-social-empty">Caricamento del feed...</p>}

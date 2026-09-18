@@ -1,19 +1,9 @@
 import { supabase } from './supabaseClient';
 import { fetchProfilesMap } from './posts';
+import { translateInteractionError } from './errors';
 
 function mapProfileRow(row) {
   return { id: row.id, name: row.nickname || row.username || 'Utente', avatar: row.avatar_url || '' };
-}
-
-// can_interact ora blocca anche un blocco reciproco E un adulto con un
-// minorenne (o viceversa): in entrambi i casi l'inserimento fallisce con lo
-// stesso generico "row-level security policy" di Postgres, qui diventa un
-// messaggio comprensibile invece di un errore tecnico.
-function translateBlockedError(error) {
-  if (error?.code === '42501' || /row-level security/i.test(error?.message ?? '')) {
-    return 'Non puoi interagire con questo utente.';
-  }
-  return error.message;
 }
 
 // Cerca persone reali per nickname o nome utente (vista public_profiles,
@@ -60,7 +50,7 @@ export async function sendFriendRequest(toId) {
     if (existing) return {};
 
     const { error } = await supabase.from('friend_requests').insert({ from_id: auth.user.id, to_id: toId });
-    if (error) return { error: translateBlockedError(error) };
+    if (error) return { error: translateInteractionError(error) };
     return {};
   } catch (err) {
     return { error: err?.message ?? 'Errore di rete.' };

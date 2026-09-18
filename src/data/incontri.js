@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { translateInteractionError } from './errors';
 
 // Backend reale del mondo Incontri (RPC dedicate, vedi le funzioni SQL
 // corrispondenti — is_incontri_eligible richiede mondo "incontri" abilitato
@@ -94,19 +95,12 @@ export async function updateOwnDatingProfile(citta, bio) {
 // (RLS: solo le proprie righe, e solo su profili idonei/non bloccati per
 // l'insert — un tentativo su un profilo non più disponibile arriva come un
 // generico errore di row-level security, qui tradotto).
-function translateFavoriteError(error) {
-  if (error?.code === '42501' || /row-level security/i.test(error?.message ?? '')) {
-    return 'Non puoi salvare questo profilo tra i preferiti.';
-  }
-  return error.message;
-}
-
 export async function addFavorite(favoriteId) {
   try {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth?.user) return { error: 'Devi essere loggato.' };
     const { error } = await supabase.from('match_favorites').insert({ user_id: auth.user.id, favorite_id: favoriteId });
-    if (error) return { error: translateFavoriteError(error) };
+    if (error) return { error: translateInteractionError(error) };
     return {};
   } catch (err) {
     return { error: err?.message ?? 'Errore di rete.' };

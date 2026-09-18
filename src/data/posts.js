@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { translateInteractionError } from './errors';
 
 // Feed Social reale (tabelle posts/comments/post_likes/saved_posts), al
 // posto del vecchio localStorage di SocialFeed.jsx. La colonna "media"
@@ -159,7 +160,7 @@ export async function createPost({ testo, gif, link_esterno, gruppoId, contentId
       .insert({ author_id: auth.user.id, mondo, testo: testo ?? '', media, gruppo_id: gruppoId ?? null })
       .select()
       .single();
-    if (error) return { error: error.message };
+    if (error) return { error: translateInteractionError(error) };
     return { id: data.id, createdAt: data.created_at };
   } catch (err) {
     return { error: err?.message ?? 'Errore di rete.' };
@@ -199,7 +200,7 @@ export async function togglePostLike(postId, currentlyLiked) {
       return { liked: false };
     }
     const { error } = await supabase.from('post_likes').insert({ post_id: postId, user_id: auth.user.id });
-    if (error) return { error: error.message };
+    if (error) return { error: translateInteractionError(error) };
     return { liked: true };
   } catch (err) {
     return { error: err?.message ?? 'Errore di rete.' };
@@ -233,7 +234,7 @@ export async function addComment({ postId, testo, gif }) {
       .insert({ post_id: postId, author_id: auth.user.id, testo: testo ?? '', media })
       .select()
       .single();
-    if (error) return { error: error.message };
+    if (error) return { error: translateInteractionError(error) };
     return { id: data.id, createdAt: data.created_at };
   } catch (err) {
     return { error: err?.message ?? 'Errore di rete.' };

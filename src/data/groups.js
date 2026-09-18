@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { translateInteractionError } from './errors';
 
 // Gruppi reali del mondo Social (Blu), su Supabase (tabelle groups +
 // group_memberships) — sostituisce l'elenco statico che c'era prima (vedi
@@ -98,7 +99,7 @@ export async function joinGroup(groupId) {
     const { error } = await supabase
       .from('group_memberships')
       .insert({ group_id: groupId, user_id: auth.user.id, ruolo: 'membro' });
-    if (error) return { error: error.message };
+    if (error) return { error: translateInteractionError(error) };
     return {};
   } catch (err) {
     return { error: err?.message ?? 'Errore di rete.' };

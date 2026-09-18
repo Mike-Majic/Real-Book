@@ -1,16 +1,6 @@
 import { supabase } from './supabaseClient';
 import { fetchProfilesMap } from './posts';
-
-// can_interact ora blocca anche un blocco reciproco E un adulto con un
-// minorenne (o viceversa): in entrambi i casi l'INSERT fallisce con lo
-// stesso generico "row-level security policy" di Postgres, qui diventa un
-// messaggio comprensibile invece di un errore tecnico.
-function translateBlockedError(error) {
-  if (error?.code === '42501' || /row-level security/i.test(error?.message ?? '')) {
-    return 'Non puoi interagire con questo utente.';
-  }
-  return error.message;
-}
+import { translateInteractionError } from './errors';
 
 // Apre (o riusa, se già esiste) la conversazione diretta con un altro
 // utente reale — la funzione lato server aggiunge entrambi come
@@ -61,7 +51,7 @@ export async function sendMessage(conversationId, testo) {
       .insert({ conversation_id: conversationId, sender_id: auth.user.id, testo })
       .select()
       .single();
-    if (error) return { error: translateBlockedError(error) };
+    if (error) return { error: translateInteractionError(error) };
     return { id: data.id, createdAt: data.created_at };
   } catch (err) {
     return { error: err?.message ?? 'Errore di rete.' };
