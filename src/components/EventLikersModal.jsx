@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { resolveAuthor } from './social/resolveAuthor';
 import ModalOverlay from './ModalOverlay';
 import './EventLikersModal.css';
 
@@ -22,7 +21,7 @@ export default function EventLikersModal({
 
   if (!event) return null;
 
-  const likers = event.mi_piace.map((id) => ({ id, ...resolveAuthor(id, user) }));
+  const likers = event.likers ?? [];
 
   const handleAction = async (id, action) => {
     if (!user) {
@@ -44,7 +43,7 @@ export default function EventLikersModal({
 
         <ul className="rb-event-likers-list">
           {likers.map((l) => {
-            const isMe = l.id === 'me';
+            const isMe = l.id === user?.id;
             const isFriend = !isMe && friends.includes(l.id);
             const requested = !isMe && friendRequestsSent.includes(l.id);
             return (

@@ -29,7 +29,7 @@ import { SOCIAL_CATEGORIES, resolveCategoryQuery as resolveSocialCategoryQuery }
 import IncontriLiveExplorer from './components/incontri/IncontriLiveExplorer';
 import AccessGate from './components/AccessGate';
 import { isAdult } from './data/age';
-import { SEED_EVENTS, isEventExpired } from './data/events';
+import { isEventExpired, fetchEvents, createEvent as createEventApi, toggleEventLike as toggleEventLikeApi, subscribeToNewEvents } from './data/events';
 import { isStaff } from './data/roles';
 import EventLikersModal from './components/EventLikersModal';
 import FriendChatModal from './components/FriendChatModal';
@@ -158,10 +158,12 @@ export default function App() {
   const [flyTo, setFlyTo] = useState(null);
   // Eventi del mondo Social e sistema di amicizie: sollevati qui (non dentro
   // SocialFeed) perché servono anche a WorldGlobe (marker quadrato sul
-  // globo) e ai due sono montati insieme quando si è nel mondo Social —
-  // niente localStorage-bridge come per le foto di Arte, qui serve stato
-  // condiviso in tempo reale.
-  const [events, setEvents] = useState(() => loadStored('rb-events', SEED_EVENTS));
+  // globo) e ai due sono montati insieme quando si è nel mondo Social.
+  // Backend reale (tabelle events/event_attendees): caricati ad ogni
+  // login/logout (la RLS decide cosa si vede) e aggiornati in tempo reale
+  // quando qualcun altro ne crea uno nuovo (vedi effect più sotto).
+  const [events, setEvents] = useState([]);
+  const [eventActionError, setEventActionError] = useState('');
   // Amicizie e richieste: id soltanto (nomi/avatar li risolve chi li mostra
   // davvero, vedi FriendsModal) — servono qui solo per i controlli rapidi
   // "è già amico?"/"gli ho già scritto?" sparsi nell'app (EventLikersModal,
@@ -317,7 +319,31 @@ export default function App() {
   useEffect(() => localStorage.setItem('rb-location-filters', JSON.stringify(locationFilters)), [locationFilters]);
   useEffect(() => localStorage.setItem('rb-arte-filter', JSON.stringify(arteFilter)), [arteFilter]);
   useEffect(() => localStorage.setItem('rb-visibility', JSON.stringify(visibility)), [visibility]);
-  useEffect(() => localStorage.setItem('rb-events', JSON.stringify(events)), [events]);
+  useEffect(() => {
+    if (!eventActionError) return undefined;
+    const timer = setTimeout(() => setEventActionError(''), 4000);
+    return () => clearTimeout(timer);
+  }, [eventActionError]);
+
+  // Eventi del mondo Social: ricaricati ad ogni login/logout (la RLS decide
+  // cosa si vede, in base a fascia d'età/blocchi), poi tenuti aggiornati in
+  // tempo reale così un evento creato da un altro utente compare da solo.
+  useEffect(() => {
+    fetchEvents({ mondo: 'social' }).then(({ events: list }) => {
+      if (list) setEvents(list);
+    });
+  }, [user?.id]);
+
+  useEffect(() => {
+    const channel = subscribeToNewEvents('social', () => {
+      fetchEvents({ mondo: 'social' }).then(({ events: list }) => {
+        if (list) setEvents(list);
+      });
+    });
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Amicizie/richieste reali (Supabase): ricaricate ad ogni cambio utente
   // (login/logout), e su richiesta esplicita dopo un'azione da FriendsModal
@@ -412,30 +438,29 @@ export default function App() {
   // che ticchetta, la granularità è "un giorno" quindi non serve altro.
   const visibleEvents = useMemo(() => events.filter((e) => !isEventExpired(e)), [events]);
 
-  const createEvent = ({ titolo, citta, lat, lng, data, ora, bio, foto }) => {
-    const newEvent = {
-      id: `evento-${Date.now()}`,
-      autoreId: 'me',
-      titolo,
-      citta,
-      lat,
-      lng,
-      data,
-      ora,
-      bio,
-      foto,
-      gradient: null,
-      mi_piace: [],
-    };
-    setEvents((prev) => [newEvent, ...prev]);
+  const createEvent = async ({ titolo, citta, lat, lng, data, ora, bio, fotoFile }) => {
+    const { error } = await createEventApi({ titolo, citta, lat, lng, data, ora, bio, fotoFile, mondo: 'social' });
+    if (error) return { error };
+    const { events: list } = await fetchEvents({ mondo: 'social' });
+    if (list) setEvents(list);
+    return {};
   };
 
-  const toggleEventLike = (eventId) => {
+  const toggleEventLike = async (eventId, currentlyLiked) => {
+    const { error } = await toggleEventLikeApi(eventId, currentlyLiked);
+    if (error) {
+      setEventActionError(error);
+      return;
+    }
     setEvents((prev) =>
       prev.map((e) => {
         if (e.id !== eventId) return e;
-        const has = e.mi_piace.includes('me');
-        return { ...e, mi_piace: has ? e.mi_piace.filter((id) => id !== 'me') : [...e.mi_piace, 'me'] };
+        const myId = user.id;
+        const mi_piace = currentlyLiked ? e.mi_piace.filter((id) => id !== myId) : [...e.mi_piace, myId];
+        const likers = currentlyLiked
+          ? e.likers.filter((l) => l.id !== myId)
+          : [...e.likers, { id: myId, name: user.nickname ?? 'Tu', avatar: user.avatar ?? '' }];
+        return { ...e, mi_piace, likers, likedByMe: !currentlyLiked };
       })
     );
   };
@@ -624,6 +649,10 @@ export default function App() {
 
       {accountDeletedNotice && (
         <div className="rb-email-confirmed-banner">✅ Account eliminato.</div>
+      )}
+
+      {eventActionError && (
+        <div className="rb-email-confirmed-banner rb-app-banner-warning">⚠️ {eventActionError}</div>
       )}
 
       {!authReady && (

@@ -52,9 +52,7 @@ function makeEventMarkerEl(event, world, onOpen) {
   const el = document.createElement('div');
   el.className = 'rb-event-marker';
   const likeCount = event.mi_piace.length;
-  const photoStyle = event.foto
-    ? `background-image:url('${event.foto}')`
-    : `background:${event.gradient ?? world.color}`;
+  const photoStyle = event.fotoUrl ? `background-image:url('${event.fotoUrl}')` : `background:${world.color}`;
   el.innerHTML = `
     <div class="rb-event-marker-photo" style="${photoStyle}; border-color:${world.color}"></div>
     ${likeCount > 0 ? `<span class="rb-event-marker-badge">${likeCount}</span>` : ''}

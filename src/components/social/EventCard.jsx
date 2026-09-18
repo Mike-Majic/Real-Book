@@ -1,10 +1,11 @@
-import { resolveAuthor } from './resolveAuthor';
 import './EventCard.css';
 
-function formatEventDate(dataISO, ora) {
-  const d = new Date(`${dataISO}T${ora}`);
-  const oggi = new Date().toISOString().slice(0, 10);
-  const giornoLabel = dataISO === oggi ? 'Oggi' : d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+function formatEventDate(dataEventoISO) {
+  const d = new Date(dataEventoISO);
+  const oggi = new Date();
+  const giornoLabel =
+    d.toDateString() === oggi.toDateString() ? 'Oggi' : d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+  const ora = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
   return `${giornoLabel} · ${ora}`;
 }
 
@@ -13,26 +14,26 @@ function formatEventDate(dataISO, ora) {
 // per aprire la lista di chi l'ha messo (stesso elenco che appare
 // cliccando il badge sul marker quadrato del globo).
 export default function EventCard({ event, user, onOpenAuth, onToggleLike, onOpenLikers }) {
-  const author = resolveAuthor(event.autoreId, user);
-  const liked = event.mi_piace.includes('me');
+  const author = event.author;
+  const liked = event.likedByMe;
 
   const handleLike = () => {
     if (!user) {
       onOpenAuth();
       return;
     }
-    onToggleLike(event.id);
+    onToggleLike(event.id, liked);
   };
 
   return (
     <li className="rb-event-card">
-      {event.foto ? (
-        <img className="rb-event-card-photo" src={event.foto} alt={event.titolo} />
+      {event.fotoUrl ? (
+        <img className="rb-event-card-photo" src={event.fotoUrl} alt={event.titolo} />
       ) : (
-        <div className="rb-event-card-photo rb-event-card-photo-gradient" style={{ background: event.gradient }} />
+        <div className="rb-event-card-photo rb-event-card-photo-gradient" />
       )}
       <div className="rb-event-card-body">
-        <span className="rb-event-card-when">{formatEventDate(event.data, event.ora)}</span>
+        <span className="rb-event-card-when">{formatEventDate(event.dataEvento)}</span>
         <strong className="rb-event-card-title">{event.titolo}</strong>
         <span className="rb-event-card-city">📍 {event.citta}</span>
         {event.bio && <p className="rb-event-card-bio">{event.bio}</p>}

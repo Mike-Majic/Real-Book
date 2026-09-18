@@ -18,21 +18,28 @@ export default function EventComposer({ user, onOpenAuth, onSubmit, onClose }) {
   const [data, setData] = useState(todayISO());
   const [ora, setOra] = useState('19:00');
   const [bio, setBio] = useState('');
-  const [foto, setFoto] = useState(null);
+  const [fotoFile, setFotoFile] = useState(null);
+  const [fotoPreviewUrl, setFotoPreviewUrl] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const fileInputRef = useRef(null);
 
   const onFileChosen = (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setFoto(reader.result);
-    reader.readAsDataURL(file);
+    setFotoFile(file);
+    setFotoPreviewUrl(URL.createObjectURL(file));
   };
 
-  const canSubmit = titolo.trim() && citta.trim() && data && ora && foto;
+  const removeFoto = () => {
+    setFotoFile(null);
+    setFotoPreviewUrl(null);
+  };
 
-  const submit = (e) => {
+  const canSubmit = titolo.trim() && citta.trim() && data && ora && fotoFile;
+
+  const submit = async (e) => {
     e.preventDefault();
     if (!user) {
       onOpenAuth();
@@ -43,8 +50,10 @@ export default function EventComposer({ user, onOpenAuth, onSubmit, onClose }) {
       setCittaInvalid(true);
       return;
     }
-    if (!canSubmit) return;
-    onSubmit({
+    if (!canSubmit || submitting) return;
+    setSubmitting(true);
+    setSubmitError('');
+    const { error } = await onSubmit({
       titolo: titolo.trim(),
       citta: cittaInfo.name,
       lat: cittaInfo.lat,
@@ -52,8 +61,13 @@ export default function EventComposer({ user, onOpenAuth, onSubmit, onClose }) {
       data,
       ora,
       bio: bio.trim(),
-      foto,
+      fotoFile,
     });
+    setSubmitting(false);
+    if (error) {
+      setSubmitError(error);
+      return;
+    }
   };
 
   return (
@@ -96,10 +110,10 @@ export default function EventComposer({ user, onOpenAuth, onSubmit, onClose }) {
         rows={3}
       />
 
-      {foto ? (
+      {fotoPreviewUrl ? (
         <div className="rb-event-composer-photo-preview">
-          <img src={foto} alt="Anteprima" />
-          <button type="button" onClick={() => setFoto(null)} aria-label="Rimuovi foto">✕</button>
+          <img src={fotoPreviewUrl} alt="Anteprima" />
+          <button type="button" onClick={removeFoto} aria-label="Rimuovi foto">✕</button>
         </div>
       ) : (
         <button type="button" className="rb-event-composer-photo-btn" onClick={() => fileInputRef.current?.click()}>
@@ -108,8 +122,10 @@ export default function EventComposer({ user, onOpenAuth, onSubmit, onClose }) {
       )}
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={onFileChosen} />
 
-      <button type="submit" className="rb-event-composer-submit" disabled={!canSubmit}>
-        Pubblica evento
+      {submitError && <p className="rb-event-composer-error">⚠️ {submitError}</p>}
+
+      <button type="submit" className="rb-event-composer-submit" disabled={!canSubmit || submitting}>
+        {submitting ? 'Pubblicazione...' : 'Pubblica evento'}
       </button>
     </form>
   );

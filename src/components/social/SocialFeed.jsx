@@ -514,7 +514,7 @@ export default function SocialFeed({
 
   // Eventi in ordine di data/ora più vicina, quelli di oggi prima di domani.
   const eventsSorted = useMemo(
-    () => [...events].sort((a, b) => new Date(`${a.data}T${a.ora}`) - new Date(`${b.data}T${b.ora}`)),
+    () => [...events].sort((a, b) => new Date(a.dataEvento) - new Date(b.dataEvento)),
     [events]
   );
 
@@ -623,9 +623,10 @@ export default function SocialFeed({
               user={user}
               onOpenAuth={onOpenAuth}
               onClose={() => setShowEventComposer(false)}
-              onSubmit={(data) => {
-                onCreateEvent(data);
-                setShowEventComposer(false);
+              onSubmit={async (data) => {
+                const result = await onCreateEvent(data);
+                if (!result?.error) setShowEventComposer(false);
+                return result;
               }}
             />
           ) : (

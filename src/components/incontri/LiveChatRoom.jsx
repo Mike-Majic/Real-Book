@@ -1,86 +1,95 @@
 import { useEffect, useRef, useState } from 'react';
-import { resolveAuthor, formatRelativeDate } from '../social/resolveAuthor';
+import { fetchLiveMessages, sendLiveMessage, subscribeToLiveMessages, recordLiveView } from '../../data/liveStreams';
+import { formatRelativeDate } from '../social/resolveAuthor';
+import ReportModal from '../shared/ReportModal';
+import { supabase } from '../../data/supabaseClient';
 import './LiveChatRoom.css';
 
-const STORAGE_KEY = 'rb-live-messages';
-
-const SEED_MESSAGES = [
-  { id: 'lm-1', autoreId: 6, testo: 'Ciao a tutti! Qualcuno stasera in zona Milano? 😊', data: '2026-09-15T18:10:00.000Z' },
-  { id: 'lm-2', autoreId: 11, testo: 'Presente da Torino, che serata tranquilla 🌙', data: '2026-09-15T18:12:00.000Z' },
-  { id: 'lm-3', autoreId: 17, testo: 'Ciao! Prima volta qui, come funziona la live?', data: '2026-09-15T18:14:00.000Z' },
-  { id: 'lm-4', autoreId: 6, testo: 'Basta scrivere, chi c\'è risponde 🙂', data: '2026-09-15T18:15:00.000Z' },
-];
-
-function loadStored(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-// Chat "live" del mondo Incontri: senza backend non può essere davvero
-// condivisa tra utenti diversi, quindi segue lo stesso principio già usato
-// nel mondo Social (dati finti di partenza + quello che scrivi tu, salvato
-// solo nel tuo browser). Include da subito un pulsante di segnalazione per
-// ogni messaggio: è la base minima di moderazione richiesta prima di
-// costruire qualunque contenuto per adulti in questa sezione.
-export default function LiveChatRoom({ user, onOpenAuth }) {
-  const [messages, setMessages] = useState(() => loadStored(STORAGE_KEY, SEED_MESSAGES));
+// Chat di una diretta reale (tabella live_messages, legata a un
+// live_sessions.id): niente più di globale/finto, ogni diretta ha la sua
+// chat. Senza sessionId (nessuna diretta attiva nel mondo) non c'è nulla da
+// mostrare: lo decide chi monta questo componente (vedi IncontriLiveExplorer).
+export default function LiveChatRoom({ sessionId, user, onOpenAuth }) {
+  const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
-  const [reportedIds, setReportedIds] = useState(() => new Set());
+  const [sendError, setSendError] = useState('');
+  const [reportingId, setReportingId] = useState(null);
   const listRef = useRef(null);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-  }, [messages]);
+    if (!sessionId) {
+      setMessages([]);
+      return undefined;
+    }
+    fetchLiveMessages(sessionId).then(({ messages: list }) => {
+      if (list) setMessages(list);
+    });
+    if (user) recordLiveView(sessionId);
+
+    const channel = subscribeToLiveMessages(sessionId, (row) => {
+      setMessages((prev) => [
+        ...prev,
+        { id: row.id, autoreId: row.user_id, author: { id: row.user_id, name: 'Utente', avatar: '' }, testo: row.testo, data: row.created_at },
+      ]);
+      // Il mittente vero (nome/avatar) arriva subito dopo con un refetch
+      // leggero: evita di dover risolvere il profilo dentro al canale
+      // realtime, che non ha accesso a public_profiles pre-caricato.
+      fetchLiveMessages(sessionId).then(({ messages: list }) => {
+        if (list) setMessages(list);
+      });
+    });
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, user?.id]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
   }, [messages]);
 
-  const send = (e) => {
+  const send = async (e) => {
     e.preventDefault();
     if (!user) {
       onOpenAuth();
       return;
     }
     const text = draft.trim();
-    if (!text) return;
-    setMessages((prev) => [...prev, { id: `lm-${Date.now()}`, autoreId: 'me', testo: text, data: new Date().toISOString() }]);
+    if (!text || !sessionId) return;
     setDraft('');
+    const { error } = await sendLiveMessage(sessionId, text);
+    if (error) setSendError(error);
   };
 
-  const report = (id) => {
-    setReportedIds((prev) => new Set(prev).add(id));
-  };
+  if (!sessionId) {
+    return (
+      <div className="rb-live-chat">
+        <p className="rb-live-users-hint">Nessuna diretta attiva ora in questo mondo.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="rb-live-chat">
       <div className="rb-live-chat-notice">🔞 Sezione 18+ · rispetta le regole della community, i messaggi segnalati vengono esaminati</div>
 
+      {sendError && <p className="rb-social-error">⚠️ {sendError}</p>}
+
       <div className="rb-live-chat-messages" ref={listRef}>
         {messages.map((m) => {
-          const author = resolveAuthor(m.autoreId, user);
-          const isMe = m.autoreId === 'me';
+          const isMe = m.autoreId === user?.id;
           return (
             <div key={m.id} className={`rb-live-msg ${isMe ? 'rb-live-msg-me' : ''}`}>
-              <img className="rb-live-msg-avatar" src={author.avatar} alt="" />
+              <img className="rb-live-msg-avatar" src={m.author.avatar} alt="" />
               <div className="rb-live-msg-body">
                 <div className="rb-live-msg-head">
-                  <span className="rb-live-msg-name">{author.name}</span>
+                  <span className="rb-live-msg-name">{isMe ? 'Tu' : m.author.name}</span>
                   <span className="rb-live-msg-date">{formatRelativeDate(m.data)}</span>
                 </div>
                 <p className="rb-live-msg-text">{m.testo}</p>
                 {!isMe && (
-                  <button
-                    type="button"
-                    className="rb-live-msg-report"
-                    onClick={() => report(m.id)}
-                    disabled={reportedIds.has(m.id)}
-                  >
-                    {reportedIds.has(m.id) ? 'Segnalato ✓' : 'Segnala'}
+                  <button type="button" className="rb-live-msg-report" onClick={() => setReportingId(m.id)}>
+                    Segnala
                   </button>
                 )}
               </div>
@@ -98,6 +107,15 @@ export default function LiveChatRoom({ user, onOpenAuth }) {
         />
         <button type="submit" className="rb-live-chat-send">Invia</button>
       </form>
+
+      {reportingId && (
+        <ReportModal
+          targetType="live"
+          targetId={reportingId}
+          targetLabel="questo messaggio"
+          onClose={() => setReportingId(null)}
+        />
+      )}
     </div>
   );
 }

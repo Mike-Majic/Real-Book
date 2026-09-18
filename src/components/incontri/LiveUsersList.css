@@ -44,11 +44,16 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 6px 10px;
+  cursor: pointer;
 }
 
 .rb-live-user-item.me {
   border-color: color-mix(in srgb, #ff3860 55%, transparent);
   background: color-mix(in srgb, #ff3860 12%, transparent);
+}
+
+.rb-live-user-item.selected {
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .rb-live-user-dot {

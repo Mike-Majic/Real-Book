@@ -19,6 +19,7 @@
 
 .rb-event-card-photo-gradient {
   display: block;
+  background: var(--accent, #1d9bf0);
 }
 
 .rb-event-card-body {
