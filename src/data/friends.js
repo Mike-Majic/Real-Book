@@ -136,6 +136,21 @@ export async function getFriends() {
   }
 }
 
+// true se si è amici o si ha un match con l'altra persona (RPC lato server
+// are_connected): decide se mostrare il pulsante 📹 videochiamata nella
+// chat, ed è la stessa condizione richiesta dalla RLS per il canale della
+// chiamata — qui serve solo per l'interfaccia, non è un controllo di
+// sicurezza (quello lo fa comunque il server).
+export async function areConnected(otherId) {
+  try {
+    const { data, error } = await supabase.rpc('are_connected', { p_other: otherId });
+    if (error) return false;
+    return Boolean(data);
+  } catch {
+    return false;
+  }
+}
+
 export async function removeFriend(otherId) {
   try {
     const { data: auth } = await supabase.auth.getUser();

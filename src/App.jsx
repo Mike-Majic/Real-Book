@@ -46,6 +46,10 @@ import {
   removeFriend as removeFriendApi,
 } from './data/friends';
 import { getUnreadCounts, getDirectConversationsMap, subscribeToOwnMessages } from './data/directChat';
+import { touchLastSeen } from './data/incontri';
+import { getMyNotifications, subscribeToOwnNotifications } from './data/notifications';
+import { fetchProfilesMap } from './data/posts';
+import NotificationsPanel from './components/NotificationsPanel';
 import { supabase } from './data/supabaseClient';
 import './App.css';
 
@@ -179,6 +183,13 @@ export default function App() {
   const [friendsModalOpen, setFriendsModalOpen] = useState(false);
   const [eventLikersId, setEventLikersId] = useState(null);
   const [activeFriendChatId, setActiveFriendChatId] = useState(null);
+  // Notifiche (match/super like): il numero non letto sulla campanella, il
+  // pannello, il toast quando ne arriva una nuova in tempo reale, e su
+  // quale scheda di Incontri deve aprirsi cliccandola.
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [notifToast, setNotifToast] = useState(null);
+  const [incontriInitialTab, setIncontriInitialTab] = useState(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
   // Timer del pannello che deve ancora aprirsi a volo finito (vedi
@@ -192,6 +203,14 @@ export default function App() {
   // (stesso giro di render: world.id cambia, l'effect di reset gira e
   // troverebbe già pendingOpenRef.current impostato dalla nuova apertura).
   const pendingCategoryNavRef = useRef(null);
+
+  // Le live del mondo Incontri sono state tolte (spostate in Social/Lavoro):
+  // le vecchie chiavi locali di chi aveva già "avviato una diretta" finta
+  // non servono più, tolte una volta per tutte dal browser di chi le aveva.
+  useEffect(() => {
+    localStorage.removeItem('rb-my-live-active');
+    localStorage.removeItem('rb-my-live-views');
+  }, []);
 
   // Cambiando mondo si azzera la categoria attiva (è sempre relativa al mondo
   // da cui si esce), altrimenti tornando in un mondo con categorie ci si
@@ -360,6 +379,51 @@ export default function App() {
     getReceivedRequests().then((list) => setReceivedRequestsCount(list.length));
   };
   useEffect(refreshFriendsState, [user?.id]);
+
+  // "Attività" di Incontri (online/attivo oggi/questa settimana): aggiorna
+  // profiles.last_seen_at al login, ogni 2 minuti mentre la pagina è
+  // visibile, e appena torna visibile (es. si cambia scheda e si torna).
+  useEffect(() => {
+    if (!user) return undefined;
+    touchLastSeen();
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') touchLastSeen();
+    }, 120000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') touchLastSeen();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [user?.id]);
+
+  // Notifiche: conteggio iniziale ad ogni login/logout (il pannello se
+  // aperto le segna lette da solo, vedi onRead), poi aggiornate in tempo
+  // reale — un match/super like nuovo arriva come riga in "notifications"
+  // (la crea un trigger lato DB), qui si fa solo un piccolo toast e si
+  // risolve il nome/avatar di chi l'ha causata (la riga realtime non li ha).
+  useEffect(() => {
+    if (!user) {
+      setUnreadNotifCount(0);
+      return undefined;
+    }
+    getMyNotifications(30).then(({ notifications: list }) => {
+      if (list) setUnreadNotifCount(list.filter((n) => !n.letta).length);
+    });
+    const channel = subscribeToOwnNotifications(user.id, (row) => {
+      setUnreadNotifCount((c) => c + 1);
+      fetchProfilesMap([row.actor_id]).then((map) => {
+        const actor = map.get(row.actor_id) ?? { id: row.actor_id, name: 'Utente', avatar: '' };
+        setNotifToast({ tipo: row.tipo, actor });
+        window.setTimeout(() => setNotifToast(null), 4500);
+      });
+    });
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   // Badge "non letti": ricaricati ad ogni login/logout, poi aggiornati in
   // tempo reale da un canale globale (RLS limita già ai messaggi delle
@@ -583,6 +647,16 @@ export default function App() {
     }
   };
 
+  // Click su una notifica (nel pannello o nel toast): apre Incontri sulla
+  // scheda giusta — "A chi piaci" per un super like, "I tuoi match" per un
+  // match nuovo.
+  const openNotificationTarget = (tipo) => {
+    setNotificationsOpen(false);
+    setNotifToast(null);
+    setIncontriInitialTab(tipo === 'super_like' ? 'likesYou' : 'matches');
+    navigateToCategory('incontri', 'match');
+  };
+
   // Applica il filtro Categoria/Sottofamiglia scelto nelle Impostazioni: passa
   // al mondo Arte & Musica se serve, apre la categoria e pre-seleziona la
   // sottofamiglia scelta.
@@ -636,7 +710,9 @@ export default function App() {
         onOpenAdmin={() => setAdminOpen(true)}
         onOpenProfile={() => setProfileSettingsOpen(true)}
         onOpenFriends={() => setFriendsModalOpen(true)}
+        onOpenNotifications={() => setNotificationsOpen(true)}
         pendingFriendRequestsCount={receivedRequestsCount + totalUnreadMessages}
+        unreadNotifCount={unreadNotifCount}
       />
 
       {justConfirmedEmail && (
@@ -709,6 +785,8 @@ export default function App() {
           user={user}
           onOpenAuth={() => setAuthOpen(true)}
           onOpenChat={(otherId) => setActiveFriendChatId(otherId)}
+          initialMatchTab={incontriInitialTab}
+          onConsumeInitialMatchTab={() => setIncontriInitialTab(null)}
         />
       )}
 
@@ -834,6 +912,23 @@ export default function App() {
           onFriendsChanged={refreshFriendsState}
           unreadByFriend={unreadByFriend}
         />
+      )}
+
+      {notificationsOpen && (
+        <NotificationsPanel
+          onClose={() => setNotificationsOpen(false)}
+          onRead={() => setUnreadNotifCount(0)}
+          onNavigate={openNotificationTarget}
+        />
+      )}
+
+      {notifToast && (
+        <button type="button" className="rb-notif-toast" onClick={() => openNotificationTarget(notifToast.tipo)}>
+          <img src={notifToast.actor.avatar} alt="" />
+          {notifToast.tipo === 'super_like'
+            ? `${notifToast.actor.name} ti ha mandato un Super Like ⭐`
+            : `È un match con ${notifToast.actor.name}! 🎉`}
+        </button>
       )}
 
       <ProfileModal

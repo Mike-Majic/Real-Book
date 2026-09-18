@@ -24,12 +24,28 @@ const RIGHT_TABS = [
   { id: 'favorites', label: 'Preferiti' },
 ];
 
+// Attività di un profilo (da profiles.last_seen_at via le RPC di Incontri):
+// un pallino verde per "online" davvero adesso, altrimenti solo testo — o
+// niente se non si sa/è passato troppo tempo.
+function ActivityBadge({ attivita }) {
+  if (!attivita) return null;
+  if (attivita === 'online') {
+    return (
+      <span className="rb-match-activity online">
+        <span className="rb-match-activity-dot" /> Online
+      </span>
+    );
+  }
+  const label = attivita === 'oggi' ? 'Attivo oggi' : 'Attivo questa settimana';
+  return <span className="rb-match-activity">{label}</span>;
+}
+
 // Swipe (stile Tinder) su dati reali: mazzo da get_match_candidates,
 // mi piace/passa via record_swipe (un match nasce solo se reciproco, mai
 // subito come nella vecchia demo locale). "Messaggi" apre la chat diretta
 // reale già usata per gli amici (FriendChatModal, via onOpenChat), non ha
 // una sua chat: un match è comunque solo una conversazione come le altre.
-export default function MatchColumn({ user, onOpenAuth, onOpenChat }) {
+export default function MatchColumn({ user, onOpenAuth, onOpenChat, initialTab, onConsumeInitialTab }) {
   const [deck, setDeck] = useState([]);
   const [deckLoading, setDeckLoading] = useState(true);
   const [swiping, setSwiping] = useState(null); // { direction: 'left'|'right' }
@@ -46,8 +62,17 @@ export default function MatchColumn({ user, onOpenAuth, onOpenChat }) {
   const [matchToast, setMatchToast] = useState(null);
   const [pendingUnmatch, setPendingUnmatch] = useState(null);
   const [actionError, setActionError] = useState('');
-  const [mobileView, setMobileView] = useState('primary');
-  const [rightTab, setRightTab] = useState('matches');
+  const [mobileView, setMobileView] = useState(initialTab ? 'secondary' : 'primary');
+  const [rightTab, setRightTab] = useState(initialTab ?? 'matches');
+
+  // La scheda iniziale (arrivando da una notifica) va usata solo per il
+  // primo render di questo componente: appena consumata, si avvisa App.jsx
+  // di azzerarla, altrimenti la prossima volta che si apre Match "a mano"
+  // (dal globo) si ritroverebbe ancora la scheda della notifica di prima.
+  useEffect(() => {
+    if (initialTab) onConsumeInitialTab?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Evita il doppio toast quando il match che ho appena creato con il mio
   // swipe torna anche dal canale realtime (sono uno dei due partecipanti).
@@ -163,8 +188,8 @@ export default function MatchColumn({ user, onOpenAuth, onOpenChat }) {
     }
     if (!current || swiping) return;
     setActionError('');
-    setSwiping({ direction: outcome === 'liked' ? 'right' : 'left' });
-    const decisione = outcome === 'liked' ? 'mi_piace' : 'passo';
+    setSwiping({ direction: outcome === 'passed' ? 'left' : 'right' });
+    const decisione = outcome === 'passed' ? 'passo' : outcome === 'super' ? 'super_mi_piace' : 'mi_piace';
     window.setTimeout(async () => {
       const { matched, error } = await recordSwipe(current.id, decisione);
       setSwiping(null);
@@ -270,6 +295,7 @@ export default function MatchColumn({ user, onOpenAuth, onOpenChat }) {
           <div className="rb-match-card-info">
             <strong>{current.name}{current.age ? `, ${current.age}` : ''}</strong>
             <span>{current.city}</span>
+            <ActivityBadge attivita={current.attivita} />
             {current.bio && <p>{current.bio}</p>}
           </div>
         </div>
@@ -280,6 +306,7 @@ export default function MatchColumn({ user, onOpenAuth, onOpenChat }) {
         <div className="rb-match-actions">
           <button type="button" className="rb-match-pass-btn" onClick={() => decide('passed')} disabled={!!swiping}>✕ Passa</button>
           <button type="button" className="rb-match-like-btn" onClick={() => decide('liked')} disabled={!!swiping}>❤️ Mi piace</button>
+          <button type="button" className="rb-match-super-btn" onClick={() => decide('super')} disabled={!!swiping}>⭐ Super Like</button>
         </div>
       )}
     </div>
@@ -296,6 +323,7 @@ export default function MatchColumn({ user, onOpenAuth, onOpenChat }) {
           <span>
             <strong>{u.super ? '⭐ ' : ''}{u.name}{u.age ? `, ${u.age}` : ''}</strong>
             <span className="rb-match-list-city">{u.city}</span>
+            <ActivityBadge attivita={u.attivita} />
           </span>
           <div className="rb-match-likes-actions">
             <button type="button" onClick={() => decideLikesYou(u, 'passed')} aria-label="Rifiuta">✕</button>
@@ -317,6 +345,7 @@ export default function MatchColumn({ user, onOpenAuth, onOpenChat }) {
           <span>
             <strong>{m.name}{m.age ? `, ${m.age}` : ''}</strong>
             <span className="rb-match-list-city">{m.city}</span>
+            <ActivityBadge attivita={m.attivita} />
           </span>
           <button
             type="button"
@@ -361,6 +390,7 @@ export default function MatchColumn({ user, onOpenAuth, onOpenChat }) {
           <span>
             <strong>{f.name}</strong>
             <span className="rb-match-list-city">{f.city}</span>
+            <ActivityBadge attivita={f.attivita} />
           </span>
           <button
             type="button"

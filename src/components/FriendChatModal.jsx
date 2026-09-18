@@ -7,9 +7,13 @@ import {
   sendMessage,
   markConversationRead,
   subscribeToConversationMessages,
+  getOtherParticipantLastRead,
+  subscribeToParticipantUpdates,
 } from '../data/directChat';
+import { areConnected } from '../data/friends';
 import { supabase } from '../data/supabaseClient';
 import ModalOverlay from './ModalOverlay';
+import CallModal from './CallModal';
 import './FriendChatModal.css';
 
 // Messaggi privati con un altro utente reale: apre (o riusa) una vera
@@ -26,6 +30,13 @@ export default function FriendChatModal({ friendId, user, onClose, onMessagesRea
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
+  // last_read_at dell'altro partecipante: per capire se il mio ultimo
+  // messaggio è stato "Visualizzato" o solo "Inviato" (vedi sotto).
+  const [otherLastReadAt, setOtherLastReadAt] = useState(null);
+  // Il pulsante 📹 compare solo se si è amici o si ha un match (are_connected):
+  // stessa condizione richiesta dalla RLS del canale della chiamata.
+  const [canCall, setCanCall] = useState(false);
+  const startCallRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,11 +45,13 @@ export default function FriendChatModal({ friendId, user, onClose, onMessagesRea
     setConversationId(null);
 
     const load = async () => {
-      const [{ conversationId: convId, error: convError }, profilesMap] = await Promise.all([
+      const [{ conversationId: convId, error: convError }, profilesMap, connected] = await Promise.all([
         startDirectConversation(friendId),
         fetchProfilesMap([friendId]),
+        areConnected(friendId),
       ]);
       if (cancelled) return;
+      setCanCall(connected);
       if (convError) {
         setError(convError);
         setLoading(false);
@@ -57,6 +70,9 @@ export default function FriendChatModal({ friendId, user, onClose, onMessagesRea
       setLoading(false);
       markConversationRead(convId);
       onMessagesRead?.();
+      getOtherParticipantLastRead(convId, user.id).then((lastReadAt) => {
+        if (!cancelled) setOtherLastReadAt(lastReadAt);
+      });
     };
     load();
 
@@ -106,6 +122,19 @@ export default function FriendChatModal({ friendId, user, onClose, onMessagesRea
     };
   }, [conversationId, user.id]);
 
+  // Canale realtime su chat_participants: quando l'altra persona apre la
+  // chat (mark_conversation_read aggiorna la sua riga), il mio ultimo
+  // messaggio passa da "Inviato" a "Visualizzato" senza dover ricaricare.
+  useEffect(() => {
+    if (!conversationId) return undefined;
+    const channel = subscribeToParticipantUpdates(conversationId, (row) => {
+      if (row.user_id !== user.id) setOtherLastReadAt(row.last_read_at);
+    });
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId, user.id]);
+
   const send = async (e) => {
     e.preventDefault();
     const text = draft.trim();
@@ -131,6 +160,10 @@ export default function FriendChatModal({ friendId, user, onClose, onMessagesRea
     setDraft('');
   };
 
+  // Solo l'ULTIMO messaggio mio ha lo stato "Inviato"/"Visualizzato" sotto
+  // (non ogni messaggio: sarebbe ridondante, come in qualunque chat).
+  const lastMineId = [...messages].reverse().find((m) => m.senderId === user.id)?.id ?? null;
+
   return (
     <ModalOverlay onClose={onClose}>
       <div className="rb-friend-chat-card" onClick={(e) => e.stopPropagation()}>
@@ -141,6 +174,17 @@ export default function FriendChatModal({ friendId, user, onClose, onMessagesRea
               <img src={friend.avatar} alt="" />
               <strong>{friend.name}</strong>
             </>
+          )}
+          {canCall && (
+            <button
+              type="button"
+              className="rb-friend-chat-call-btn"
+              onClick={() => startCallRef.current?.()}
+              aria-label="Videochiamata"
+              title="Videochiamata"
+            >
+              📹
+            </button>
           )}
         </div>
 
@@ -154,6 +198,11 @@ export default function FriendChatModal({ friendId, user, onClose, onMessagesRea
               <li key={m.id} className={`rb-friend-chat-msg ${m.senderId === user.id ? 'me' : ''}`}>
                 <span>{m.testo}</span>
                 <span className="rb-friend-chat-date">{formatRelativeDate(m.data)}</span>
+                {m.id === lastMineId && (
+                  <span className="rb-friend-chat-receipt">
+                    {otherLastReadAt && new Date(otherLastReadAt) >= new Date(m.data) ? 'Visualizzato' : 'Inviato'}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
@@ -170,6 +219,15 @@ export default function FriendChatModal({ friendId, user, onClose, onMessagesRea
           <button type="submit" disabled={sending || loading || Boolean(error) || !conversationId}>Invia</button>
         </form>
       </div>
+
+      {canCall && conversationId && (
+        <CallModal
+          conversationId={conversationId}
+          user={user}
+          friend={friend}
+          registerStart={(fn) => { startCallRef.current = fn; }}
+        />
+      )}
     </ModalOverlay>
   );
 }

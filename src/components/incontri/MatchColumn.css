@@ -106,17 +106,19 @@
 }
 
 .rb-match-pass-btn,
-.rb-match-like-btn {
+.rb-match-like-btn,
+.rb-match-super-btn {
   flex: 1;
   padding: 12px;
   border-radius: 999px;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
 }
 
 .rb-match-pass-btn:disabled,
-.rb-match-like-btn:disabled {
+.rb-match-like-btn:disabled,
+.rb-match-super-btn:disabled {
   opacity: 0.5;
   cursor: default;
 }
@@ -131,6 +133,33 @@
   background: var(--accent, #ff3860);
   border: 1px solid var(--accent, #ff3860);
   color: #1a0006;
+}
+
+.rb-match-super-btn {
+  background: transparent;
+  border: 1px solid #ffb020;
+  color: #ffb020;
+}
+
+.rb-match-activity {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  color: rgba(245, 245, 247, 0.5);
+}
+
+.rb-match-activity.online {
+  color: #22c55e;
+  font-weight: 700;
+}
+
+.rb-match-activity-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 5px #22c55e;
 }
 
 .rb-match-secondary-col {

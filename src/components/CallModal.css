@@ -1,0 +1,137 @@
+.rb-call-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1075;
+  background: rgba(4, 4, 8, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: rb-fade-in 0.15s ease;
+}
+
+.rb-call-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  color: #f5f5f7;
+}
+
+.rb-call-avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.rb-call-ringing .rb-call-avatar {
+  animation: rb-call-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes rb-call-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+  50% { box-shadow: 0 0 0 14px rgba(34, 197, 94, 0); }
+}
+
+.rb-call-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.rb-call-hint {
+  margin: 0;
+  font-size: 12.5px;
+  color: rgba(245, 245, 247, 0.6);
+}
+
+.rb-call-actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.rb-call-btn-decline,
+.rb-call-btn-accept {
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 13.5px;
+  cursor: pointer;
+  border: none;
+}
+
+.rb-call-btn-decline {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f5f5f7;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.rb-call-btn-accept {
+  background: #22c55e;
+  color: #06210f;
+}
+
+.rb-call-active {
+  position: absolute;
+  inset: 0;
+  background: #000;
+}
+
+.rb-call-remote-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+
+.rb-call-local-video {
+  position: absolute;
+  bottom: 100px;
+  right: 16px;
+  width: 100px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: #111;
+}
+
+.rb-call-controls {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 16px;
+}
+
+.rb-call-ctrl-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+}
+
+.rb-call-ctrl-btn.active {
+  background: #ff3860;
+}
+
+.rb-call-hangup {
+  background: #ff3860;
+  width: 60px;
+  height: 60px;
+  font-size: 24px;
+  transform: rotate(135deg);
+}

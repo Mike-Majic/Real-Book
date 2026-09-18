@@ -14,7 +14,22 @@ function mapProfileRow(row) {
     age: row.eta ?? null,
     city: row.citta || '',
     bio: row.bio || '',
+    attivita: row.attivita ?? null,
   };
+}
+
+// Chiamata periodica (App.jsx: al login, ogni 2 minuti a pagina visibile, e
+// quando torna visibile) per aggiornare profiles.last_seen_at, da cui le
+// RPC sotto derivano il campo "attivita" (online/oggi/questa_settimana) di
+// ogni profilo mostrato in Incontri.
+export async function touchLastSeen() {
+  try {
+    const { error } = await supabase.rpc('touch_last_seen');
+    if (error) return { error: error.message };
+    return {};
+  } catch (err) {
+    return { error: err?.message ?? 'Errore di rete.' };
+  }
 }
 
 export async function getMatchCandidates(limit = 20) {

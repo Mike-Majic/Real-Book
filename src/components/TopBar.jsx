@@ -10,7 +10,9 @@ export default function TopBar({
   onOpenAdmin,
   onOpenProfile,
   onOpenFriends,
+  onOpenNotifications,
   pendingFriendRequestsCount = 0,
+  unreadNotifCount = 0,
 }) {
   return (
     <header className="rb-topbar" style={{ '--accent': world.color }}>
@@ -29,6 +31,12 @@ export default function TopBar({
 
         {user ? (
           <div className="rb-user-chip">
+            <button className="rb-icon-btn rb-friends-btn" onClick={onOpenNotifications} aria-label="Notifiche" title="Notifiche">
+              🔔
+              {unreadNotifCount > 0 && (
+                <span className="rb-friends-badge">{unreadNotifCount}</span>
+              )}
+            </button>
             <button className="rb-icon-btn rb-friends-btn" onClick={onOpenFriends} aria-label="Amici" title="Amici">
               👥
               {pendingFriendRequestsCount > 0 && (
