@@ -282,21 +282,39 @@ export default function PostComposer({
             GIF
           </button>
           {!compact && !mediaPreviewUrl && (
-            <label
-              className="rb-composer-icon-btn rb-composer-media-btn"
-              title="Foto o video"
-              onClick={(e) => {
-                if (requireAuth()) e.preventDefault();
-              }}
-            >
-              📷
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
-                className="rb-composer-media-input"
-                onChange={handleMediaChange}
-              />
-            </label>
+            <>
+              <label
+                className="rb-composer-icon-btn rb-composer-media-btn"
+                title="Scatta una foto"
+                onClick={(e) => {
+                  if (requireAuth()) e.preventDefault();
+                }}
+              >
+                📸
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  capture="environment"
+                  className="rb-composer-media-input"
+                  onChange={handleMediaChange}
+                />
+              </label>
+              <label
+                className="rb-composer-icon-btn rb-composer-media-btn"
+                title="Foto o video dalla galleria"
+                onClick={(e) => {
+                  if (requireAuth()) e.preventDefault();
+                }}
+              >
+                🖼️
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+                  className="rb-composer-media-input"
+                  onChange={handleMediaChange}
+                />
+              </label>
+            </>
           )}
         </div>
         <button type="submit" className="rb-composer-submit" disabled={!canSubmit || uploading || analyzing}>

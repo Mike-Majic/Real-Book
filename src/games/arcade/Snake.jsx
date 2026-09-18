@@ -21,6 +21,70 @@ function randomFood(snake) {
   return pos;
 }
 
+const JOYSTICK_RADIUS = 52;
+const KNOB_RADIUS = 22;
+const DEAD_ZONE = 12;
+
+// Joystick virtuale: si preme e si trascina il dito (o il mouse) in una
+// direzione, la pallina segue fino al bordo della base — più moderno e
+// naturale su schermo touch dei 4 tasti freccia di prima, che sparivano
+// oltre il fondo dello schermo su telefono. Il serpente si muove solo in
+// griglia (mai in diagonale): la direzione scatta sull'asse con lo
+// spostamento maggiore, appena si esce dalla piccola "zona morta" al centro.
+function Joystick({ onDirection }) {
+  const baseRef = useRef(null);
+  const pointerIdRef = useRef(null);
+  const [knob, setKnob] = useState({ x: 0, y: 0 });
+
+  const updateFromPoint = (clientX, clientY) => {
+    const base = baseRef.current;
+    if (!base) return;
+    const rect = base.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    let dx = clientX - cx;
+    let dy = clientY - cy;
+    const maxDist = JOYSTICK_RADIUS - KNOB_RADIUS / 2;
+    const dist = Math.hypot(dx, dy);
+    if (dist > maxDist) {
+      dx = (dx / dist) * maxDist;
+      dy = (dy / dist) * maxDist;
+    }
+    setKnob({ x: dx, y: dy });
+    if (dist > DEAD_ZONE) {
+      if (Math.abs(dx) > Math.abs(dy)) onDirection(dx > 0 ? 1 : -1, 0);
+      else onDirection(0, dy > 0 ? 1 : -1);
+    }
+  };
+
+  const onPointerDown = (e) => {
+    pointerIdRef.current = e.pointerId;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    updateFromPoint(e.clientX, e.clientY);
+  };
+  const onPointerMove = (e) => {
+    if (pointerIdRef.current !== e.pointerId) return;
+    updateFromPoint(e.clientX, e.clientY);
+  };
+  const endDrag = () => {
+    pointerIdRef.current = null;
+    setKnob({ x: 0, y: 0 });
+  };
+
+  return (
+    <div
+      ref={baseRef}
+      className="rb-snake-joystick-base"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+    >
+      <div className="rb-snake-joystick-knob" style={{ transform: `translate(${knob.x}px, ${knob.y}px)` }} />
+    </div>
+  );
+}
+
 // Famiglia 3 (loop in tempo reale su canvas): arcade classico, leggero — solo
 // canvas 2D nativo e requestAnimationFrame, nessuna libreria di game engine.
 export default function Snake({ onFinish, difficulty = 'medio' }) {
@@ -142,16 +206,7 @@ export default function Snake({ onFinish, difficulty = 'medio' }) {
     <div className="rb-snake">
       <p className="rb-snake-score">Punti: {score}</p>
       <canvas ref={canvasRef} width={CANVAS_SIZE} height={CANVAS_SIZE} className="rb-snake-canvas" />
-      <div className="rb-snake-touch">
-        <div className="rb-snake-touch-row">
-          <button type="button" onClick={() => setDir(0, -1)}>▲</button>
-        </div>
-        <div className="rb-snake-touch-row">
-          <button type="button" onClick={() => setDir(-1, 0)}>◀</button>
-          <button type="button" onClick={() => setDir(0, 1)}>▼</button>
-          <button type="button" onClick={() => setDir(1, 0)}>▶</button>
-        </div>
-      </div>
+      <Joystick onDirection={setDir} />
     </div>
   );
 }

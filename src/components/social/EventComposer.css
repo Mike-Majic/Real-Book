@@ -62,6 +62,11 @@
   flex: 1;
 }
 
+.rb-event-composer-photo-btns {
+  display: flex;
+  gap: 8px;
+}
+
 .rb-event-composer-photo-btn {
   align-self: flex-start;
   background: rgba(255, 255, 255, 0.06);

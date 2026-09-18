@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   updateNickname,
   updateName,
   nicknameCooldownRemaining,
   nameCooldownRemaining,
   updateAccountDetails,
+  uploadAvatar,
 } from '../data/accounts';
 import { sendMailboxMessage } from '../data/modMailbox';
 import ModalOverlay from './ModalOverlay';
@@ -95,6 +96,59 @@ function FieldGroup({
           </div>
         </ModalOverlay>
       )}
+    </div>
+  );
+}
+
+// Foto profilo: due modi di scegliere il file (scatta / dalla galleria,
+// stesso pattern usato nei composer di post ed eventi) sopra un pulsante
+// "Salva" solo, perché qui basta un tocco sulla foto stessa per scegliere.
+function AvatarUploader({ user, onUpdateUser }) {
+  const [preview, setPreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const cameraInputRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setError('');
+    setPreview(URL.createObjectURL(file));
+    setUploading(true);
+    const { account, error: err } = await uploadAvatar(file);
+    setUploading(false);
+    if (err) {
+      setError(err);
+      setPreview(null);
+      return;
+    }
+    onUpdateUser(account);
+  };
+
+  return (
+    <div className="rb-avatar-uploader">
+      <img className="rb-avatar-uploader-preview" src={preview ?? user.avatar} alt={user.nickname} />
+      <div className="rb-avatar-uploader-btns">
+        <button type="button" onClick={() => cameraInputRef.current?.click()} disabled={uploading}>
+          📸 Scatta
+        </button>
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+          🖼️ Galleria
+        </button>
+      </div>
+      {uploading && <p className="rb-avatar-uploader-status">Caricamento...</p>}
+      {error && <p className="rb-profile-field-error">{error}</p>}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        capture="environment"
+        hidden
+        onChange={handleFile}
+      />
+      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={handleFile} />
     </div>
   );
 }
@@ -317,6 +371,8 @@ export default function ProfileSettingsPanel({ open, onClose, user, onUpdateUser
 
         {tab === 'profilo' && (
           <>
+            <AvatarUploader user={user} onUpdateUser={onUpdateUser} />
+
             <FieldGroup
               title="Nickname"
               ruleText={NICKNAME_RULE_TEXT}

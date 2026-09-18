@@ -187,3 +187,72 @@
   align-items: center;
   justify-content: center;
 }
+
+/* Su telefono, gear + notifiche + amici + [backend] + profilo + esci non
+   entrano mai tutti in una riga larga quanto lo schermo: prima il chip del
+   profilo (foto/nome) finiva spinto fuori dallo schermo, invisibile e
+   irraggiungibile — esattamente il "non vedo il mio profilo" segnalato.
+   Si stringe tutto (icone più piccole, testo del nome nascosto, solo
+   l'iniziale del mondo) e, se anche così non basta su schermi molto
+   piccoli, la barra delle azioni scorre in orizzontale invece di tagliare
+   qualcosa: il profilo resta sempre raggiungibile in un modo o nell'altro. */
+@media (max-width: 480px) {
+  .rb-topbar {
+    padding: 10px 12px;
+    gap: 6px;
+  }
+
+  .rb-logo-text {
+    display: none;
+  }
+
+  .rb-logo-wordmark {
+    padding: 0;
+  }
+
+  .rb-logo-icon {
+    position: static;
+    transform: none;
+    width: 34px;
+    height: 34px;
+  }
+
+  .rb-world-pill {
+    font-size: 10.5px;
+    padding: 3px 8px;
+  }
+
+  .rb-topbar-actions {
+    gap: 5px;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .rb-topbar-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .rb-icon-btn {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    font-size: 13px;
+  }
+
+  .rb-user-chip {
+    flex-shrink: 0;
+    gap: 5px;
+    padding: 4px 6px 4px 4px;
+  }
+
+  .rb-user-chip-identity span {
+    display: none;
+  }
+
+  .rb-btn-ghost {
+    padding: 6px 9px;
+    font-size: 11.5px;
+  }
+}

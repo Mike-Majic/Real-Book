@@ -23,6 +23,7 @@ export default function EventComposer({ user, onOpenAuth, onSubmit, onClose }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   const onFileChosen = (e) => {
     const file = e.target.files?.[0];
@@ -116,10 +117,23 @@ export default function EventComposer({ user, onOpenAuth, onSubmit, onClose }) {
           <button type="button" onClick={removeFoto} aria-label="Rimuovi foto">✕</button>
         </div>
       ) : (
-        <button type="button" className="rb-event-composer-photo-btn" onClick={() => fileInputRef.current?.click()}>
-          📷 Aggiungi una foto
-        </button>
+        <div className="rb-event-composer-photo-btns">
+          <button type="button" className="rb-event-composer-photo-btn" onClick={() => cameraInputRef.current?.click()}>
+            📸 Scatta una foto
+          </button>
+          <button type="button" className="rb-event-composer-photo-btn" onClick={() => fileInputRef.current?.click()}>
+            🖼️ Dalla galleria
+          </button>
+        </div>
       )}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        capture="environment"
+        hidden
+        onChange={onFileChosen}
+      />
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={onFileChosen} />
 
       {submitError && <p className="rb-event-composer-error">⚠️ {submitError}</p>}

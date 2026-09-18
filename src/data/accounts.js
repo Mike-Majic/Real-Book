@@ -373,6 +373,30 @@ export function nameCooldownRemaining(account) {
   return Math.max(0, NAME_COOLDOWN_MS - elapsed);
 }
 
+// Foto profilo: carica nel bucket pubblico "content-media" già usato per i
+// contenuti (stesso percorso sotto il proprio uid, come richiedono le sue
+// policy di storage) e salva l'URL con la RPC già pronta lato server —
+// finora chiamata solo una volta, in automatico, con un avatar finto
+// (pravatar.cc) alla registrazione: qui è la prima volta che la persona può
+// davvero scegliere la propria foto.
+export async function uploadAvatar(file) {
+  try {
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth?.user) return { error: 'Devi essere loggato.' };
+
+    const path = `${auth.user.id}/avatar-${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage.from('content-media').upload(path, file);
+    if (uploadError) return { error: translateUploadError(uploadError) };
+
+    const { data } = supabase.storage.from('content-media').getPublicUrl(path);
+    const { error } = await supabase.rpc('update_own_avatar', { p_avatar_url: data.publicUrl });
+    if (error) return { error: error.message };
+    return { account: await fetchOwnProfile() };
+  } catch (err) {
+    return { error: err?.message ?? 'Errore di rete.' };
+  }
+}
+
 export async function updateNickname(accountId, newNickname) {
   const { error } = await supabase.rpc('update_own_nickname', { p_nickname: (newNickname ?? '').trim() });
   if (error) return { error: error.message };
