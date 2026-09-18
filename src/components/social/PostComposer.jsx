@@ -7,8 +7,16 @@ import './PostComposer.css';
 
 // Composer riusato sia per scrivere un nuovo post sia per scrivere un
 // commento (compact=true): testo obbligatorio (o almeno una GIF/foto/video),
-// emoji e GIF tramite i due picker della Fase A, link esterno opzionale
-// (Fase D si occupa di anteprima/conferma, qui si salva solo l'URL).
+// emoji e GIF tramite i due picker della Fase A. Niente pulsante/campo link
+// separato: se il testo contiene un URL, come su Discord, viene rilevato da
+// solo e mostrato con un'anteprima sotto al messaggio (vedi LinkPreview),
+// restando comunque visibile per intero nel testo del post.
+
+const URL_REGEX = /(https?:\/\/[^\s]+)/i;
+function extractFirstUrl(text) {
+  const match = text.match(URL_REGEX);
+  return match ? match[0] : null;
+}
 
 function loadImageElement(src) {
   return new Promise((resolve, reject) => {
@@ -51,9 +59,7 @@ export default function PostComposer({
   const [text, setText] = useState('');
   const [gif, setGif] = useState(null);
   const [gifLoadFailed, setGifLoadFailed] = useState(false);
-  const [linkUrl, setLinkUrl] = useState('');
   const [showGifPicker, setShowGifPicker] = useState(false);
-  const [showLinkInput, setShowLinkInput] = useState(false);
   const [groupId, setGroupId] = useState(defaultGroupId);
 
   // Foto/video da caricare nel mondo Blu (solo composer principale, non
@@ -170,17 +176,17 @@ export default function PostComposer({
       mediaResult = { contentId: content.id, mediaUrl: url, mediaType, tags: allTags };
     }
 
+    const foundUrl = extractFirstUrl(text.trim());
+
     onSubmit({
       testo: text.trim(),
       gif,
-      link_esterno: linkUrl.trim() ? { url: linkUrl.trim() } : null,
+      link_esterno: foundUrl ? { url: foundUrl } : null,
       gruppo_id: groups ? groupId : undefined,
       ...(mediaResult ?? {}),
     });
     setText('');
     setGif(null);
-    setLinkUrl('');
-    setShowLinkInput(false);
     setShowGifPicker(false);
     removeMedia();
     if (groups) setGroupId(defaultGroupId);
@@ -263,16 +269,6 @@ export default function PostComposer({
         </div>
       )}
 
-      {showLinkInput && (
-        <input
-          type="url"
-          className="rb-composer-link-input"
-          placeholder="Incolla un link (facoltativo)"
-          value={linkUrl}
-          onChange={(e) => setLinkUrl(e.target.value)}
-        />
-      )}
-
       <div className="rb-composer-toolbar">
         <div className="rb-composer-toolbar-left">
           <EmojiPicker onSelect={(emoji) => setText((t) => t + emoji)} />
@@ -284,15 +280,6 @@ export default function PostComposer({
             title="GIF"
           >
             GIF
-          </button>
-          <button
-            type="button"
-            className="rb-composer-icon-btn"
-            onClick={() => (requireAuth() ? null : setShowLinkInput((v) => !v))}
-            aria-label="Aggiungi un link"
-            title="Link"
-          >
-            🔗
           </button>
           {!compact && !mediaPreviewUrl && (
             <label
