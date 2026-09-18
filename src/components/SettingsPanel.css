@@ -416,3 +416,59 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
+
+.rb-field input[type='password'] {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #f5f5f7;
+  font-size: 14px;
+}
+
+/* Zona pericolosa: eliminazione account, in fondo alle Impostazioni,
+   deliberatamente diversa (rosso) da tutto il resto del pannello. */
+.rb-danger-zone {
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.rb-danger-zone h3 {
+  color: #ef4444;
+}
+
+.rb-danger-warning {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  color: rgba(245, 245, 247, 0.75);
+  line-height: 1.5;
+}
+
+.rb-danger-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.rb-danger-btn {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  flex: 1 1 auto;
+}
+
+.rb-danger-btn:hover:not(:disabled) {
+  background: #ef4444;
+  color: #1a0505;
+}
+
+.rb-danger-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

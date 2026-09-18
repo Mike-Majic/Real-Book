@@ -99,11 +99,11 @@ function ReportsPane({ reports, onChangeStatus }) {
               <span>{new Date(r.data).toLocaleString('it-IT')}</span>
             </div>
             <p className="rb-admin-mail-from">
-              Da: {r.reporterNickname ?? '—'} · Stato:{' '}
+              Da: {r.reporterNickname ?? 'Account eliminato'} · Stato:{' '}
               <span className={`rb-admin-role-badge rb-report-stato-${r.stato}`}>
                 {REPORT_STATO_LABELS[r.stato] ?? r.stato}
               </span>
-              {r.gestitoDaNickname && <> · Gestita da: {r.gestitoDaNickname}</>}
+              {r.stato !== 'aperto' && <> · Gestita da: {r.gestitoDaNickname ?? 'Account eliminato'}</>}
             </p>
             <p className="rb-admin-mail-body">{r.motivo}</p>
             {r.dettagli && <p className="rb-admin-mail-body">{r.dettagli}</p>}
@@ -148,9 +148,9 @@ function AuditLogPane({ entries }) {
             {entries.map((e) => (
               <tr key={e.id}>
                 <td>{new Date(e.data).toLocaleString('it-IT')}</td>
-                <td>{e.staffNickname ?? '—'}</td>
+                <td>{e.staffNickname ?? 'Account eliminato'}</td>
                 <td>{AUDIT_LABELS[e.azione] ?? e.azione}</td>
-                <td>{e.targetNickname ?? '—'}</td>
+                <td>{e.azione === 'gestione_segnalazione' ? '—' : (e.targetNickname ?? 'Account eliminato')}</td>
               </tr>
             ))}
           </tbody>

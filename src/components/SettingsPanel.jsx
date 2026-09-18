@@ -3,7 +3,8 @@ import { CONTINENTS, REGIONS, MAX_DISTANCE_KM } from '../data/geo';
 import { ARTE_CATEGORIES } from '../data/arteCategories';
 import { WORLDS } from '../data/worlds';
 import { listBlockedContacts, blockContact, unblockContact } from '../data/blockedContacts';
-import { resetAccountPassword, setOwnWorlds } from '../data/accounts';
+import { resetAccountPassword, setOwnWorlds, deleteOwnAccount } from '../data/accounts';
+import { ROLES } from '../data/roles';
 import { fetchProfilesMap } from '../data/posts';
 import ModalOverlay from './ModalOverlay';
 import InfoBadge from './InfoBadge';
@@ -378,6 +379,97 @@ function PrivacyView({ onBack, onClose, user, onOpenAuth, friends, onUnfriend, v
   );
 }
 
+// Zona pericolosa, in fondo alle Impostazioni: cancellazione definitiva
+// dell'account (Edge Function "delete-account", vedi data/accounts.js).
+// Nascosta per l'owner: la funzione lo blocca comunque, ma non ha senso
+// proporgli un pulsante che fallirà sempre.
+function DeleteAccountSection({ user, onAccountDeleted }) {
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirmText, setConfirmText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  if (!user || user.ruolo === ROLES.OWNER) return null;
+
+  const cancel = () => {
+    setOpen(false);
+    setPassword('');
+    setConfirmText('');
+    setError('');
+  };
+
+  const submit = async () => {
+    if (confirmText !== 'ELIMINA' || !password || busy) return;
+    setBusy(true);
+    setError('');
+    const { error: err } = await deleteOwnAccount(password);
+    setBusy(false);
+    if (err) {
+      setError(err);
+      return;
+    }
+    onAccountDeleted?.();
+  };
+
+  return (
+    <section className="rb-settings-section rb-danger-zone">
+      <h3>Elimina account</h3>
+      {!open ? (
+        <>
+          <p className="rb-settings-hint">
+            Cancella per sempre il tuo profilo, i post, i contenuti caricati, le chat, le amicizie e i file collegati
+            al tuo account.
+          </p>
+          <button type="button" className="rb-danger-btn" onClick={() => setOpen(true)}>
+            Elimina il mio account
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="rb-danger-warning">
+            Questa azione è <strong>definitiva</strong> e non si può annullare: profilo, post, contenuti caricati,
+            chat, amicizie e file collegati al tuo account verranno cancellati per sempre.
+          </p>
+          <label className="rb-field">
+            <span>Password attuale</span>
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={busy}
+            />
+          </label>
+          <label className="rb-field">
+            <span>Scrivi ELIMINA per confermare</span>
+            <input
+              type="text"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              disabled={busy}
+            />
+          </label>
+          {error && <p className="rb-privacy-error">{error}</p>}
+          <div className="rb-danger-actions">
+            <button type="button" className="rb-reset-filters-btn" onClick={cancel} disabled={busy}>
+              Annulla
+            </button>
+            <button
+              type="button"
+              className="rb-danger-btn"
+              onClick={submit}
+              disabled={confirmText !== 'ELIMINA' || !password || busy}
+            >
+              {busy ? 'Eliminazione in corso…' : 'Elimina definitivamente'}
+            </button>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 export default function SettingsPanel({
   open,
   onClose,
@@ -396,6 +488,7 @@ export default function SettingsPanel({
   onResetFilters,
   friends,
   onUnfriend,
+  onAccountDeleted,
 }) {
   const [view, setView] = useState('main');
   const [luogoOpen, setLuogoOpen] = useState(false);
@@ -572,6 +665,8 @@ export default function SettingsPanel({
         </section>
 
         <p className="rb-settings-footnote">I filtri sono salvati solo su questo dispositivo, per ora. In arrivo: account veri e ricerca in tempo reale.</p>
+
+        <DeleteAccountSection user={user} onAccountDeleted={onAccountDeleted} />
       </aside>
     </ModalOverlay>
   );

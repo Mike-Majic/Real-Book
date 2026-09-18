@@ -123,6 +123,10 @@ export default function App() {
   // dallo storage): il modale di login/registrazione si chiude comunque,
   // altrimenti non ci sarebbe più dove mostrarlo.
   const [signupNotice, setSignupNotice] = useState('');
+  // Conferma dopo l'eliminazione definitiva dell'account (Impostazioni ->
+  // Elimina account): a quel punto user è già null e tutti i pannelli si
+  // sono chiusi, serve solo un avviso temporaneo.
+  const [accountDeletedNotice, setAccountDeletedNotice] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -247,6 +251,12 @@ export default function App() {
     const timer = setTimeout(() => setSignupNotice(''), 6000);
     return () => clearTimeout(timer);
   }, [signupNotice]);
+
+  useEffect(() => {
+    if (!accountDeletedNotice) return undefined;
+    const timer = setTimeout(() => setAccountDeletedNotice(false), 6000);
+    return () => clearTimeout(timer);
+  }, [accountDeletedNotice]);
 
   useEffect(() => localStorage.setItem('rb-filters', JSON.stringify(filters)), [filters]);
   useEffect(() => localStorage.setItem('rb-location-filters', JSON.stringify(locationFilters)), [locationFilters]);
@@ -556,6 +566,10 @@ export default function App() {
         <div className="rb-email-confirmed-banner rb-app-banner-warning">⚠️ {signupNotice}</div>
       )}
 
+      {accountDeletedNotice && (
+        <div className="rb-email-confirmed-banner">✅ Account eliminato.</div>
+      )}
+
       <WorldGlobe
         world={world}
         users={globeUsers}
@@ -703,6 +717,18 @@ export default function App() {
         onUnfriend={(id) => {
           removeFriendApi(id);
           setFriends((prev) => prev.filter((f) => f !== id));
+        }}
+        onAccountDeleted={() => {
+          setUser(null);
+          setAuthOpen(false);
+          setSettingsOpen(false);
+          setAdminOpen(false);
+          setProfileSettingsOpen(false);
+          setFriendsModalOpen(false);
+          setActiveFriendChatId(null);
+          setEventLikersId(null);
+          setSelectedUser(null);
+          setAccountDeletedNotice(true);
         }}
       />
 

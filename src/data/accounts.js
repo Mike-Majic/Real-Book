@@ -233,6 +233,44 @@ export async function resendConfirmationEmail(email) {
   return {};
 }
 
+// Cancellazione definitiva del proprio account (Edge Function
+// "delete-account": verifica password, blocca l'owner, cancella file di
+// storage e l'utente Auth — profilo e dati collegati seguono a cascata).
+// La funzione risponde sempre con un body JSON { error: "..." } in
+// italiano sugli errori attesi (password sbagliata, conferma mancante,
+// owner, ecc.): qui va recuperato indipendentemente da come supabase-js
+// incapsula un errore HTTP non-2xx.
+export async function deleteOwnAccount(password) {
+  try {
+    const { data, error } = await supabase.functions.invoke('delete-account', {
+      body: { password, conferma: 'ELIMINA' },
+    });
+    if (error) {
+      let message = '';
+      const ctx = error.context;
+      if (ctx && typeof ctx.json === 'function') {
+        try {
+          message = (await ctx.json())?.error ?? '';
+        } catch {
+          // risposta non-JSON o già letta: si passa al messaggio generico sotto
+        }
+      } else if (ctx?.error) {
+        message = ctx.error;
+      }
+      return { error: message || error.message || 'Errore durante l\'eliminazione dell\'account.' };
+    }
+    if (data?.error) return { error: data.error };
+
+    await supabase.auth.signOut();
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('rb-'))
+      .forEach((key) => localStorage.removeItem(key));
+    return {};
+  } catch (err) {
+    return { error: err?.message ?? 'Errore di rete.' };
+  }
+}
+
 // Carica un file nel bucket privato "attachments" (sotto il proprio uid,
 // imposto dalle policy di storage) e lo registra nel profilo tramite la
 // funzione add_own_attachment. `file` è un File/Blob del browser.
