@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { getAccounts, updateAccountRole, setAccountVerified, resetAccountPassword } from '../data/accounts';
 import { getMailboxMessages, markMessageRead } from '../data/modMailbox';
+import { getReports, updateReportStatus } from '../data/reports';
+import { getAuditLog, logAdminAction, AUDIT_LABELS } from '../data/adminAuditLog';
 import { supabase } from '../data/supabaseClient';
 import { computeAge } from '../data/age';
 import { ROLES } from '../data/roles';
@@ -9,9 +11,22 @@ import './AdminPanel.css';
 
 const ROLE_LABELS = { [ROLES.OWNER]: 'Owner', [ROLES.MODERATOR]: 'Moderatore', [ROLES.USER]: 'Utente' };
 
+const REPORT_TARGET_LABELS = {
+  post: 'Post',
+  commento: 'Commento',
+  profilo: 'Profilo',
+  gruppo: 'Gruppo',
+  live: 'Live',
+  evento: 'Evento',
+};
+
+const REPORT_STATO_LABELS = { aperto: 'Aperto', in_lavorazione: 'In lavorazione', chiuso: 'Chiuso' };
+
 const ADMIN_TABS = [
   { id: 'utenti', label: 'Utenti' },
   { id: 'posta', label: 'Posta' },
+  { id: 'moderazione', label: 'Moderazione' },
+  { id: 'log', label: 'Log azioni' },
 ];
 
 // Apre un allegato in una nuova scheda: il bucket "attachments" è privato,
@@ -54,6 +69,97 @@ function MailboxPane({ messages, onMarkRead }) {
   );
 }
 
+// Coda di moderazione: segnalazioni su post/commenti/profili/gruppi/live/
+// eventi. "Prendi in carico" e "Chiudi" sono le uniche azioni possibili qui
+// (la rimozione del contenuto segnalato si fa dal mondo dove vive, non da
+// qui) — servono soprattutto a tracciare chi si sta occupando di cosa,
+// specialmente nel mondo Bambini dove la moderazione è prioritaria.
+function ReportsPane({ reports, onChangeStatus }) {
+  const [filtro, setFiltro] = useState('aperto');
+  const visibili = filtro === 'tutti' ? reports : reports.filter((r) => r.stato === filtro);
+
+  return (
+    <div>
+      <p className="rb-admin-hint">
+        Segnalazioni degli utenti su contenuti o profili. Prioritarie quelle sul mondo Bambini.
+      </p>
+      <div className="rb-admin-tabs rb-admin-subtabs">
+        {['aperto', 'in_lavorazione', 'chiuso', 'tutti'].map((f) => (
+          <button key={f} type="button" className={filtro === f ? 'active' : ''} onClick={() => setFiltro(f)}>
+            {f === 'tutti' ? 'Tutte' : REPORT_STATO_LABELS[f]}
+          </button>
+        ))}
+      </div>
+      {visibili.length === 0 && <p className="rb-admin-empty">Nessuna segnalazione.</p>}
+      <ul className="rb-admin-mail-list">
+        {visibili.map((r) => (
+          <li key={r.id} className="rb-admin-mail-item">
+            <div className="rb-admin-mail-head">
+              <strong>{REPORT_TARGET_LABELS[r.targetType] ?? r.targetType}</strong>
+              <span>{new Date(r.data).toLocaleString('it-IT')}</span>
+            </div>
+            <p className="rb-admin-mail-from">
+              Da: {r.reporterNickname ?? '—'} · Stato:{' '}
+              <span className={`rb-admin-role-badge rb-report-stato-${r.stato}`}>
+                {REPORT_STATO_LABELS[r.stato] ?? r.stato}
+              </span>
+              {r.gestitoDaNickname && <> · Gestita da: {r.gestitoDaNickname}</>}
+            </p>
+            <p className="rb-admin-mail-body">{r.motivo}</p>
+            {r.dettagli && <p className="rb-admin-mail-body">{r.dettagli}</p>}
+            <div className="rb-admin-report-actions">
+              {r.stato === 'aperto' && (
+                <button type="button" onClick={() => onChangeStatus(r.id, 'in_lavorazione')}>
+                  Prendi in carico
+                </button>
+              )}
+              {r.stato !== 'chiuso' && (
+                <button type="button" onClick={() => onChangeStatus(r.id, 'chiuso')}>
+                  Chiudi
+                </button>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// Log di sola lettura delle azioni di owner/moderatori (cambio ruolo,
+// verifica documento, reset password, gestione segnalazione): serve per
+// accountability, non è modificabile da qui.
+function AuditLogPane({ entries }) {
+  return (
+    <div>
+      <p className="rb-admin-hint">Ogni azione di owner e moderatori, per tenerne traccia.</p>
+      {entries.length === 0 && <p className="rb-admin-empty">Nessuna azione registrata finora.</p>}
+      <div className="rb-admin-table-wrap">
+        <table className="rb-admin-table">
+          <thead>
+            <tr>
+              <th>Quando</th>
+              <th>Chi</th>
+              <th>Azione</th>
+              <th>Su</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((e) => (
+              <tr key={e.id}>
+                <td>{new Date(e.data).toLocaleString('it-IT')}</td>
+                <td>{e.staffNickname ?? '—'}</td>
+                <td>{AUDIT_LABELS[e.azione] ?? e.azione}</td>
+                <td>{e.targetNickname ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 // Sezione backend: "Utenti" (elenco di chi si è registrato, con ruolo,
 // verifica e reset password) e "Posta" (casella condivisa owner/
 // moderatori). Solo l'owner può cambiare i ruoli; verifica e reset
@@ -64,36 +170,65 @@ export default function AdminPanel({ user, onClose }) {
   const [tab, setTab] = useState('utenti');
   const [accounts, setAccounts] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [auditLog, setAuditLog] = useState([]);
   const [resetSentTo, setResetSentTo] = useState(null);
   const isOwner = user?.ruolo === ROLES.OWNER;
   const unreadCount = messages.filter((m) => !m.letto).length;
+  const openReportsCount = reports.filter((r) => r.stato === 'aperto').length;
 
   const refreshAccounts = () => getAccounts().then(setAccounts);
   const refreshMessages = () => getMailboxMessages().then(setMessages);
+  const refreshReports = () => getReports().then(setReports);
+  const refreshAuditLog = () => getAuditLog().then(setAuditLog);
 
   useEffect(() => {
     refreshAccounts();
     refreshMessages();
+    refreshReports();
+    refreshAuditLog();
   }, []);
 
   const changeRole = async (accountId, newRole) => {
     const { error } = await updateAccountRole(accountId, newRole);
-    if (!error) refreshAccounts();
+    if (!error) {
+      refreshAccounts();
+      await logAdminAction('cambio_ruolo', accountId, { nuovoRuolo: newRole });
+      refreshAuditLog();
+    }
   };
 
   const toggleVerified = async (account) => {
-    const { error } = await setAccountVerified(account.id, !account.verificato);
-    if (!error) refreshAccounts();
+    const nuovoStato = !account.verificato;
+    const { error } = await setAccountVerified(account.id, nuovoStato);
+    if (!error) {
+      refreshAccounts();
+      await logAdminAction('verifica_documento', account.id, { verificato: nuovoStato });
+      refreshAuditLog();
+    }
   };
 
   const doResetPassword = async (account) => {
     const { error } = await resetAccountPassword(account.email);
-    if (!error) setResetSentTo(account);
+    if (!error) {
+      setResetSentTo(account);
+      await logAdminAction('reset_password', account.id, {});
+      refreshAuditLog();
+    }
   };
 
   const markRead = async (messageId) => {
     await markMessageRead(messageId);
     refreshMessages();
+  };
+
+  const changeReportStatus = async (reportId, stato) => {
+    const { error } = await updateReportStatus(reportId, stato);
+    if (!error) {
+      refreshReports();
+      await logAdminAction('gestione_segnalazione', null, { reportId, nuovoStato: stato });
+      refreshAuditLog();
+    }
   };
 
   return (
@@ -107,6 +242,9 @@ export default function AdminPanel({ user, onClose }) {
             <button key={t.id} type="button" className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
               {t.label}
               {t.id === 'posta' && unreadCount > 0 && <span className="rb-admin-tab-badge">{unreadCount}</span>}
+              {t.id === 'moderazione' && openReportsCount > 0 && (
+                <span className="rb-admin-tab-badge">{openReportsCount}</span>
+              )}
             </button>
           ))}
         </div>
@@ -208,6 +346,8 @@ export default function AdminPanel({ user, onClose }) {
         )}
 
         {tab === 'posta' && <MailboxPane messages={messages} onMarkRead={markRead} />}
+        {tab === 'moderazione' && <ReportsPane reports={reports} onChangeStatus={changeReportStatus} />}
+        {tab === 'log' && <AuditLogPane entries={auditLog} />}
       </div>
 
       {resetSentTo && (
