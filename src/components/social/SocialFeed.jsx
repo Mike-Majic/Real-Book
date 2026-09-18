@@ -8,7 +8,7 @@ import EventComposer from './EventComposer';
 import EventCard from './EventCard';
 import SuggestedUsers from './SuggestedUsers';
 import TrendingGroups from './TrendingGroups';
-import { resolveAuthor, formatRelativeDate } from './resolveAuthor';
+import { resolveAuthor } from './resolveAuthor';
 import { getCityInfo } from '../../data/geo';
 import { INITIAL_POSTS, INITIAL_COMMENTS, computeRelevance } from '../../data/socialPosts';
 import { GROUPS, getGroupById } from '../../data/groups';
@@ -558,32 +558,27 @@ export default function SocialFeed({
       )}
 
       {user && myPosts.length > 0 && (
-        <ul className="rb-mypost-list">
-          {myPosts.map((post) => {
-            const postComments = comments.filter((c) => c.post_id === post.id);
-            const likers = post.mi_piace.map((id) => resolveAuthor(id, user).name);
-            const likeCount = post.contentId ? post.contentLikeCount : post.mi_piace.length;
-            return (
-              <li key={post.id} className="rb-mypost-card">
-                <p className="rb-mypost-text">{post.testo}</p>
-                <span className="rb-mypost-date">{formatRelativeDate(post.data)}</span>
-                <div className="rb-mypost-stats">
-                  <strong>{likeCount}</strong> mi piace{post.contentId ? ' (totali su tutti i mondi)' : ''} ·{' '}
-                  <strong>{postComments.length}</strong> commenti
-                </div>
-                {likers.length > 0 && <p className="rb-mypost-detail">❤️ Piace a: {likers.join(', ')}</p>}
-                {postComments.length > 0 && (
-                  <ul className="rb-mypost-comment-detail">
-                    {postComments.map((c) => (
-                      <li key={c.id}>
-                        <strong>{resolveAuthor(c.autoreId, user).name}</strong>: {c.testo}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            );
-          })}
+        <ul className="rb-post-list rb-mypost-list">
+          {myPosts.map((post) => (
+            <PostCard
+              key={post.id}
+              post={post}
+              comments={comments}
+              user={user}
+              onOpenAuth={onOpenAuth}
+              onToggleLike={toggleLike}
+              onToggleContentLike={toggleContentLike}
+              onEditPost={editPost}
+              onDeletePost={deletePost}
+              onAddComment={addComment}
+              onReactToComment={reactToComment}
+              following={following}
+              onToggleFollow={toggleFollow}
+              saved={savedPosts.includes(post.id)}
+              onToggleSave={toggleSavePost}
+              onOpenGroup={openGroup}
+            />
+          ))}
         </ul>
       )}
     </>
