@@ -5,12 +5,13 @@ function mapProfileRow(row) {
   return { id: row.id, name: row.nickname || row.username || 'Utente', avatar: row.avatar_url || '' };
 }
 
-// Un blocco (in una delle due direzioni) fa fallire l'inserimento della
-// richiesta con un generico "row-level security policy" di Postgres:
-// qui diventa un messaggio comprensibile invece di un errore tecnico.
+// can_interact ora blocca anche un blocco reciproco E un adulto con un
+// minorenne (o viceversa): in entrambi i casi l'inserimento fallisce con lo
+// stesso generico "row-level security policy" di Postgres, qui diventa un
+// messaggio comprensibile invece di un errore tecnico.
 function translateBlockedError(error) {
   if (error?.code === '42501' || /row-level security/i.test(error?.message ?? '')) {
-    return 'Non puoi inviare una richiesta a questo utente.';
+    return 'Non puoi interagire con questo utente.';
   }
   return error.message;
 }

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { resolveAuthor } from './social/resolveAuthor';
 import ModalOverlay from './ModalOverlay';
 import './EventLikersModal.css';
@@ -17,16 +18,20 @@ export default function EventLikersModal({
   onOpenChat,
   onClose,
 }) {
+  const [error, setError] = useState('');
+
   if (!event) return null;
 
   const likers = event.mi_piace.map((id) => ({ id, ...resolveAuthor(id, user) }));
 
-  const handleAction = (id, action) => {
+  const handleAction = async (id, action) => {
     if (!user) {
       onOpenAuth();
       return;
     }
-    action(id);
+    setError('');
+    const result = await action(id);
+    if (result?.error) setError(result.error);
   };
 
   return (
@@ -35,6 +40,7 @@ export default function EventLikersModal({
         <button type="button" className="rb-close-btn" onClick={onClose} aria-label="Chiudi">✕</button>
         <h3>Mi piace</h3>
         <p className="rb-event-likers-subtitle">{event.titolo}</p>
+        {error && <p className="rb-privacy-error">⚠️ {error}</p>}
 
         <ul className="rb-event-likers-list">
           {likers.map((l) => {

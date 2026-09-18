@@ -37,7 +37,7 @@ import FriendsModal from './components/FriendsModal';
 import AdminPanel from './components/AdminPanel';
 import ProfileSettingsPanel from './components/ProfileSettingsPanel';
 import PasswordRecoveryModal from './components/PasswordRecoveryModal';
-import { getCurrentAccount, subscribeAuthChanges, logoutAccount } from './data/accounts';
+import { getCurrentAccount, subscribeAuthChanges, logoutAccount, getCachedProfile, clearCachedProfile } from './data/accounts';
 import {
   getFriends,
   getSentRequests,
@@ -119,6 +119,11 @@ export default function App() {
   // sessione (login/logout/refresh token), così lo stato resta sempre
   // coerente anche se scade o cambia altrove.
   const [user, setUser] = useState(null);
+  // false all'avvio finché non sappiamo davvero se c'è una sessione valida:
+  // AccessGate/AuthModal restano nascosti fino ad allora, altrimenti
+  // "Accedi per continuare" comparirebbe (e poi sparirebbe da solo) ogni
+  // volta che la rete è lenta a rispondere pur con una sessione valida.
+  const [authReady, setAuthReady] = useState(false);
   const [justConfirmedEmail, setJustConfirmedEmail] = useState(false);
   // Avviso non bloccante dopo la registrazione (es. un allegato respinto
   // dallo storage): il modale di login/registrazione si chiude comunque,
@@ -235,19 +240,57 @@ export default function App() {
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
     let cancelled = false;
-    getCurrentAccount().then((account) => {
-      if (!cancelled) setUser(account);
+    let ready = false;
+    const markReady = () => {
+      if (!ready) {
+        ready = true;
+        setAuthReady(true);
+      }
+    };
+
+    // Percorso rapido: se c'è già una sessione salvata dal browser E una
+    // cache dello stesso utente, si mostra subito quella (authReady=true
+    // all'istante) invece di aspettare la vera riga da profiles — che
+    // arriva comunque poco dopo dal fetch sotto e sostituisce la cache.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return;
+      if (!session?.user) {
+        clearCachedProfile();
+        return;
+      }
+      const cached = getCachedProfile();
+      if (cached?.id === session.user.id) {
+        setUser(cached);
+        markReady();
+      }
     });
+
+    // Timeout di sicurezza solo per authReady, non per la richiesta vera e
+    // propria sotto: se la rete non risponde in tempo ma c'era una cache,
+    // markReady() qui sopra è già scattato e questo non fa nulla; altrimenti
+    // si sblocca comunque il gate con user=null (aggiornato più tardi se e
+    // quando la richiesta vera arriva).
+    const timeoutId = window.setTimeout(markReady, 8000);
+
+    getCurrentAccount().then((account) => {
+      if (cancelled) return;
+      setUser(account);
+      markReady();
+    });
+
     // Il link "Password dimenticata?" della mail (type=recovery nell'hash,
     // ripulito sopra) fa arrivare qui con una sessione temporanea di
     // recupero: Supabase Auth lo segnala con l'evento PASSWORD_RECOVERY,
     // mai altrove, quindi è l'unico punto in cui apriamo quella modale.
     const unsubscribe = subscribeAuthChanges((account, event) => {
+      if (cancelled) return;
       setUser(account);
+      markReady();
       if (event === 'PASSWORD_RECOVERY') setPasswordRecoveryOpen(true);
     });
     return () => {
       cancelled = true;
+      window.clearTimeout(timeoutId);
       unsubscribe();
     };
   }, []);
@@ -399,8 +442,9 @@ export default function App() {
 
   const sendFriendRequest = async (userId) => {
     const { error } = await sendFriendRequestApi(userId);
-    if (error) return;
+    if (error) return { error };
     setFriendRequestsSent((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
+    return {};
   };
 
   const worldUsers = useMemo(() => {
@@ -582,6 +626,13 @@ export default function App() {
         <div className="rb-email-confirmed-banner">✅ Account eliminato.</div>
       )}
 
+      {!authReady && (
+        <div className="rb-auth-loading-indicator" aria-live="polite">
+          <span className="rb-auth-loading-spinner" />
+          Caricamento...
+        </div>
+      )}
+
       <WorldGlobe
         world={world}
         users={globeUsers}
@@ -655,7 +706,7 @@ export default function App() {
           (z-index più alto) rendendolo inutilizzabile: sembrava che il
           modulo "non si aprisse", e l'unica cosa cliccabile rimaneva
           "Torna indietro", che riportava al mondo Blu. */}
-      {!authOpen && !profileSettingsOpen && !passwordRecoveryOpen && (needsAuthForWorld || ageBlockedForWorld || worldDisabledByUser) && (
+      {authReady && !authOpen && !profileSettingsOpen && !passwordRecoveryOpen && (needsAuthForWorld || ageBlockedForWorld || worldDisabledByUser) && (
         <AccessGate
           world={world}
           user={user}
@@ -797,7 +848,7 @@ export default function App() {
       />
 
       <AuthModal
-        open={authOpen}
+        open={authReady && authOpen}
         onClose={() => setAuthOpen(false)}
         onLogin={(u, notice) => {
           setUser(u);

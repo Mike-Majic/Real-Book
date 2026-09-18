@@ -1,12 +1,13 @@
 import { supabase } from './supabaseClient';
 import { fetchProfilesMap } from './posts';
 
-// Se nel frattempo uno dei due ha bloccato l'altro, l'INSERT fallisce con
-// un generico "row-level security policy" di Postgres: qui diventa un
+// can_interact ora blocca anche un blocco reciproco E un adulto con un
+// minorenne (o viceversa): in entrambi i casi l'INSERT fallisce con lo
+// stesso generico "row-level security policy" di Postgres, qui diventa un
 // messaggio comprensibile invece di un errore tecnico.
 function translateBlockedError(error) {
   if (error?.code === '42501' || /row-level security/i.test(error?.message ?? '')) {
-    return 'Non puoi più scrivere in questa conversazione.';
+    return 'Non puoi interagire con questo utente.';
   }
   return error.message;
 }

@@ -112,6 +112,7 @@ export default function SocialFeed({
   const [savedPosts, setSavedPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [feedError, setFeedError] = useState(null);
+  const [followError, setFollowError] = useState('');
 
   const [feedTab, setFeedTab] = useState('foryou');
   const [activeGroupId, setActiveGroupId] = useState(null);
@@ -375,9 +376,14 @@ export default function SocialFeed({
       onOpenAuth();
       return;
     }
+    setFollowError('');
     const isFollowing = following.includes(userId);
     const { error } = isFollowing ? await unfollowUser(userId) : await followUser(userId);
-    if (error) return;
+    if (error) {
+      setFollowError(error);
+      window.setTimeout(() => setFollowError(''), 4000);
+      return;
+    }
     setFollowing((prev) => (isFollowing ? prev.filter((id) => id !== userId) : [...prev, userId]));
   };
 
@@ -544,6 +550,10 @@ export default function SocialFeed({
             Riprova
           </button>
         </p>
+      )}
+
+      {followError && (
+        <p className="rb-social-error">⚠️ {followError}</p>
       )}
 
       <div className="rb-feed-tabs">

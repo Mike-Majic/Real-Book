@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { registerAccount, loginAccount, resendConfirmationEmail } from '../data/accounts';
+import { setRememberMe } from '../data/supabaseClient';
+import { computeAge } from '../data/age';
 import { WORLDS } from '../data/worlds';
 import ModalOverlay from './ModalOverlay';
 import TermsModal from './TermsModal';
@@ -31,6 +33,7 @@ export default function AuthModal({ open, onClose, onLogin }) {
   const [mode, setMode] = useState('login');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [rememberChecked, setRememberChecked] = useState(true);
   const [username, setUsername] = useState('');
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
@@ -105,6 +108,9 @@ export default function AuthModal({ open, onClose, onLogin }) {
 
   const submitLogin = async (e) => {
     e.preventDefault();
+    // Va scritta prima di accedere: la sessione la legge subito, appena
+    // signInWithPassword la salva.
+    setRememberMe(rememberChecked);
     setBusy(true);
     setResendOk(false);
     const { account, error: err, needsEmailConfirmation } = await loginAccount(loginEmail, loginPassword);
@@ -137,9 +143,23 @@ export default function AuthModal({ open, onClose, onLogin }) {
   const submitRegister = async (e) => {
     e.preventDefault();
     setError('');
+    // Chi si registra non ha ancora scelto: resta ricordato di default,
+    // altrimenti erediterebbe silenziosamente un "non ricordarmi" lasciato
+    // da un login precedente su questo stesso browser.
+    setRememberMe(true);
 
     if (password !== passwordConfirm) {
       setError('Le due password non coincidono.');
+      return;
+    }
+    // Il DB ora rifiuta comunque chi ha meno di 14 anni (o nessuna data di
+    // nascita): qui si intercetta il caso "età troppo bassa" prima di
+    // arrivare a un generico "Database error saving new user" di Supabase.
+    // La data mancante resta gestita dal controllo già esistente lato
+    // registerAccount, che dà un messaggio diverso e più completo.
+    const age = computeAge(dataNascita);
+    if (age !== null && age < 14) {
+      setError('Devi avere almeno 14 anni per registrarti.');
       return;
     }
     if (!genere) {
@@ -247,6 +267,8 @@ export default function AuthModal({ open, onClose, onLogin }) {
               <span>Mail</span>
               <input
                 type="email"
+                name="email"
+                id="login-email"
                 autoFocus
                 autoComplete="email"
                 value={loginEmail}
@@ -257,10 +279,16 @@ export default function AuthModal({ open, onClose, onLogin }) {
               <span>Password</span>
               <input
                 type="password"
+                name="password"
+                id="login-password"
                 autoComplete="current-password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
               />
+            </label>
+            <label className="rb-field rb-auth-checkbox-field">
+              <input type="checkbox" checked={rememberChecked} onChange={(e) => setRememberChecked(e.target.checked)} />
+              <span>Ricordami su questo dispositivo</span>
             </label>
           </>
         ) : (
@@ -275,12 +303,13 @@ export default function AuthModal({ open, onClose, onLogin }) {
             </label>
             <label className="rb-field">
               <span>Mail</span>
-              <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input type="email" name="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </label>
             <label className="rb-field">
               <span>Password</span>
               <input
                 type="password"
+                name="new-password"
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

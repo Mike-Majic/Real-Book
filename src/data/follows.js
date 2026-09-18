@@ -1,5 +1,17 @@
 import { supabase } from './supabaseClient';
 
+// La policy di insert richiede can_interact(followee_id), che ora blocca
+// anche un blocco reciproco E un adulto con un minorenne (o viceversa):
+// l'INSERT fallisce con il generico "row-level security policy" di
+// Postgres, qui diventa un messaggio comprensibile invece di un errore
+// tecnico.
+function translateBlockedError(error) {
+  if (error?.code === '42501' || /row-level security/i.test(error?.message ?? '')) {
+    return 'Non puoi interagire con questo utente.';
+  }
+  return error.message;
+}
+
 // Segui/smetti di seguire un utente reale (tabella follows) — sostituisce
 // il vecchio array locale "following" di SocialFeed.jsx.
 export async function followUser(followeeId) {
@@ -7,7 +19,7 @@ export async function followUser(followeeId) {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth?.user) return { error: 'Devi essere loggato.' };
     const { error } = await supabase.from('follows').insert({ follower_id: auth.user.id, followee_id: followeeId });
-    if (error) return { error: error.message };
+    if (error) return { error: translateBlockedError(error) };
     return {};
   } catch (err) {
     return { error: err?.message ?? 'Errore di rete.' };

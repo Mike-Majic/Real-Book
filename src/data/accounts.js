@@ -55,6 +55,46 @@ function mapProfile(row) {
   };
 }
 
+const CACHED_PROFILE_KEY = 'rb-cached-profile';
+
+// Solo i campi che servono a mostrare l'app appena apre (vedi App.jsx,
+// authReady): mai dati sensibili (telefono, mail di backup, dati fiscali,
+// allegati) in una cache che resta sul dispositivo anche a sessione scaduta.
+export function cacheProfile(account) {
+  if (!account) return;
+  try {
+    const safe = {
+      id: account.id,
+      nickname: account.nickname,
+      avatar: account.avatar,
+      ruolo: account.ruolo,
+      mondiAbilitati: account.mondiAbilitati,
+      dataNascita: account.dataNascita,
+      genere: account.genere,
+    };
+    localStorage.setItem(CACHED_PROFILE_KEY, JSON.stringify(safe));
+  } catch {
+    // storage piena/privato: si perde solo la cache, non l'app.
+  }
+}
+
+export function getCachedProfile() {
+  try {
+    const raw = localStorage.getItem(CACHED_PROFILE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearCachedProfile() {
+  try {
+    localStorage.removeItem(CACHED_PROFILE_KEY);
+  } catch {
+    // ignora
+  }
+}
+
 async function fetchOwnProfile() {
   // getSession() legge la sessione già salvata dal browser (e la rinnova da
   // sola se serve), senza dover per forza contattare il server come fa
@@ -62,10 +102,15 @@ async function fetchOwnProfile() {
   // per un attimo, l'app sembrava aver "dimenticato" il login a ogni
   // ricarica della pagina, anche con una sessione ancora valida.
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return null;
+  if (!session?.user) {
+    clearCachedProfile();
+    return null;
+  }
   const { data, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
   if (error) return null;
-  return mapProfile(data);
+  const account = mapProfile(data);
+  cacheProfile(account);
+  return account;
 }
 
 // Account attualmente loggato (se una sessione Supabase è già salvata dal
@@ -177,6 +222,15 @@ export async function registerAccount({
   });
 
   if (error) {
+    // Il trigger di registrazione lato DB ora rifiuta anche chi ha meno di
+    // 14 anni o senza data di nascita, ma lo fa con l'errore generico che
+    // Supabase Auth restituisce per qualunque fallimento del trigger
+    // (nessun dettaglio nel messaggio): il controllo sull'età prima di
+    // chiamare signUp (vedi AuthModal) intercetta già il caso comune, qui
+    // resta solo un messaggio comprensibile per quello che sfugge.
+    if (/database error saving new user/i.test(error.message ?? '')) {
+      return { error: 'Registrazione non riuscita: controlla la data di nascita.' };
+    }
     return { error: error.message };
   }
 
@@ -221,6 +275,7 @@ export async function loginAccount(email, password) {
 
 export async function logoutAccount() {
   await supabase.auth.signOut();
+  clearCachedProfile();
 }
 
 // Rimanda la mail di conferma: serve se il link della prima è scaduto, è
