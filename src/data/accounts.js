@@ -74,15 +74,17 @@ export async function getCurrentAccount() {
 }
 
 // Notifica ad ogni cambio di sessione (login, logout, refresh token,
-// scadenza): l'app tiene lo stato utente sempre coerente con quello che
-// Supabase pensa sia vero, invece di fidarsi solo dello stato locale.
+// scadenza, recupero password): l'app tiene lo stato utente sempre
+// coerente con quello che Supabase pensa sia vero, invece di fidarsi solo
+// dello stato locale. Il secondo argomento è l'evento grezzo di Supabase
+// (serve solo a chi deve reagire a 'PASSWORD_RECOVERY', vedi App.jsx).
 export function subscribeAuthChanges(callback) {
-  const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+  const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
     if (!session) {
-      callback(null);
+      callback(null, event);
       return;
     }
-    callback(await fetchOwnProfile());
+    callback(await fetchOwnProfile(), event);
   });
   return () => sub.subscription.unsubscribe();
 }
@@ -334,7 +336,9 @@ export async function updateName(accountId, nome, cognome) {
 // chiama (owner/moderatore dal pannello, o l'utente stesso dal login) non
 // vede mai una password in chiaro.
 export async function resetAccountPassword(email) {
-  const { error } = await supabase.auth.resetPasswordForEmail((email ?? '').trim().toLowerCase());
+  const { error } = await supabase.auth.resetPasswordForEmail((email ?? '').trim().toLowerCase(), {
+    redirectTo: window.location.origin + import.meta.env.BASE_URL,
+  });
   if (error) return { error: error.message };
   return {};
 }

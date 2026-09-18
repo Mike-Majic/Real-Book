@@ -36,6 +36,7 @@ import FriendChatModal from './components/FriendChatModal';
 import FriendsModal from './components/FriendsModal';
 import AdminPanel from './components/AdminPanel';
 import ProfileSettingsPanel from './components/ProfileSettingsPanel';
+import PasswordRecoveryModal from './components/PasswordRecoveryModal';
 import { getCurrentAccount, subscribeAuthChanges, logoutAccount } from './data/accounts';
 import {
   getFriends,
@@ -127,6 +128,10 @@ export default function App() {
   // Elimina account): a quel punto user è già null e tutti i pannelli si
   // sono chiusi, serve solo un avviso temporaneo.
   const [accountDeletedNotice, setAccountDeletedNotice] = useState(false);
+  // Modale "Scegli una nuova password", apre solo sull'evento
+  // PASSWORD_RECOVERY di Supabase Auth (link "Password dimenticata?"
+  // cliccato dalla mail) — mai su richiesta diretta dell'utente.
+  const [passwordRecoveryOpen, setPasswordRecoveryOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -225,15 +230,22 @@ export default function App() {
   // legge da solo e logga subito, qui si nota solo che è successo (per il
   // banner) e si ripulisce l'hash dalla barra degli indirizzi.
   useEffect(() => {
-    if (window.location.hash.includes('type=signup')) {
-      setJustConfirmedEmail(true);
+    if (window.location.hash.includes('type=signup') || window.location.hash.includes('type=recovery')) {
+      if (window.location.hash.includes('type=signup')) setJustConfirmedEmail(true);
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
     let cancelled = false;
     getCurrentAccount().then((account) => {
       if (!cancelled) setUser(account);
     });
-    const unsubscribe = subscribeAuthChanges((account) => setUser(account));
+    // Il link "Password dimenticata?" della mail (type=recovery nell'hash,
+    // ripulito sopra) fa arrivare qui con una sessione temporanea di
+    // recupero: Supabase Auth lo segnala con l'evento PASSWORD_RECOVERY,
+    // mai altrove, quindi è l'unico punto in cui apriamo quella modale.
+    const unsubscribe = subscribeAuthChanges((account, event) => {
+      setUser(account);
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecoveryOpen(true);
+    });
     return () => {
       cancelled = true;
       unsubscribe();
@@ -643,7 +655,7 @@ export default function App() {
           (z-index più alto) rendendolo inutilizzabile: sembrava che il
           modulo "non si aprisse", e l'unica cosa cliccabile rimaneva
           "Torna indietro", che riportava al mondo Blu. */}
-      {!authOpen && !profileSettingsOpen && (needsAuthForWorld || ageBlockedForWorld || worldDisabledByUser) && (
+      {!authOpen && !profileSettingsOpen && !passwordRecoveryOpen && (needsAuthForWorld || ageBlockedForWorld || worldDisabledByUser) && (
         <AccessGate
           world={world}
           user={user}
@@ -793,6 +805,8 @@ export default function App() {
           if (notice) setSignupNotice(notice);
         }}
       />
+
+      <PasswordRecoveryModal open={passwordRecoveryOpen} onClose={() => setPasswordRecoveryOpen(false)} />
     </div>
   );
 }
