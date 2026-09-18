@@ -41,6 +41,8 @@ function mapProfile(row) {
     codiceSdi: row.codice_sdi ?? '',
     genere: row.genere ?? '',
     pronomi: row.pronomi ?? '',
+    citta: row.citta ?? '',
+    bio: row.bio ?? '',
     terminiAccettatiAt: row.termini_accettati_at,
     consensoMarketing: row.consenso_marketing ?? false,
     mondiAbilitati: row.mondi_abilitati ?? [],

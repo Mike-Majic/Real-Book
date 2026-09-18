@@ -1,39 +1,21 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import TwoColumnSwitcher from '../layout/TwoColumnSwitcher';
+import ModalOverlay from '../ModalOverlay';
+import { isAdult } from '../../data/age';
+import { fetchProfilesMap } from '../../data/posts';
+import { supabase } from '../../data/supabaseClient';
+import {
+  getMatchCandidates,
+  recordSwipe,
+  getLikesReceived,
+  getMyMatches,
+  getMyFavorites,
+  unmatch as unmatchApi,
+  addFavorite,
+  removeFavorite,
+  subscribeToOwnMatches,
+} from '../../data/incontri';
 import './MatchColumn.css';
-
-function loadStored(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function persist(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
-// Piccolo hash deterministico (non serve robustezza, solo un numero stabile
-// per nome) per scegliere sempre lo stesso messaggio d'apertura finto, e lo
-// stesso sottoinsieme "a chi piaci", invece che a caso ad ogni render.
-function hashCode(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
-const OPENING_LINES = [
-  'Ciao! È un piacere essere finiti in match 😊',
-  'Ehi, complimenti per il profilo!',
-  'Ciao, cosa fai di bello di solito?',
-  'Che bello, un match! Come va?',
-];
-
-function snapshotOf(u) {
-  return { id: u.id, name: u.name, avatar: u.avatar, city: u.city };
-}
 
 const RIGHT_TABS = [
   { id: 'likesYou', label: 'A chi piaci' },
@@ -42,153 +24,247 @@ const RIGHT_TABS = [
   { id: 'favorites', label: 'Preferiti' },
 ];
 
-// Swipe (stile Tinder): senza backend non esistono "veri" match reciproci —
-// mettere "Mi piace" (o accettare in "A chi piaci") crea un match
-// immediato, per demo, come avviare una diretta simula solo lo streaming.
-// A sinistra il mazzo di profili, a destra 4 schede: chi ti piace, i tuoi
-// match, le conversazioni, i preferiti.
-export default function MatchColumn({ candidateUsers = [], user, onOpenAuth }) {
-  const [decisions, setDecisions] = useState(() => loadStored('rb-match-decisions', {}));
-  const [matches, setMatches] = useState(() => loadStored('rb-match-list', []));
-  const [chats, setChats] = useState(() => loadStored('rb-match-chats', {}));
-  const [favorites, setFavorites] = useState(() => loadStored('rb-match-favorites', []));
-  const [activeMatchId, setActiveMatchId] = useState(null);
-  const [matchToast, setMatchToast] = useState(null);
-  const [draft, setDraft] = useState('');
-  const [mobileView, setMobileView] = useState('primary');
-  const [rightTab, setRightTab] = useState('matches');
+// Swipe (stile Tinder) su dati reali: mazzo da get_match_candidates,
+// mi piace/passa via record_swipe (un match nasce solo se reciproco, mai
+// subito come nella vecchia demo locale). "Messaggi" apre la chat diretta
+// reale già usata per gli amici (FriendChatModal, via onOpenChat), non ha
+// una sua chat: un match è comunque solo una conversazione come le altre.
+export default function MatchColumn({ user, onOpenAuth, onOpenChat }) {
+  const [deck, setDeck] = useState([]);
+  const [deckLoading, setDeckLoading] = useState(true);
   const [swiping, setSwiping] = useState(null); // { direction: 'left'|'right' }
 
-  const deck = useMemo(
-    () => candidateUsers.filter((u) => !decisions[u.id]),
-    [candidateUsers, decisions]
-  );
-  const current = deck[0] ?? null;
+  const [likesYou, setLikesYou] = useState([]);
+  const [likesYouLoading, setLikesYouLoading] = useState(true);
 
-  // Sottoinsieme finto (ma stabile) di "chi ti piace": gli ultimi arrivati
-  // nel pool, in ordine inverso così non coincide con l'ordine del mazzo.
-  const likesYouPool = useMemo(
-    () =>
-      [...candidateUsers]
-        .reverse()
-        .filter((u) => !decisions[u.id])
-        .slice(0, 6),
-    [candidateUsers, decisions]
-  );
+  const [matches, setMatches] = useState([]);
+  const [matchesLoading, setMatchesLoading] = useState(true);
 
-  const seedChat = (profileId, name, chatsBase) => {
-    if (chatsBase[profileId]) return chatsBase;
-    const seedMsg = {
-      id: `mm-${profileId}`,
-      from: 'them',
-      testo: OPENING_LINES[hashCode(name) % OPENING_LINES.length],
-      data: new Date().toISOString(),
-    };
-    return { ...chatsBase, [profileId]: [seedMsg] };
-  };
+  const [favorites, setFavorites] = useState([]);
+  const [favoritesLoading, setFavoritesLoading] = useState(true);
 
-  const createMatch = (profile) => {
-    const snap = snapshotOf(profile);
-    const nextMatches = [...matches, snap];
-    setMatches(nextMatches);
-    persist('rb-match-list', nextMatches);
-    const nextChats = seedChat(snap.id, snap.name, chats);
-    setChats(nextChats);
-    persist('rb-match-chats', nextChats);
-    setMatchToast(snap);
+  const [matchToast, setMatchToast] = useState(null);
+  const [pendingUnmatch, setPendingUnmatch] = useState(null);
+  const [actionError, setActionError] = useState('');
+  const [mobileView, setMobileView] = useState('primary');
+  const [rightTab, setRightTab] = useState('matches');
+
+  // Evita il doppio toast quando il match che ho appena creato con il mio
+  // swipe torna anche dal canale realtime (sono uno dei due partecipanti).
+  const justMatchedIds = useRef(new Set());
+
+  // Le vecchie chiavi locali (decisioni finte, match finti, chat finta,
+  // preferiti finti) non servono più: rimosse una volta per tutte dal
+  // browser di chi ha già usato la versione precedente.
+  useEffect(() => {
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('rb-match-'))
+      .forEach((key) => localStorage.removeItem(key));
+  }, []);
+
+  // Le stesse regole di is_incontri_eligible lato server (mondo "incontri"
+  // abilitato + 18 anni): il globo/AccessGate impedisce già di arrivare qui
+  // se manca l'età, ma non se il mondo è stato disattivato dalle
+  // Impostazioni mentre questa colonna resta montata sotto l'overlay.
+  const eligible = Boolean(user) && (user.mondiAbilitati ?? []).includes('incontri') && isAdult(user.dataNascita);
+
+  const triggerMatchToast = (profile) => {
+    setMatchToast(profile);
     window.setTimeout(() => setMatchToast(null), 2200);
   };
 
-  const commitDeckDecision = (profile, outcome) => {
-    const nextDecisions = { ...decisions, [profile.id]: outcome };
-    setDecisions(nextDecisions);
-    persist('rb-match-decisions', nextDecisions);
-    if (outcome === 'liked') createMatch(profile);
+  const refreshMatches = async () => {
+    const { matches: list, error } = await getMyMatches();
+    if (!error) setMatches(list ?? []);
   };
 
-  // "Mi piace"/"Passa" fanno scorrere la card (a destra/sinistra) prima di
-  // passare al profilo successivo, invece di scattare via all'istante.
+  useEffect(() => {
+    if (!eligible) {
+      setDeck([]);
+      setDeckLoading(false);
+      setLikesYou([]);
+      setLikesYouLoading(false);
+      setMatches([]);
+      setMatchesLoading(false);
+      setFavorites([]);
+      setFavoritesLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setDeckLoading(true);
+    setLikesYouLoading(true);
+    setMatchesLoading(true);
+    setFavoritesLoading(true);
+    Promise.all([getMatchCandidates(20), getLikesReceived(), getMyMatches(), getMyFavorites()]).then(
+      ([deckRes, likesRes, matchesRes, favRes]) => {
+        if (cancelled) return;
+        setDeck(deckRes.candidates ?? []);
+        setDeckLoading(false);
+        setLikesYou(likesRes.likes ?? []);
+        setLikesYouLoading(false);
+        setMatches(matchesRes.matches ?? []);
+        setMatchesLoading(false);
+        setFavorites(favRes.favorites ?? []);
+        setFavoritesLoading(false);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eligible, user?.id]);
+
+  // Ricarica altri profili quando il mazzo scende sotto i 3: get_match_candidates
+  // esclude già chi ha già una decisione, i match e chi blocca/è bloccato, qui
+  // basta scartare eventuali id già presenti in mazzo (stesso giro random()).
+  useEffect(() => {
+    if (!eligible || deckLoading || deck.length >= 3) return;
+    let cancelled = false;
+    getMatchCandidates(20).then(({ candidates }) => {
+      if (cancelled || !candidates) return;
+      setDeck((prev) => {
+        const known = new Set(prev.map((p) => p.id));
+        return [...prev, ...candidates.filter((p) => !known.has(p.id))];
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [eligible, deckLoading, deck.length]);
+
+  // Canale realtime sui propri match (RLS limita già alle righe dove sono
+  // user_a o user_b): copre il caso in cui è l'ALTRA persona a completare
+  // il match reciproco mentre non sono sulla scheda "A chi piaci".
+  useEffect(() => {
+    if (!user) return undefined;
+    const channel = subscribeToOwnMatches((row) => {
+      const otherId = row.user_a === user.id ? row.user_b : row.user_a;
+      refreshMatches();
+      if (justMatchedIds.current.has(otherId)) {
+        justMatchedIds.current.delete(otherId);
+        return;
+      }
+      fetchProfilesMap([otherId]).then((map) => {
+        triggerMatchToast(map.get(otherId) ?? { id: otherId, name: 'Utente', avatar: '' });
+      });
+    });
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  const current = deck[0] ?? null;
+
   const decide = (outcome) => {
     if (!user) {
       onOpenAuth();
       return;
     }
     if (!current || swiping) return;
+    setActionError('');
     setSwiping({ direction: outcome === 'liked' ? 'right' : 'left' });
-    window.setTimeout(() => {
-      commitDeckDecision(current, outcome);
+    const decisione = outcome === 'liked' ? 'mi_piace' : 'passo';
+    window.setTimeout(async () => {
+      const { matched, error } = await recordSwipe(current.id, decisione);
       setSwiping(null);
+      if (error) {
+        setActionError(error);
+        return;
+      }
+      setDeck((prev) => prev.filter((p) => p.id !== current.id));
+      if (matched) {
+        justMatchedIds.current.add(current.id);
+        triggerMatchToast(current);
+        refreshMatches();
+      }
     }, 320);
   };
 
-  const decideLikesYou = (profile, outcome) => {
+  const decideLikesYou = async (profile, outcome) => {
     if (!user) {
       onOpenAuth();
       return;
     }
-    const nextDecisions = { ...decisions, [profile.id]: outcome };
-    setDecisions(nextDecisions);
-    persist('rb-match-decisions', nextDecisions);
-    if (outcome === 'liked') createMatch(profile);
+    setActionError('');
+    const decisione = outcome === 'liked' ? 'mi_piace' : 'passo';
+    const { matched, error } = await recordSwipe(profile.id, decisione);
+    if (error) {
+      setActionError(error);
+      return;
+    }
+    setLikesYou((prev) => prev.filter((p) => p.id !== profile.id));
+    setDeck((prev) => prev.filter((p) => p.id !== profile.id));
+    if (matched) {
+      justMatchedIds.current.add(profile.id);
+      triggerMatchToast(profile);
+      refreshMatches();
+    }
   };
 
-  const toggleFavorite = (profile) => {
+  const isFavorite = (id) => favorites.some((f) => f.id === id);
+
+  const toggleFavorite = async (profile) => {
     if (!user) {
       onOpenAuth();
       return;
     }
-    const already = favorites.some((f) => f.id === profile.id);
-    const next = already ? favorites.filter((f) => f.id !== profile.id) : [...favorites, snapshotOf(profile)];
-    setFavorites(next);
-    persist('rb-match-favorites', next);
+    setActionError('');
+    if (isFavorite(profile.id)) {
+      const { error } = await removeFavorite(profile.id);
+      if (error) {
+        setActionError(error);
+        return;
+      }
+      setFavorites((prev) => prev.filter((f) => f.id !== profile.id));
+    } else {
+      const { error } = await addFavorite(profile.id);
+      if (error) {
+        setActionError(error);
+        return;
+      }
+      setFavorites((prev) => [...prev, profile]);
+    }
   };
 
-  const activeMatch = matches.find((m) => m.id === activeMatchId) ?? null;
-  const activeMessages = activeMatchId ? chats[activeMatchId] ?? [] : [];
-
-  const openChat = (matchUser) => {
-    setActiveMatchId(matchUser.id);
-    setRightTab('messages');
+  const confirmUnmatch = async () => {
+    if (!pendingUnmatch) return;
+    const { error } = await unmatchApi(pendingUnmatch.id);
+    setPendingUnmatch(null);
+    if (error) {
+      setActionError(error);
+      return;
+    }
+    setMatches((prev) => prev.filter((m) => m.id !== pendingUnmatch.id));
   };
 
-  const send = (e) => {
-    e.preventDefault();
-    const text = draft.trim();
-    if (!text || !activeMatchId) return;
-    const newMsg = { id: `mm-${Date.now()}`, from: 'me', testo: text, data: new Date().toISOString() };
-    const next = { ...chats, [activeMatchId]: [...(chats[activeMatchId] ?? []), newMsg] };
-    setChats(next);
-    persist('rb-match-chats', next);
-    setDraft('');
-  };
-
-  // "Messaggi" elenca le conversazioni (un match diventa una conversazione
-  // appena c'è un match, col messaggio d'apertura finto già seminato),
-  // ordinate per messaggio più recente.
-  const conversations = useMemo(
-    () =>
-      matches
-        .filter((m) => chats[m.id]?.length > 0)
-        .map((m) => ({ ...m, lastMsg: chats[m.id][chats[m.id].length - 1] }))
-        .sort((a, b) => new Date(b.lastMsg.data) - new Date(a.lastMsg.data)),
-    [matches, chats]
-  );
-
-  const isFavorite = current && favorites.some((f) => f.id === current.id);
+  const eligibilityMessage = useMemo(() => {
+    if (!user) return null;
+    if (!isAdult(user.dataNascita)) return 'Incontri è riservato ai maggiorenni.';
+    if (!(user.mondiAbilitati ?? []).includes('incontri')) {
+      return 'Hai disattivato il mondo Incontri dalle Impostazioni: riattivalo per vedere i profili.';
+    }
+    return null;
+  }, [user]);
 
   const primary = (
     <div className="rb-match-deck">
-      <p className="rb-match-hint">Profili del mondo Incontri: passa o metti mi piace, un mi piace è subito un match.</p>
-      {current ? (
+      <p className="rb-match-hint">Profili reali del mondo Incontri: un &quot;mi piace&quot; diventa un match solo se è reciproco.</p>
+      {actionError && <p className="rb-privacy-error">{actionError}</p>}
+      {!eligible ? (
+        <p className="rb-match-empty">{eligibilityMessage ?? 'Accedi per scoprire nuovi profili.'}</p>
+      ) : deckLoading ? (
+        <p className="rb-match-empty">Caricamento...</p>
+      ) : current ? (
         <div className={`rb-match-card ${swiping ? `leaving-${swiping.direction}` : ''}`}>
           <button
             type="button"
-            className={`rb-match-fav-btn ${isFavorite ? 'active' : ''}`}
+            className={`rb-match-fav-btn ${isFavorite(current.id) ? 'active' : ''}`}
             onClick={() => toggleFavorite(current)}
             aria-label="Aggiungi ai preferiti"
             title="Aggiungi ai preferiti"
           >
-            {isFavorite ? '⭐' : '☆'}
+            {isFavorite(current.id) ? '⭐' : '☆'}
           </button>
           <img className="rb-match-card-photo" src={current.avatar} alt={current.name} />
           <div className="rb-match-card-info">
@@ -200,7 +276,7 @@ export default function MatchColumn({ candidateUsers = [], user, onOpenAuth }) {
       ) : (
         <p className="rb-match-empty">Nessun altro profilo al momento, torna più tardi 👋</p>
       )}
-      {current && (
+      {eligible && current && (
         <div className="rb-match-actions">
           <button type="button" className="rb-match-pass-btn" onClick={() => decide('passed')} disabled={!!swiping}>✕ Passa</button>
           <button type="button" className="rb-match-like-btn" onClick={() => decide('liked')} disabled={!!swiping}>❤️ Mi piace</button>
@@ -209,14 +285,16 @@ export default function MatchColumn({ candidateUsers = [], user, onOpenAuth }) {
     </div>
   );
 
-  const likesYouPane = (
+  const likesYouPane = likesYouLoading ? (
+    <p className="rb-match-pane-empty">Caricamento...</p>
+  ) : (
     <ul className="rb-match-list">
-      {likesYouPool.length === 0 && <p className="rb-match-pane-empty">Nessuno per ora, torna più tardi.</p>}
-      {likesYouPool.map((u) => (
+      {likesYou.length === 0 && <p className="rb-match-pane-empty">Nessuno per ora, torna più tardi.</p>}
+      {likesYou.map((u) => (
         <li key={u.id} className="rb-match-likes-item">
           <img src={u.avatar} alt="" />
           <span>
-            <strong>{u.name}</strong>
+            <strong>{u.super ? '⭐ ' : ''}{u.name}{u.age ? `, ${u.age}` : ''}</strong>
             <span className="rb-match-list-city">{u.city}</span>
           </span>
           <div className="rb-match-likes-actions">
@@ -228,16 +306,43 @@ export default function MatchColumn({ candidateUsers = [], user, onOpenAuth }) {
     </ul>
   );
 
-  const matchesPane = (
+  const matchesPane = matchesLoading ? (
+    <p className="rb-match-pane-empty">Caricamento...</p>
+  ) : (
     <ul className="rb-match-list">
       {matches.length === 0 && <p className="rb-match-pane-empty">Metti &quot;Mi piace&quot; a un profilo per iniziare a fare match.</p>}
       {matches.map((m) => (
+        <li key={m.id} className="rb-match-likes-item">
+          <img src={m.avatar} alt="" />
+          <span>
+            <strong>{m.name}{m.age ? `, ${m.age}` : ''}</strong>
+            <span className="rb-match-list-city">{m.city}</span>
+          </span>
+          <button
+            type="button"
+            className="rb-reset-filters-btn rb-privacy-inline-btn"
+            onClick={() => setPendingUnmatch(m)}
+            title="Annulla match"
+          >
+            Annulla match
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+
+  const messagesPane = matchesLoading ? (
+    <p className="rb-match-pane-empty">Caricamento...</p>
+  ) : (
+    <ul className="rb-match-list">
+      {matches.length === 0 && <p className="rb-match-pane-empty">Nessun match ancora: fai un match per iniziare a chattare.</p>}
+      {matches.map((m) => (
         <li key={m.id}>
-          <button type="button" className="rb-match-list-item" onClick={() => openChat(m)}>
+          <button type="button" className="rb-match-list-item" onClick={() => onOpenChat(m.id)}>
             <img src={m.avatar} alt="" />
             <span>
               <strong>{m.name}</strong>
-              <span className="rb-match-list-city">{m.city}</span>
+              <span className="rb-match-list-city">Scrivi un messaggio →</span>
             </span>
           </button>
         </li>
@@ -245,49 +350,9 @@ export default function MatchColumn({ candidateUsers = [], user, onOpenAuth }) {
     </ul>
   );
 
-  const messagesPane = activeMatch ? (
-    <div className="rb-match-chat-col">
-      <button type="button" className="rb-match-chat-back" onClick={() => setActiveMatchId(null)}>← Messaggi</button>
-      <div className="rb-match-chat-header">
-        <img src={activeMatch.avatar} alt="" />
-        <strong>{activeMatch.name}</strong>
-      </div>
-      <ul className="rb-match-chat-messages">
-        {activeMessages.map((m) => (
-          <li key={m.id} className={`rb-match-msg ${m.from === 'me' ? 'me' : ''}`}>
-            <span>{m.testo}</span>
-          </li>
-        ))}
-      </ul>
-      <form className="rb-match-chat-form" onSubmit={send}>
-        <input
-          type="text"
-          placeholder={user ? 'Scrivi un messaggio...' : 'Accedi per scrivere...'}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onFocus={() => !user && onOpenAuth()}
-        />
-        <button type="submit" className="rb-match-chat-send">Invia</button>
-      </form>
-    </div>
+  const favoritesPane = favoritesLoading ? (
+    <p className="rb-match-pane-empty">Caricamento...</p>
   ) : (
-    <ul className="rb-match-list">
-      {conversations.length === 0 && <p className="rb-match-pane-empty">Nessun messaggio ancora: fai un match per iniziare a chattare.</p>}
-      {conversations.map((c) => (
-        <li key={c.id}>
-          <button type="button" className="rb-match-list-item" onClick={() => openChat(c)}>
-            <img src={c.avatar} alt="" />
-            <span>
-              <strong>{c.name}</strong>
-              <span className="rb-match-list-city">{c.lastMsg.testo}</span>
-            </span>
-          </button>
-        </li>
-      ))}
-    </ul>
-  );
-
-  const favoritesPane = (
     <ul className="rb-match-list">
       {favorites.length === 0 && <p className="rb-match-pane-empty">Tocca la stellina su un profilo per salvarlo qui.</p>}
       {favorites.map((f) => (
@@ -318,10 +383,7 @@ export default function MatchColumn({ candidateUsers = [], user, onOpenAuth }) {
             key={t.id}
             type="button"
             className={`rb-match-tab-btn ${rightTab === t.id ? 'active' : ''}`}
-            onClick={() => {
-              setRightTab(t.id);
-              if (t.id !== 'messages') setActiveMatchId(null);
-            }}
+            onClick={() => setRightTab(t.id)}
           >
             {t.label}
           </button>
@@ -345,6 +407,19 @@ export default function MatchColumn({ candidateUsers = [], user, onOpenAuth }) {
         onMobileViewChange={setMobileView}
       />
       {matchToast && <div className="rb-match-toast">🎉 È un Match con {matchToast.name}!</div>}
+
+      {pendingUnmatch && (
+        <ModalOverlay className="rb-profile-confirm-overlay">
+          <div className="rb-profile-confirm-card" onClick={(e) => e.stopPropagation()}>
+            <p>Annullare il match con {pendingUnmatch.name}? Non potrete più scrivervi.</p>
+            <p className="rb-profile-confirm-question">Confermi?</p>
+            <div className="rb-profile-confirm-actions">
+              <button type="button" onClick={() => setPendingUnmatch(null)}>Annulla</button>
+              <button type="button" className="rb-profile-confirm-ok" onClick={confirmUnmatch}>Confermo</button>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
     </div>
   );
 }

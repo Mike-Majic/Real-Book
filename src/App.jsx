@@ -628,7 +628,7 @@ export default function App() {
           onSearchCategory={flyToArteCategory}
           user={user}
           onOpenAuth={() => setAuthOpen(true)}
-          candidateUsers={worldUsers}
+          onOpenChat={(otherId) => setActiveFriendChatId(otherId)}
         />
       )}
 

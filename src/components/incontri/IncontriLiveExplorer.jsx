@@ -17,7 +17,7 @@ export default function IncontriLiveExplorer({
   onSearchCategory,
   user,
   onOpenAuth,
-  candidateUsers = [],
+  onOpenChat,
 }) {
   const [query, setQuery] = useState('');
   const [invalid, setInvalid] = useState(false);
@@ -74,7 +74,7 @@ export default function IncontriLiveExplorer({
           </div>
 
           {category.id === 'match' ? (
-            <MatchColumn candidateUsers={candidateUsers} user={user} onOpenAuth={onOpenAuth} />
+            <MatchColumn user={user} onOpenAuth={onOpenAuth} onOpenChat={onOpenChat} />
           ) : (
             <TwoColumnSwitcher
               primary={<LiveUsersList user={user} onOpenAuth={onOpenAuth} onStartLive={() => setMobileView('secondary')} />}

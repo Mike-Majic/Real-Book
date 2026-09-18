@@ -301,6 +301,7 @@ export default function AuthModal({ open, onClose, onLogin }) {
                 type="date"
                 autoComplete="off"
                 value={dataNascita}
+                min="1900-01-01"
                 max={new Date().toISOString().slice(0, 10)}
                 onChange={(e) => setDataNascita(e.target.value)}
               />

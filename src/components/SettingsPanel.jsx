@@ -6,6 +6,7 @@ import { listBlockedContacts, blockContact, unblockContact } from '../data/block
 import { resetAccountPassword, setOwnWorlds, deleteOwnAccount } from '../data/accounts';
 import { ROLES } from '../data/roles';
 import { fetchProfilesMap } from '../data/posts';
+import { updateOwnDatingProfile } from '../data/incontri';
 import ModalOverlay from './ModalOverlay';
 import InfoBadge from './InfoBadge';
 import './SettingsPanel.css';
@@ -157,6 +158,69 @@ function WorldsSubsection({ user, onOpenAuth, onUpdateUser }) {
           </label>
         ))}
       </div>
+      {error && <p className="rb-privacy-error">{error}</p>}
+      {success && <p className="rb-privacy-success">{success}</p>}
+      <button type="button" className="rb-reset-filters-btn" onClick={save} disabled={busy}>
+        {busy ? 'Un attimo…' : 'Salva'}
+      </button>
+    </>
+  );
+}
+
+const CITTA_MAX = 80;
+const BIO_MAX = 300;
+
+// Città e bio mostrate nel mazzo del mondo Incontri (get_match_candidates):
+// nessuna RPC le restituisce nel profilo account normale, quindi partono
+// vuote finché non sono già salvate una volta (user.citta/user.bio, vedi
+// mapProfile in data/accounts.js).
+function DatingProfileSection({ user, onOpenAuth, onUpdateUser }) {
+  const [citta, setCitta] = useState(user?.citta ?? '');
+  const [bio, setBio] = useState(user?.bio ?? '');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  if (!user) {
+    return (
+      <button type="button" className="rb-settings-nav-btn" onClick={onOpenAuth}>
+        <span><strong>Accedi per impostare il tuo profilo Incontri</strong></span>
+        <span aria-hidden="true">→</span>
+      </button>
+    );
+  }
+
+  const save = async () => {
+    setError('');
+    setSuccess('');
+    setBusy(true);
+    const { error: err } = await updateOwnDatingProfile(citta.trim(), bio.trim());
+    setBusy(false);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setSuccess('Profilo Incontri aggiornato.');
+    onUpdateUser?.({ ...user, citta: citta.trim(), bio: bio.trim() });
+  };
+
+  return (
+    <>
+      <p className="rb-settings-hint">Città e bio mostrate agli altri nel mazzo del mondo Incontri.</p>
+      <label className="rb-field">
+        <span className="rb-field-label-row">
+          Città
+          <span className="rb-settings-hint" style={{ margin: 0 }}>{citta.length}/{CITTA_MAX}</span>
+        </span>
+        <input type="text" value={citta} maxLength={CITTA_MAX} onChange={(e) => setCitta(e.target.value)} />
+      </label>
+      <label className="rb-field">
+        <span className="rb-field-label-row">
+          Bio
+          <span className="rb-settings-hint" style={{ margin: 0 }}>{bio.length}/{BIO_MAX}</span>
+        </span>
+        <textarea rows={3} value={bio} maxLength={BIO_MAX} onChange={(e) => setBio(e.target.value)} />
+      </label>
       {error && <p className="rb-privacy-error">{error}</p>}
       {success && <p className="rb-privacy-success">{success}</p>}
       <button type="button" className="rb-reset-filters-btn" onClick={save} disabled={busy}>
@@ -494,6 +558,7 @@ export default function SettingsPanel({
   const [luogoOpen, setLuogoOpen] = useState(false);
   const [personalizzaOpen, setPersonalizzaOpen] = useState(false);
   const [personalizzaSub, setPersonalizzaSub] = useState('');
+  const [incontriProfileOpen, setIncontriProfileOpen] = useState(false);
 
   if (!open) return null;
 
@@ -642,6 +707,15 @@ export default function SettingsPanel({
           >
             <WorldsSubsection user={user} onOpenAuth={onOpenAuth} onUpdateUser={onUpdateUser} />
           </CollapsibleSection>
+        </CollapsibleSection>
+
+        <CollapsibleSection
+          title="Profilo Incontri"
+          infoText="Città e bio mostrate agli altri nel mazzo del mondo Incontri."
+          open={incontriProfileOpen}
+          onToggle={() => setIncontriProfileOpen((v) => !v)}
+        >
+          <DatingProfileSection user={user} onOpenAuth={onOpenAuth} onUpdateUser={onUpdateUser} />
         </CollapsibleSection>
 
         <section className="rb-settings-section">

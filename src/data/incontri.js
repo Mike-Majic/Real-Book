@@ -1,0 +1,141 @@
+import { supabase } from './supabaseClient';
+
+// Backend reale del mondo Incontri (RPC dedicate, vedi le funzioni SQL
+// corrispondenti — is_incontri_eligible richiede mondo "incontri" abilitato
+// e 18+, come isAdult()/mondiAbilitati lato client). Le RPC rispondono già
+// in italiano sugli errori attesi, qui va solo evitato di lasciar passare
+// un errore di rete grezzo.
+function mapProfileRow(row) {
+  return {
+    id: row.id,
+    name: row.nickname || 'Utente',
+    avatar: row.avatar_url || `https://i.pravatar.cc/150?u=${row.id}`,
+    age: row.eta ?? null,
+    city: row.citta || '',
+    bio: row.bio || '',
+  };
+}
+
+export async function getMatchCandidates(limit = 20) {
+  try {
+    const { data, error } = await supabase.rpc('get_match_candidates', { p_limit: limit });
+    if (error) return { error: error.message };
+    return { candidates: (data ?? []).map(mapProfileRow) };
+  } catch (err) {
+    return { error: err?.message ?? 'Errore di rete.' };
+  }
+}
+
+// true = è nato un match reciproco: chi chiama deve mostrare il toast solo
+// in quel caso, non ad ogni "mi piace".
+export async function recordSwipe(targetId, decisione) {
+  try {
+    const { data, error } = await supabase.rpc('record_swipe', { p_target_id: targetId, p_decisione: decisione });
+    if (error) return { error: error.message };
+    return { matched: Boolean(data) };
+  } catch (err) {
+    return { error: err?.message ?? 'Errore di rete.' };
+  }
+}
+
+export async function getLikesReceived() {
+  try {
+    const { data, error } = await supabase.rpc('get_likes_received');
+    if (error) return { error: error.message };
+    return {
+      likes: (data ?? []).map((row) => ({ ...mapProfileRow(row), super: Boolean(row.super), createdAt: row.created_at })),
+    };
+  } catch (err) {
+    return { error: err?.message ?? 'Errore di rete.' };
+  }
+}
+
+export async function getMyMatches() {
+  try {
+    const { data, error } = await supabase.rpc('get_my_matches');
+    if (error) return { error: error.message };
+    return { matches: (data ?? []).map((row) => ({ ...mapProfileRow(row), matchedAt: row.matched_at })) };
+  } catch (err) {
+    return { error: err?.message ?? 'Errore di rete.' };
+  }
+}
+
+export async function getMyFavorites() {
+  try {
+    const { data, error } = await supabase.rpc('get_my_favorites');
+    if (error) return { error: error.message };
+    return { favorites: (data ?? []).map(mapProfileRow) };
+  } catch (err) {
+    return { error: err?.message ?? 'Errore di rete.' };
+  }
+}
+
+export async function unmatch(otherId) {
+  try {
+    const { error } = await supabase.rpc('unmatch', { p_other: otherId });
+    if (error) return { error: error.message };
+    return {};
+  } catch (err) {
+    return { error: err?.message ?? 'Errore di rete.' };
+  }
+}
+
+export async function updateOwnDatingProfile(citta, bio) {
+  try {
+    const { error } = await supabase.rpc('update_own_dating_profile', { p_citta: citta, p_bio: bio });
+    if (error) return { error: error.message };
+    return {};
+  } catch (err) {
+    return { error: err?.message ?? 'Errore di rete.' };
+  }
+}
+
+// Preferiti: nessuna RPC dedicata, insert/delete diretti su match_favorites
+// (RLS: solo le proprie righe, e solo su profili idonei/non bloccati per
+// l'insert — un tentativo su un profilo non più disponibile arriva come un
+// generico errore di row-level security, qui tradotto).
+function translateFavoriteError(error) {
+  if (error?.code === '42501' || /row-level security/i.test(error?.message ?? '')) {
+    return 'Non puoi salvare questo profilo tra i preferiti.';
+  }
+  return error.message;
+}
+
+export async function addFavorite(favoriteId) {
+  try {
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth?.user) return { error: 'Devi essere loggato.' };
+    const { error } = await supabase.from('match_favorites').insert({ user_id: auth.user.id, favorite_id: favoriteId });
+    if (error) return { error: translateFavoriteError(error) };
+    return {};
+  } catch (err) {
+    return { error: err?.message ?? 'Errore di rete.' };
+  }
+}
+
+export async function removeFavorite(favoriteId) {
+  try {
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth?.user) return { error: 'Devi essere loggato.' };
+    const { error } = await supabase
+      .from('match_favorites')
+      .delete()
+      .eq('user_id', auth.user.id)
+      .eq('favorite_id', favoriteId);
+    if (error) return { error: error.message };
+    return {};
+  } catch (err) {
+    return { error: err?.message ?? 'Errore di rete.' };
+  }
+}
+
+// Canale realtime per i propri match (RLS di "matches" limita già alle
+// righe dove si è user_a o user_b): notifica ogni nuovo match, anche quello
+// creato dallo swipe reciproco dell'altra persona mentre non si è nella
+// scheda "Mi piaci a...".
+export function subscribeToOwnMatches(onInsert) {
+  return supabase
+    .channel('matches-own')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'matches' }, (payload) => onInsert(payload.new))
+    .subscribe();
+}
