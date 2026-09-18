@@ -4,6 +4,7 @@ import PostComposer from './PostComposer';
 import PostCard from './PostCard';
 import GroupsDirectory from './GroupsDirectory';
 import CategoryHub from './CategoryHub';
+import LiveWorldPanel from '../live/LiveWorldPanel';
 import EventComposer from './EventComposer';
 import EventCard from './EventCard';
 import SuggestedUsers from './SuggestedUsers';
@@ -77,6 +78,7 @@ const FEED_TABS = [
   { id: 'groups', label: 'Gruppi' },
   { id: 'saved', label: 'Salvati' },
   { id: 'eventi', label: '📅 Eventi' },
+  { id: 'live', label: '🔴 Live' },
   { id: 'mondi', label: '🌍 Mondi' },
 ];
 
@@ -616,6 +618,8 @@ export default function SocialFeed({
         />
       ) : feedTab === 'mondi' && !isGroupView ? (
         <CategoryHub onNavigateToCategory={onNavigateToCategory} />
+      ) : feedTab === 'live' && !isGroupView ? (
+        <LiveWorldPanel mondo="social" user={user} onOpenAuth={onOpenAuth} />
       ) : feedTab === 'eventi' && !isGroupView ? (
         <>
           {showEventComposer ? (

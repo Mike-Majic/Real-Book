@@ -26,7 +26,9 @@ import {
 import { BAMBINI_CATEGORIES, resolveCategoryQuery as resolveBambiniCategoryQuery } from './games/registry';
 import { INCONTRI_CATEGORIES, resolveCategoryQuery as resolveIncontriCategoryQuery } from './data/incontriCategories';
 import { SOCIAL_CATEGORIES, resolveCategoryQuery as resolveSocialCategoryQuery } from './data/socialCategories';
+import { LAVORO_CATEGORIES, resolveCategoryQuery as resolveLavoroCategoryQuery } from './data/lavoroCategories';
 import IncontriLiveExplorer from './components/incontri/IncontriLiveExplorer';
+import LavoroWorldExplorer from './components/lavoro/LavoroWorldExplorer';
 import AccessGate from './components/AccessGate';
 import { isAdult } from './data/age';
 import { isEventExpired, fetchEvents, createEvent as createEventApi, toggleEventLike as toggleEventLikeApi, subscribeToNewEvents } from './data/events';
@@ -67,10 +69,12 @@ const CATEGORY_WORLDS = {
   // Bambini non ha colonne di contenuti (featured/results): i "triangoli"
   // sono i minigiochi stessi, aperti tramite BambiniGameExplorer.
   bambini: { categories: BAMBINI_CATEGORIES, resolveQuery: resolveBambiniCategoryQuery },
-  // Incontri: solo "Live" per ora, apre la chat invece di colonne di contenuti.
+  // Incontri: solo "Match" per ora, apre lo swipe invece di colonne di contenuti.
   incontri: { categories: INCONTRI_CATEGORIES, resolveQuery: resolveIncontriCategoryQuery },
   // Social: solo "World", apre il feed esistente invece di CategoryColumn.
   social: { categories: SOCIAL_CATEGORIES, resolveQuery: resolveSocialCategoryQuery },
+  // Lavoro: solo "Live" per ora, apre il pannello delle dirette invece di CategoryColumn.
+  lavoro: { categories: LAVORO_CATEGORIES, resolveQuery: resolveLavoroCategoryQuery },
 };
 
 // Aspetta che l'utente finisca di digitare prima di far "volare" il globo sulla città cercata.
@@ -752,7 +756,7 @@ export default function App() {
         onSelectEvent={(eventId) => setEventLikersId(eventId)}
       />
 
-      {categorySet && world.id !== 'bambini' && world.id !== 'incontri' && world.id !== 'social' && (
+      {categorySet && world.id !== 'bambini' && world.id !== 'incontri' && world.id !== 'social' && world.id !== 'lavoro' && (
         <ArteExplorer
           world={world}
           categorySet={categorySet}
@@ -787,6 +791,17 @@ export default function App() {
           onOpenChat={(otherId) => setActiveFriendChatId(otherId)}
           initialMatchTab={incontriInitialTab}
           onConsumeInitialMatchTab={() => setIncontriInitialTab(null)}
+        />
+      )}
+
+      {world.id === 'lavoro' && isAdult(user?.dataNascita) && (
+        <LavoroWorldExplorer
+          world={world}
+          activeCategory={activeArteCategory}
+          onToggleCategory={toggleArteCategory}
+          onSearchCategory={flyToArteCategory}
+          user={user}
+          onOpenAuth={() => setAuthOpen(true)}
         />
       )}
 
