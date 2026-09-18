@@ -174,13 +174,14 @@ export default function FotografiaColumn({ user, onOpenAuth }) {
     setPublishError(null);
     const manualTags = manualTagsText.split(',').map((t) => t.trim()).filter(Boolean);
     const allTags = Array.from(new Set([...suggestedTags, ...manualTags]));
-    const hasSocialTag = tagUserIds.length > 0 || tagGroupIds.length > 0;
     const chosenExtra = extraPlacements.filter((p) => confirmedPlacements.has(placementKey(p)));
-    const placements = [
-      { world: 'arte', category: 'fotografia', subfamily: suggestedSubfamily },
-      ...chosenExtra,
-      ...(hasSocialTag ? [{ world: 'social' }] : []),
-    ];
+    // Una foto pubblicata qui compare sempre anche nel mondo Social (e
+    // viceversa, vedi PostComposer): stesso contenuto, stessi like, senza
+    // doverla ripubblicare a mano nei due mondi.
+    const placements = [{ world: 'arte', category: 'fotografia', subfamily: suggestedSubfamily }, ...chosenExtra];
+    if (!placements.some((p) => placementKey(p) === placementKey({ world: 'social' }))) {
+      placements.push({ world: 'social' });
+    }
     const file = dataUrlToFile(draftSrc, `foto-${Date.now()}.png`);
     const { error } = await publishContent({ file, type: 'foto', caption: caption.trim(), tags: allTags, placements });
     setPublishing(false);
@@ -269,9 +270,7 @@ export default function FotografiaColumn({ user, onOpenAuth }) {
             onToggleUser={(id) => setTagUserIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]))}
             onToggleGroup={(id) => setTagGroupIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]))}
           />
-          {(tagUserIds.length > 0 || tagGroupIds.length > 0) && (
-            <p className="rb-foto-form-hint">Con almeno un tag, questa foto comparirà anche nella bacheca del mondo Social.</p>
-          )}
+          <p className="rb-foto-form-hint">Questa foto comparirà anche nella bacheca del mondo Social.</p>
           {publishError && <p className="rb-foto-form-error">⚠️ {publishError}</p>}
           <div className="rb-foto-form-actions">
             <button type="button" className="rb-foto-form-cancel" onClick={resetForm}>Annulla</button>

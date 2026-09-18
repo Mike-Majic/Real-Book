@@ -161,12 +161,21 @@ export default function PostComposer({
       const manualTags = manualTagsText.split(',').map((t) => t.trim()).filter(Boolean);
       const allTags = Array.from(new Set([...suggestedTags, ...manualTags]));
       const extraPlacements = suggestedPlacements.filter((p) => confirmedPlacements.has(placementKey(p)));
+      // Una foto (non un video) pubblicata dal mondo Social compare sempre
+      // anche in Fotografia nel mondo Arte, e viceversa (vedi FotografiaColumn):
+      // stesso contenuto, stessi like, condiviso tra i due mondi senza doverlo
+      // ripubblicare a mano.
+      const crossPost = mediaType === 'foto' ? [{ world: 'arte', category: 'fotografia' }] : [];
+      const placements = [{ world: 'social' }, ...extraPlacements];
+      for (const p of crossPost) {
+        if (!placements.some((e) => placementKey(e) === placementKey(p))) placements.push(p);
+      }
       const { content, url, error } = await publishContent({
         file: mediaFile,
         type: mediaType,
         caption: text.trim(),
         tags: allTags,
-        placements: [{ world: 'social' }, ...extraPlacements],
+        placements,
       });
       setUploading(false);
       if (error) {
@@ -244,6 +253,10 @@ export default function PostComposer({
 
           {!analyzing && suggestedTags.length > 0 && (
             <p className="rb-composer-media-hint">Tag suggeriti: {suggestedTags.map((t) => `#${t}`).join(' ')}</p>
+          )}
+
+          {mediaType === 'foto' && (
+            <p className="rb-composer-media-hint">Questa foto comparirà anche in Fotografia nel mondo Arte.</p>
           )}
 
           {!analyzing &&
