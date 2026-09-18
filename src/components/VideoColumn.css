@@ -43,6 +43,12 @@
   max-width: 420px;
 }
 
+.rb-video-upload-btns {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .rb-video-upload-btn {
   flex-shrink: 0;
   background: var(--accent, #8b5cf6);

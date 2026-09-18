@@ -103,18 +103,19 @@ export default function FotografiaColumn({ user, onOpenAuth }) {
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState(null);
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   const refresh = () => {
     listContentsForPlacement({ world: 'arte', category: 'fotografia' }).then(setPhotos);
   };
   useEffect(refresh, []);
 
-  const openPicker = () => {
+  const openPicker = (ref) => {
     if (!user) {
       onOpenAuth();
       return;
     }
-    fileInputRef.current?.click();
+    ref.current?.click();
   };
 
   const onFileChosen = (e) => {
@@ -205,6 +206,14 @@ export default function FotografiaColumn({ user, onOpenAuth }) {
 
   return (
     <div className="rb-foto-column">
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        capture="environment"
+        hidden
+        onChange={onFileChosen}
+      />
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={onFileChosen} />
 
       <div className="rb-foto-header">
@@ -212,7 +221,10 @@ export default function FotografiaColumn({ user, onOpenAuth }) {
           <h3>Fotografia</h3>
           <p>In stile Pinterest: scatti della community, taggabili a persone e gruppi del mondo Social.</p>
         </div>
-        <button type="button" className="rb-foto-upload-btn" onClick={openPicker}>+ Carica foto</button>
+        <div className="rb-foto-upload-btns">
+          <button type="button" className="rb-foto-upload-btn" onClick={() => openPicker(cameraInputRef)}>📸 Scatta</button>
+          <button type="button" className="rb-foto-upload-btn" onClick={() => openPicker(fileInputRef)}>🖼️ Galleria</button>
+        </div>
       </div>
 
       {showForm && draftSrc && (

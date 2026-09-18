@@ -41,18 +41,19 @@ export default function VideoColumn({ user, onOpenAuth }) {
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState(null);
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   const refresh = () => {
     listContentsForPlacement({ world: 'arte', category: 'video' }).then(setVideos);
   };
   useEffect(refresh, []);
 
-  const openPicker = () => {
+  const openPicker = (ref) => {
     if (!user) {
       onOpenAuth();
       return;
     }
-    fileInputRef.current?.click();
+    ref.current?.click();
   };
 
   const onFileChosen = async (e) => {
@@ -142,6 +143,14 @@ export default function VideoColumn({ user, onOpenAuth }) {
 
   return (
     <div className="rb-video-column">
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="video/mp4,video/webm,video/quicktime"
+        capture="environment"
+        hidden
+        onChange={onFileChosen}
+      />
       <input ref={fileInputRef} type="file" accept="video/mp4,video/webm,video/quicktime" hidden onChange={onFileChosen} />
 
       <div className="rb-video-header">
@@ -149,7 +158,10 @@ export default function VideoColumn({ user, onOpenAuth }) {
           <h3>Video</h3>
           <p>Clip brevi della community. Modifica gratuita: solo un taglio inizio/fine, niente montaggio pesante.</p>
         </div>
-        <button type="button" className="rb-video-upload-btn" onClick={openPicker}>+ Carica video</button>
+        <div className="rb-video-upload-btns">
+          <button type="button" className="rb-video-upload-btn" onClick={() => openPicker(cameraInputRef)}>📹 Registra</button>
+          <button type="button" className="rb-video-upload-btn" onClick={() => openPicker(fileInputRef)}>🎬 Galleria</button>
+        </div>
       </div>
 
       {showForm && draftUrl && (

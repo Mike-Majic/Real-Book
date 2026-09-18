@@ -8,6 +8,7 @@ import {
   uploadAvatar,
 } from '../data/accounts';
 import { sendMailboxMessage } from '../data/modMailbox';
+import { listMyAlbums, createAlbum, deleteAlbum, addPhotoToAlbum, removePhotoFromAlbum } from '../data/albums';
 import ModalOverlay from './ModalOverlay';
 import InfoBadge from './InfoBadge';
 import './ProfileSettingsPanel.css';
@@ -149,6 +150,189 @@ function AvatarUploader({ user, onUpdateUser }) {
         onChange={handleFile}
       />
       <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={handleFile} />
+    </div>
+  );
+}
+
+// Foto dentro un album aperto: griglia con upload (scatta/galleria, stesso
+// pattern del resto dell'app) e un modo per togliere una foto dall'album
+// senza cancellarla (resta come contenuto singolo, come "rimuovi da questo
+// album" su Facebook).
+function AlbumDetail({ album, onAddPhoto, onRemovePhoto, onBack, onDelete }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const cameraInputRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setError('');
+    setUploading(true);
+    const { photo, error: err } = await addPhotoToAlbum({ file, albumId: album.id });
+    setUploading(false);
+    if (err) {
+      setError(err);
+      return;
+    }
+    onAddPhoto(photo);
+  };
+
+  return (
+    <div className="rb-album-detail">
+      <div className="rb-album-detail-header">
+        <button type="button" className="rb-album-back-btn" onClick={onBack}>← Album</button>
+        <div>
+          <strong>{album.nome}</strong>
+          {album.descrizione && <p className="rb-album-detail-desc">{album.descrizione}</p>}
+        </div>
+        <button type="button" className="rb-album-delete-btn" onClick={() => onDelete(album.id)}>Elimina album</button>
+      </div>
+
+      <div className="rb-album-upload-btns">
+        <button type="button" onClick={() => cameraInputRef.current?.click()} disabled={uploading}>📸 Scatta</button>
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}>🖼️ Galleria</button>
+      </div>
+      {uploading && <p className="rb-avatar-uploader-status">Caricamento...</p>}
+      {error && <p className="rb-profile-field-error">{error}</p>}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        capture="environment"
+        hidden
+        onChange={handleFile}
+      />
+      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={handleFile} />
+
+      <div className="rb-album-photo-grid">
+        {album.photos.map((p) => (
+          <div key={p.id} className="rb-album-photo">
+            <img src={p.url} alt="" />
+            <button type="button" className="rb-album-photo-remove" onClick={() => onRemovePhoto(p.id)} title="Rimuovi dall'album">✕</button>
+          </div>
+        ))}
+        {album.photos.length === 0 && <p className="rb-album-empty">Nessuna foto in questo album ancora.</p>}
+      </div>
+    </div>
+  );
+}
+
+// Scheda "Album": elenco degli album stile Facebook (photo_albums,
+// raggruppa righe di contents tramite album_id — vedi data/albums.js),
+// con creazione, upload foto, rimozione foto ed eliminazione album.
+function AlbumsPanel() {
+  const [albums, setAlbums] = useState(null);
+  const [openAlbumId, setOpenAlbumId] = useState(null);
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [newNome, setNewNome] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    listMyAlbums().then(setAlbums);
+  }, []);
+
+  const createNew = async () => {
+    if (!newNome.trim() || creating) return;
+    setCreating(true);
+    setError('');
+    const { album, error: err } = await createAlbum({ nome: newNome, descrizione: newDesc });
+    setCreating(false);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setAlbums((prev) => [album, ...(prev ?? [])]);
+    setShowNewForm(false);
+    setNewNome('');
+    setNewDesc('');
+    setOpenAlbumId(album.id);
+  };
+
+  const removeAlbum = async (albumId) => {
+    const { error: err } = await deleteAlbum(albumId);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setAlbums((prev) => prev.filter((a) => a.id !== albumId));
+    setOpenAlbumId(null);
+  };
+
+  const addPhoto = (albumId, photo) => {
+    setAlbums((prev) => prev.map((a) => (a.id === albumId ? { ...a, photos: [photo, ...a.photos] } : a)));
+  };
+
+  const removePhoto = async (albumId, contentId) => {
+    const { error: err } = await removePhotoFromAlbum(contentId);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setAlbums((prev) => prev.map((a) => (a.id === albumId ? { ...a, photos: a.photos.filter((p) => p.id !== contentId) } : a)));
+  };
+
+  if (albums === null) return <p className="rb-album-loading">Caricamento album...</p>;
+
+  const openAlbum = albums.find((a) => a.id === openAlbumId);
+  if (openAlbum) {
+    return (
+      <AlbumDetail
+        album={openAlbum}
+        onBack={() => setOpenAlbumId(null)}
+        onDelete={removeAlbum}
+        onAddPhoto={(photo) => addPhoto(openAlbum.id, photo)}
+        onRemovePhoto={(contentId) => removePhoto(openAlbum.id, contentId)}
+      />
+    );
+  }
+
+  return (
+    <div className="rb-albums-panel">
+      {!showNewForm ? (
+        <button type="button" className="rb-album-new-btn" onClick={() => setShowNewForm(true)}>+ Nuovo album</button>
+      ) : (
+        <div className="rb-album-new-form">
+          <input
+            type="text"
+            placeholder="Nome album (es. Vacanze 2026)"
+            value={newNome}
+            onChange={(e) => setNewNome(e.target.value)}
+            maxLength={60}
+          />
+          <textarea
+            placeholder="Descrizione (facoltativa)"
+            value={newDesc}
+            onChange={(e) => setNewDesc(e.target.value)}
+            maxLength={300}
+            rows={2}
+          />
+          <div className="rb-album-new-form-actions">
+            <button type="button" onClick={() => setShowNewForm(false)}>Annulla</button>
+            <button type="button" className="rb-profile-save-btn" onClick={createNew} disabled={!newNome.trim() || creating}>
+              {creating ? 'Creazione...' : 'Crea'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {error && <p className="rb-profile-field-error">{error}</p>}
+
+      <div className="rb-albums-grid">
+        {albums.map((a) => (
+          <button type="button" key={a.id} className="rb-album-card" onClick={() => setOpenAlbumId(a.id)}>
+            <div className="rb-album-cover">
+              {a.photos[0] ? <img src={a.photos[0].url} alt="" /> : <span className="rb-album-cover-empty">📷</span>}
+            </div>
+            <strong>{a.nome}</strong>
+            <span>{a.photos.length} {a.photos.length === 1 ? 'foto' : 'foto'}</span>
+          </button>
+        ))}
+        {albums.length === 0 && !showNewForm && <p className="rb-album-empty">Non hai ancora nessun album.</p>}
+      </div>
     </div>
   );
 }
@@ -366,6 +550,7 @@ export default function ProfileSettingsPanel({ open, onClose, user, onUpdateUser
 
         <div className="rb-profile-tabs">
           <button type="button" className={tab === 'profilo' ? 'active' : ''} onClick={() => setTab('profilo')}>Profilo</button>
+          <button type="button" className={tab === 'album' ? 'active' : ''} onClick={() => setTab('album')}>Album</button>
           <button type="button" className={tab === 'account' ? 'active' : ''} onClick={() => setTab('account')}>Account</button>
         </div>
 
@@ -403,6 +588,8 @@ export default function ProfileSettingsPanel({ open, onClose, user, onUpdateUser
             </FieldGroup>
           </>
         )}
+
+        {tab === 'album' && <AlbumsPanel />}
 
         {tab === 'account' && <AccountTab user={user} onUpdateUser={onUpdateUser} />}
 

@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient';
 // massima (vedi accept sugli <input type="file">): un upload respinto per
 // questo arriva come un errore tecnico di Supabase Storage, qui diventa un
 // messaggio comprensibile.
-function translateUploadError(error) {
+export function translateUploadError(error) {
   const msg = error?.message ?? '';
   const status = String(error?.statusCode ?? error?.status ?? '');
   if (status === '400' || status === '413' || /mime type|not supported|exceeded the maximum allowed size|payload too large/i.test(msg)) {
