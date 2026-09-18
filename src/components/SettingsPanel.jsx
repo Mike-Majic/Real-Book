@@ -1,18 +1,13 @@
 import { useEffect, useState } from 'react';
 import { CONTINENTS, REGIONS, MAX_DISTANCE_KM } from '../data/geo';
 import { ARTE_CATEGORIES } from '../data/arteCategories';
-import { MOCK_USERS } from '../data/mockUsers';
 import { WORLDS } from '../data/worlds';
 import { listBlockedContacts, blockContact, unblockContact } from '../data/blockedContacts';
 import { resetAccountPassword, setOwnWorlds } from '../data/accounts';
+import { fetchProfilesMap } from '../data/posts';
 import ModalOverlay from './ModalOverlay';
 import InfoBadge from './InfoBadge';
 import './SettingsPanel.css';
-
-function contactName(id) {
-  const u = MOCK_USERS.find((m) => m.id === id);
-  return u?.name ?? `Utente #${id}`;
-}
 
 // Riga di titolo cliccabile che apre/chiude il contenuto sotto — stesso
 // linguaggio visivo di rb-settings-nav-btn (che porta a un'altra vista),
@@ -175,6 +170,7 @@ function WorldsSubsection({ user, onOpenAuth, onUpdateUser }) {
 function PrivacyView({ onBack, onClose, user, onOpenAuth, friends, onUnfriend, visibility, setVisibility }) {
   const [sub, setSub] = useState('');
   const [blocked, setBlocked] = useState([]);
+  const [profilesMap, setProfilesMap] = useState(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [pwBusy, setPwBusy] = useState(false);
@@ -196,6 +192,26 @@ function PrivacyView({ onBack, onClose, user, onOpenAuth, friends, onUnfriend, v
       cancelled = true;
     };
   }, [user]);
+
+  // Nomi da public_profiles (non più da MOCK_USERS): unione di chi ho
+  // bloccato e degli amici ancora bloccabili, così i nomi non "saltano"
+  // quando un id passa dall'una all'altra lista.
+  useEffect(() => {
+    const ids = [...new Set([...blocked, ...(friends ?? [])])];
+    if (ids.length === 0) {
+      setProfilesMap(new Map());
+      return undefined;
+    }
+    let cancelled = false;
+    fetchProfilesMap(ids).then((map) => {
+      if (!cancelled) setProfilesMap(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [blocked, friends]);
+
+  const contactName = (id) => profilesMap.get(id)?.name ?? `Utente #${id}`;
 
   const doBlock = async (id) => {
     setError('');
@@ -260,7 +276,7 @@ function PrivacyView({ onBack, onClose, user, onOpenAuth, friends, onUnfriend, v
               <ul className="rb-privacy-contact-list">
                 {blocked.map((id) => (
                   <li key={id} className="rb-privacy-contact-row">
-                    <span>{contactName(Number.isNaN(Number(id)) ? id : Number(id))}</span>
+                    <span>{contactName(id)}</span>
                     <button type="button" className="rb-reset-filters-btn rb-privacy-inline-btn" onClick={() => doUnblock(id)}>
                       Sblocca
                     </button>

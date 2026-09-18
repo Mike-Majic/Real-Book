@@ -1,10 +1,9 @@
 import { supabase } from './supabaseClient';
 
-// Blocco/sblocco contatti (Impostazioni privacy). contact_id è testo: oggi i
-// contatti mostrati nell'app sono ancora gli utenti finti di mockUsers.js
-// (id numerici), non ancora relazioni reali fra account — vedi il commento
-// sulla tabella blocked_contacts su Supabase. Funziona comunque anche con
-// veri UUID quando gli amici diventeranno account reali.
+// Blocco/sblocco contatti (Impostazioni privacy). contact_id è uuid, FK a
+// auth.users(id): ora rappresenta davvero l'account bloccato (prima erano
+// gli id finti di mockUsers.js, quando gli "amici" mostrati non erano
+// ancora account reali).
 export async function listBlockedContacts() {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth?.user) return [];
@@ -21,7 +20,7 @@ export async function blockContact(contactId) {
   if (!auth?.user) return { error: 'Devi essere loggato.' };
   const { error } = await supabase
     .from('blocked_contacts')
-    .insert({ blocker_id: auth.user.id, contact_id: String(contactId) });
+    .insert({ blocker_id: auth.user.id, contact_id: contactId });
   if (error) return { error: error.message };
   return {};
 }
@@ -33,7 +32,7 @@ export async function unblockContact(contactId) {
     .from('blocked_contacts')
     .delete()
     .eq('blocker_id', auth.user.id)
-    .eq('contact_id', String(contactId));
+    .eq('contact_id', contactId);
   if (error) return { error: error.message };
   return {};
 }
