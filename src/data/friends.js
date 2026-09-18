@@ -5,6 +5,16 @@ function mapProfileRow(row) {
   return { id: row.id, name: row.nickname || row.username || 'Utente', avatar: row.avatar_url || '' };
 }
 
+// Un blocco (in una delle due direzioni) fa fallire l'inserimento della
+// richiesta con un generico "row-level security policy" di Postgres:
+// qui diventa un messaggio comprensibile invece di un errore tecnico.
+function translateBlockedError(error) {
+  if (error?.code === '42501' || /row-level security/i.test(error?.message ?? '')) {
+    return 'Non puoi inviare una richiesta a questo utente.';
+  }
+  return error.message;
+}
+
 // Cerca persone reali per nickname o nome utente (vista public_profiles,
 // gli unici campi pubblici di profiles) — sostituisce la vecchia ricerca
 // su MOCK_USERS, ormai vuoto.
@@ -49,7 +59,7 @@ export async function sendFriendRequest(toId) {
     if (existing) return {};
 
     const { error } = await supabase.from('friend_requests').insert({ from_id: auth.user.id, to_id: toId });
-    if (error) return { error: error.message };
+    if (error) return { error: translateBlockedError(error) };
     return {};
   } catch (err) {
     return { error: err?.message ?? 'Errore di rete.' };

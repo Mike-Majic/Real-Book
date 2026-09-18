@@ -1,6 +1,16 @@
 import { supabase } from './supabaseClient';
 import { fetchProfilesMap } from './posts';
 
+// Se nel frattempo uno dei due ha bloccato l'altro, l'INSERT fallisce con
+// un generico "row-level security policy" di Postgres: qui diventa un
+// messaggio comprensibile invece di un errore tecnico.
+function translateBlockedError(error) {
+  if (error?.code === '42501' || /row-level security/i.test(error?.message ?? '')) {
+    return 'Non puoi più scrivere in questa conversazione.';
+  }
+  return error.message;
+}
+
 // Apre (o riusa, se già esiste) la conversazione diretta con un altro
 // utente reale — la funzione lato server aggiunge entrambi come
 // partecipanti, qui non serve nient'altro.
@@ -50,7 +60,7 @@ export async function sendMessage(conversationId, testo) {
       .insert({ conversation_id: conversationId, sender_id: auth.user.id, testo })
       .select()
       .single();
-    if (error) return { error: error.message };
+    if (error) return { error: translateBlockedError(error) };
     return { id: data.id, createdAt: data.created_at };
   } catch (err) {
     return { error: err?.message ?? 'Errore di rete.' };
