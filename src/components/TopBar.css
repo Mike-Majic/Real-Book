@@ -154,6 +154,27 @@
   cursor: pointer;
 }
 
+.rb-friends-btn {
+  position: relative;
+}
+
+.rb-friends-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #ff3860;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .rb-verified-badge {
   width: 15px;
   height: 15px;

@@ -33,9 +33,17 @@ import { SEED_EVENTS, isEventExpired } from './data/events';
 import { isStaff } from './data/roles';
 import EventLikersModal from './components/EventLikersModal';
 import FriendChatModal from './components/FriendChatModal';
+import FriendsModal from './components/FriendsModal';
 import AdminPanel from './components/AdminPanel';
 import ProfileSettingsPanel from './components/ProfileSettingsPanel';
 import { getCurrentAccount, subscribeAuthChanges, logoutAccount } from './data/accounts';
+import {
+  getFriends,
+  getSentRequests,
+  getReceivedRequests,
+  sendFriendRequest as sendFriendRequestApi,
+  removeFriend as removeFriendApi,
+} from './data/friends';
 import './App.css';
 
 const DEFAULT_FILTERS = { gender: 'Tutti', ageMin: 18, ageMax: 60 };
@@ -134,8 +142,14 @@ export default function App() {
   // niente localStorage-bridge come per le foto di Arte, qui serve stato
   // condiviso in tempo reale.
   const [events, setEvents] = useState(() => loadStored('rb-events', SEED_EVENTS));
-  const [friends, setFriends] = useState(() => loadStored('rb-friends', []));
-  const [friendRequestsSent, setFriendRequestsSent] = useState(() => loadStored('rb-friend-requests-sent', []));
+  // Amicizie e richieste: id soltanto (nomi/avatar li risolve chi li mostra
+  // davvero, vedi FriendsModal) — servono qui solo per i controlli rapidi
+  // "è già amico?"/"gli ho già scritto?" sparsi nell'app (EventLikersModal,
+  // Impostazioni Privacy).
+  const [friends, setFriends] = useState([]);
+  const [friendRequestsSent, setFriendRequestsSent] = useState([]);
+  const [receivedRequestsCount, setReceivedRequestsCount] = useState(0);
+  const [friendsModalOpen, setFriendsModalOpen] = useState(false);
   const [eventLikersId, setEventLikersId] = useState(null);
   const [activeFriendChatId, setActiveFriendChatId] = useState(null);
   const [adminOpen, setAdminOpen] = useState(false);
@@ -222,11 +236,22 @@ export default function App() {
   useEffect(() => localStorage.setItem('rb-arte-filter', JSON.stringify(arteFilter)), [arteFilter]);
   useEffect(() => localStorage.setItem('rb-visibility', JSON.stringify(visibility)), [visibility]);
   useEffect(() => localStorage.setItem('rb-events', JSON.stringify(events)), [events]);
-  useEffect(() => localStorage.setItem('rb-friends', JSON.stringify(friends)), [friends]);
-  useEffect(
-    () => localStorage.setItem('rb-friend-requests-sent', JSON.stringify(friendRequestsSent)),
-    [friendRequestsSent]
-  );
+
+  // Amicizie/richieste reali (Supabase): ricaricate ad ogni cambio utente
+  // (login/logout), e su richiesta esplicita dopo un'azione da FriendsModal
+  // (inviata/accettata/rifiutata/rimossa un'amicizia).
+  const refreshFriendsState = () => {
+    if (!user) {
+      setFriends([]);
+      setFriendRequestsSent([]);
+      setReceivedRequestsCount(0);
+      return;
+    }
+    getFriends().then((list) => setFriends(list.map((f) => f.id)));
+    getSentRequests().then((list) => setFriendRequestsSent(list.map((r) => r.toId)));
+    getReceivedRequests().then((list) => setReceivedRequestsCount(list.length));
+  };
+  useEffect(refreshFriendsState, [user?.id]);
 
   // Traccia la posizione reale del dispositivo solo mentre l'utente ha
   // attivato "Condividi la mia posizione in tempo reale" nelle Impostazioni:
@@ -294,7 +319,9 @@ export default function App() {
     );
   };
 
-  const sendFriendRequest = (userId) => {
+  const sendFriendRequest = async (userId) => {
+    const { error } = await sendFriendRequestApi(userId);
+    if (error) return;
     setFriendRequestsSent((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
   };
 
@@ -461,6 +488,8 @@ export default function App() {
         }}
         onOpenAdmin={() => setAdminOpen(true)}
         onOpenProfile={() => setProfileSettingsOpen(true)}
+        onOpenFriends={() => setFriendsModalOpen(true)}
+        pendingFriendRequestsCount={receivedRequestsCount}
       />
 
       {justConfirmedEmail && (
@@ -611,8 +640,22 @@ export default function App() {
           setVisibility(DEFAULT_VISIBILITY);
         }}
         friends={friends}
-        onUnfriend={(id) => setFriends((prev) => prev.filter((f) => f !== id))}
+        onUnfriend={(id) => {
+          removeFriendApi(id);
+          setFriends((prev) => prev.filter((f) => f !== id));
+        }}
       />
+
+      {friendsModalOpen && (
+        <FriendsModal
+          onClose={() => setFriendsModalOpen(false)}
+          onOpenChat={(friendId) => {
+            setFriendsModalOpen(false);
+            setActiveFriendChatId(friendId);
+          }}
+          onFriendsChanged={refreshFriendsState}
+        />
+      )}
 
       <ProfileModal
         user={selectedUser}

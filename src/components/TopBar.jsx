@@ -1,7 +1,17 @@
 import { isStaff } from '../data/roles';
 import './TopBar.css';
 
-export default function TopBar({ world, user, onOpenAuth, onLogout, onOpenSettings, onOpenAdmin, onOpenProfile }) {
+export default function TopBar({
+  world,
+  user,
+  onOpenAuth,
+  onLogout,
+  onOpenSettings,
+  onOpenAdmin,
+  onOpenProfile,
+  onOpenFriends,
+  pendingFriendRequestsCount = 0,
+}) {
   return (
     <header className="rb-topbar" style={{ '--accent': world.color }}>
       <div className="rb-topbar-brand">
@@ -19,6 +29,12 @@ export default function TopBar({ world, user, onOpenAuth, onLogout, onOpenSettin
 
         {user ? (
           <div className="rb-user-chip">
+            <button className="rb-icon-btn rb-friends-btn" onClick={onOpenFriends} aria-label="Amici" title="Amici">
+              👥
+              {pendingFriendRequestsCount > 0 && (
+                <span className="rb-friends-badge">{pendingFriendRequestsCount}</span>
+              )}
+            </button>
             {isStaff(user.ruolo) && (
               <button className="rb-icon-btn" onClick={onOpenAdmin} aria-label="Backend" title="Backend">
                 🛠️
