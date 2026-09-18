@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { resolveAuthor, formatRelativeDate } from './resolveAuthor';
-import { getGroupById } from '../../data/groups';
+import { formatRelativeDate } from './resolveAuthor';
 import LinkPreview from './LinkPreview';
 import PostComposer from './PostComposer';
 import ReportModal from '../shared/ReportModal';
@@ -8,14 +7,9 @@ import './PostCard.css';
 
 const REACTION_EMOJIS = ['❤️', '😂', '👍'];
 
-// GIF e foto vengono salvate come URL/dataURL (niente vero upload su
-// server per le GIF, vedi socialPosts.js): se quel link smette di
-// funzionare (CDN, scadenza, rete) l'utente deve vedere un avviso chiaro,
-// non un'area vuota senza spiegazione — è successo in test reali e capire
-// "salvata ma non si carica" da "non salvata affatto" altrimenti richiede
-// di aprire la console. Le foto caricate dal mondo Arte sono invece
-// dataURL locali (mai un link esterno), quindi per loro questo errore non
-// dovrebbe mai scattare, ma il fallback resta a scopo di sicurezza.
+// GIF salvate come URL (niente vero upload su server per le GIF): se quel
+// link smette di funzionare (CDN, scadenza, rete) l'utente deve vedere un
+// avviso chiaro, non un'area vuota senza spiegazione.
 function MediaImage({ src, alt, errorText, className }) {
   const [failed, setFailed] = useState(false);
   if (failed) {
@@ -24,8 +18,9 @@ function MediaImage({ src, alt, errorText, className }) {
   return <img className={className} src={src} alt={alt} onError={() => setFailed(true)} />;
 }
 
-function Comment({ comment, user, onReact, onReport }) {
-  const author = resolveAuthor(comment.autoreId, user);
+function Comment({ comment, user, onReact, onReport, onDelete }) {
+  const author = comment.author ?? { name: 'Utente', avatar: '' };
+  const isOwn = user && comment.autoreId === user.id;
   return (
     <li className="rb-comment">
       <img className="rb-comment-avatar" src={author.avatar} alt={author.name} />
@@ -47,6 +42,11 @@ function Comment({ comment, user, onReact, onReport }) {
               </button>
             );
           })}
+          {isOwn && onDelete && (
+            <button type="button" className="rb-comment-react-btn" title="Elimina commento" onClick={() => onDelete(comment.id)}>
+              🗑️
+            </button>
+          )}
           {onReport && (
             <button
               type="button"
@@ -76,6 +76,7 @@ export default function PostCard({
   onToggleContentLike,
   onAddComment,
   onReactToComment,
+  onDeleteComment,
   trendingRank = null,
   following = [],
   onToggleFollow,
@@ -90,20 +91,19 @@ export default function PostCard({
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(post.testo);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const author = resolveAuthor(post.autoreId, user);
-  const myId = 'me';
-  const isOwn = post.autoreId === 'me';
+  const author = post.author ?? { name: 'Utente', avatar: '' };
+  const isOwn = Boolean(user) && post.autoreId === user.id;
   // I post con foto/video autotaggato hanno un contentId condiviso con le
   // altre posizioni dello stesso contenuto (Arte, Nerd, ecc): il like passa
   // dal conteggio comune (content_likes), non dall'array locale mi_piace.
   const hasSharedContent = Boolean(post.contentId);
-  const liked = hasSharedContent ? post.contentLiked : post.mi_piace.includes(myId);
+  const liked = hasSharedContent ? post.contentLiked : Boolean(user) && post.mi_piace.includes(user.id);
   const likeCount = hasSharedContent ? post.contentLikeCount : post.mi_piace.length;
   const postComments = comments.filter((c) => c.post_id === post.id);
-  const group = post.gruppo_id ? getGroupById(post.gruppo_id) : null;
-  // Il pulsante Segui ha senso solo su post di altri utenti reali (non 'me',
-  // non autori non risolvibili): serve un id numerico su cui basare il follow.
-  const canFollow = typeof post.autoreId === 'number' && onToggleFollow;
+  const group = post.group ?? null;
+  // Il pulsante Segui ha senso solo sui post di altri utenti reali, mai sui
+  // propri.
+  const canFollow = Boolean(onToggleFollow) && !isOwn;
   const isFollowing = canFollow && following.includes(post.autoreId);
 
   const handleLike = () => {
@@ -212,14 +212,6 @@ export default function PostCard({
       {post.gif && (
         <MediaImage className="rb-post-gif" src={post.gif} alt="GIF" errorText="GIF non disponibile (il link non si è caricato)" />
       )}
-      {post.foto && (
-        <>
-          <MediaImage className="rb-post-photo" src={post.foto} alt="Foto" errorText="Foto non disponibile" />
-          {post.fotoTagLabels?.length > 0 && (
-            <p className="rb-post-photo-tags">📷 con {post.fotoTagLabels.join(', ')}</p>
-          )}
-        </>
-      )}
       {post.mediaUrl && post.mediaType === 'video' && (
         <video className="rb-post-video" src={post.mediaUrl} controls />
       )}
@@ -270,7 +262,14 @@ export default function PostCard({
           {postComments.length > 0 && (
             <ul className="rb-comment-list">
               {postComments.map((c) => (
-                <Comment key={c.id} comment={c} user={user} onReact={onReactToComment} onReport={openReportComment} />
+                <Comment
+                  key={c.id}
+                  comment={c}
+                  user={user}
+                  onReact={onReactToComment}
+                  onReport={openReportComment}
+                  onDelete={onDeleteComment}
+                />
               ))}
             </ul>
           )}

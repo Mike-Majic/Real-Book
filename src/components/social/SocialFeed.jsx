@@ -8,11 +8,21 @@ import EventComposer from './EventComposer';
 import EventCard from './EventCard';
 import SuggestedUsers from './SuggestedUsers';
 import TrendingGroups from './TrendingGroups';
-import { resolveAuthor } from './resolveAuthor';
-import { getCityInfo } from '../../data/geo';
-import { INITIAL_POSTS, INITIAL_COMMENTS, computeRelevance } from '../../data/socialPosts';
-import { GROUPS, getGroupById } from '../../data/groups';
-import { usersForWorld } from '../../data/mockUsers';
+import { computeRelevance } from '../../data/socialPosts';
+import {
+  fetchFeed,
+  fetchComments,
+  fetchProfilesMap,
+  createPost as createPostApi,
+  updatePostText as updatePostTextApi,
+  softDeletePost as softDeletePostApi,
+  togglePostLike as togglePostLikeApi,
+  toggleSavedPost as toggleSavedPostApi,
+  addComment as addCommentApi,
+  deleteComment as deleteCommentApi,
+} from '../../data/posts';
+import { listGroups, getMyGroupIds, createGroup as createGroupApi, joinGroup, leaveGroup } from '../../data/groups';
+import { followUser, unfollowUser, getFollowing, listSuggestedProfiles } from '../../data/follows';
 import {
   listContentsForPlacement,
   toggleContentLike as toggleContentLikeApi,
@@ -28,17 +38,14 @@ import './SocialFeed.css';
 const TRENDING_EVERY = 3;
 
 // Un post è "della zona" se il suo autore ha una città nota che rispetta i
-// filtri Dove di Impostazioni (stessa logica già usata altrove in App.jsx
-// per gli utenti sul globo, qui applicata ai post). I post senza una città
-// nota (es. pubblicati dall'utente loggato in questa demo) non compaiono
-// nel feed filtrato per zona: non c'è modo di sapere a quale zona appartengono.
-function matchesLocation(post, user, locationFilters) {
-  const city = resolveAuthor(post.autoreId, user)?.city;
+// filtri Dove di Impostazioni. I profili reali (vedi public_profiles) non
+// hanno un campo città: per ora questo filtro non ha dati da confrontare e
+// il tab "Per te" con zona attiva resta vuoto — limite noto, non introdotto
+// da questa migrazione (era già così quando gli autori erano finti).
+function matchesLocation(post, locationFilters) {
+  const city = post.author?.city;
   if (!city) return false;
   if (locationFilters.city && !city.toLowerCase().includes(locationFilters.city.toLowerCase())) return false;
-  const info = getCityInfo(city);
-  if (locationFilters.continent && info?.continent !== locationFilters.continent) return false;
-  if (locationFilters.region && info?.region !== locationFilters.region) return false;
   return true;
 }
 
@@ -64,21 +71,6 @@ function interleaveTrending(regionalPosts, allPosts) {
   return items;
 }
 
-function loadStored(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-let uidCounter = 0;
-function makeId(prefix) {
-  uidCounter += 1;
-  return `${prefix}-${Date.now()}-${uidCounter}`;
-}
-
 const FEED_TABS = [
   { id: 'foryou', label: 'Per te' },
   { id: 'following', label: 'Seguiti' },
@@ -89,18 +81,17 @@ const FEED_TABS = [
 ];
 
 // Mondo Social (Blu): colonna sinistra = feed (Per te / Seguiti / Gruppi /
-// Salvati, con scroll infinito), colonna destra = suggerimenti (persone da
-// seguire, gruppi di tendenza) + i miei post. Nessun backend: tutto lo stato
-// "reale" (post scritti, follow, gruppi, salvati) vive qui ed è persistito
-// in localStorage; i post generati per lo scroll infinito sono marcati
-// isFiller e non vengono salvati, per non far crescere lo storage all'infinito.
+// Salvati), colonna destra = suggerimenti (persone da seguire, gruppi di
+// tendenza) + i miei post. Tutto lo stato "reale" (post, commenti, like,
+// salvati, follow, gruppi) vive su Supabase (data/posts.js, data/groups.js,
+// data/follows.js) — questo componente tiene solo una copia in stato React
+// per il rendering, aggiornata in modo ottimistico dopo ogni azione.
 //
-// Il filtro Dove (continente/regione/città) di Impostazioni agisce solo sul
-// tab "Per te": in quel caso mostra i post della zona con i più popolari di
-// tutto il mondo Social intercalati ogni 3 (vedi interleaveTrending). Gli
-// altri tab (Seguiti/Gruppi/Salvati) sono per natura già "filtrati" in un
-// altro modo (chi segui, il gruppo scelto, cosa hai salvato) e restano
-// invariati dal filtro di zona.
+// Le foto/video caricate col sistema condiviso (data/contents.js) restano
+// una fonte a parte: un contenuto pubblicato altrove (es. Fotografia nel
+// mondo Arte) con un posizionamento "social" non passa mai da qui, quindi
+// va comunque recuperato e unito al feed vero e proprio (stesso comporta-
+// mento di prima, solo che ora "il resto del feed" è reale).
 export default function SocialFeed({
   world,
   user,
@@ -113,110 +104,164 @@ export default function SocialFeed({
   onOpenEventLikers,
 }) {
   const [showEventComposer, setShowEventComposer] = useState(false);
-  // Un post "reale" è o mio (autoreId 'me') o un contenuto condiviso vero
-  // (contentId, da data/contents.js). Filtra fuori qui, una volta per
-  // tutte, eventuali post/commenti finti rimasti nel localStorage di chi
-  // aveva già usato l'app prima che i dati demo venissero azzerati — quel
-  // che resta viene poi risalvato "pulito" dagli effetti qui sotto.
-  const [posts, setPosts] = useState(() =>
-    loadStored('rb-social-posts', INITIAL_POSTS).filter((p) => p.autoreId === 'me' || p.contentId)
-  );
-  const [comments, setComments] = useState(() =>
-    loadStored('rb-social-comments', INITIAL_COMMENTS).filter((c) => c.autoreId === 'me')
-  );
-  const [following, setFollowing] = useState(() => loadStored('rb-social-following', []));
-  const [joinedGroups, setJoinedGroups] = useState(() => loadStored('rb-social-joined-groups', []));
-  const [savedPosts, setSavedPosts] = useState(() => loadStored('rb-social-saved', []));
+  const [posts, setPosts] = useState([]);
+  const [comments, setComments] = useState([]);
+  const [following, setFollowing] = useState([]);
+  const [joinedGroups, setJoinedGroups] = useState([]);
+  const [groupsList, setGroupsList] = useState([]);
+  const [savedPosts, setSavedPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [feedError, setFeedError] = useState(null);
 
   const [feedTab, setFeedTab] = useState('foryou');
   const [activeGroupId, setActiveGroupId] = useState(null);
   const [mobileView, setMobileView] = useState('primary');
 
-  useEffect(
-    () => localStorage.setItem('rb-social-posts', JSON.stringify(posts.filter((p) => !p.isFiller))),
-    [posts]
-  );
-  useEffect(
-    () => localStorage.setItem('rb-social-comments', JSON.stringify(comments.filter((c) => !c.isFiller))),
-    [comments]
-  );
-  useEffect(() => localStorage.setItem('rb-social-following', JSON.stringify(following)), [following]);
-  useEffect(() => localStorage.setItem('rb-social-joined-groups', JSON.stringify(joinedGroups)), [joinedGroups]);
-  useEffect(() => localStorage.setItem('rb-social-saved', JSON.stringify(savedPosts)), [savedPosts]);
+  const loadFeed = async () => {
+    setLoading(true);
+    setFeedError(null);
 
-  // Foto/video autotaggati e pubblicati anche nel mondo Social da un altro
-  // punto dell'app (es. Fotografia/Video nel mondo Arte, con un
-  // posizionamento Social confermato): non passano dal localStorage di
-  // questo componente, quindi vanno recuperati da Supabase al montaggio.
-  // Chi li ha già in stato (creati qui stesso in questa sessione, via
-  // PostComposer) non viene duplicato.
-  useEffect(() => {
-    listContentsForPlacement({ world: 'social' }).then((items) => {
-      if (!items.length) return;
-      setPosts((prev) => {
-        const knownContentIds = new Set(prev.filter((p) => p.contentId).map((p) => p.contentId));
-        const additions = items
-          .filter((c) => !knownContentIds.has(c.id))
-          .map((c) => ({
-            id: `content-${c.id}`,
-            autoreId: c.isMine ? 'me' : c.owner_id,
-            testo: c.caption ?? '',
-            data: c.created_at,
-            mi_piace: [],
-            commenti: [],
-            gif: null,
-            link_esterno: null,
-            gruppo_id: null,
-            contentId: c.id,
-            mediaUrl: c.url,
-            mediaType: c.type,
-            contentTags: c.tags ?? [],
-            contentLiked: c.likedByMe,
-            contentLikeCount: c.likeCount,
-          }));
-        return additions.length ? [...additions, ...prev] : prev;
+    const [feedRes, groupsRes, followingRes, myGroupsRes] = await Promise.all([
+      fetchFeed({ mondo: 'social' }),
+      listGroups(),
+      getFollowing(),
+      getMyGroupIds(),
+    ]);
+
+    if (feedRes.error) {
+      setFeedError(feedRes.error);
+      setLoading(false);
+      return;
+    }
+
+    let feedPosts = feedRes.posts ?? [];
+
+    // Contenuti condivisi ripubblicati anche nel mondo Social da un altro
+    // punto dell'app (senza una riga in posts): recuperati a parte e uniti.
+    const sharedItems = await listContentsForPlacement({ world: 'social' });
+    const knownContentIds = new Set(feedPosts.filter((p) => p.contentId).map((p) => p.contentId));
+    const extraFromContents = sharedItems
+      .filter((c) => !knownContentIds.has(c.id))
+      .map((c) => ({
+        id: `content-${c.id}`,
+        fromPostsTable: false,
+        autoreId: c.owner_id,
+        author: null,
+        testo: c.caption ?? '',
+        data: c.created_at,
+        mi_piace: [],
+        commenti: [],
+        gruppo_id: null,
+        group: null,
+        savedByMe: false,
+        contentId: c.id,
+        mediaUrl: c.url,
+        mediaType: c.type,
+        contentTags: c.tags ?? [],
+        contentLiked: c.likedByMe,
+        contentLikeCount: c.likeCount,
+        gif: null,
+        link_esterno: null,
+      }));
+
+    if (extraFromContents.length) {
+      const authorsMap = await fetchProfilesMap(extraFromContents.map((p) => p.autoreId));
+      extraFromContents.forEach((p) => {
+        p.author = authorsMap.get(p.autoreId) ?? { id: p.autoreId, name: 'Utente', avatar: '' };
       });
-    });
-  }, []);
+    }
 
-  const createPost = ({ testo, gif, link_esterno, gruppo_id, contentId, mediaUrl, mediaType, tags }) => {
-    const newPost = {
-      id: makeId('post'),
-      autoreId: 'me',
+    feedPosts = [...feedPosts, ...extraFromContents].sort((a, b) => new Date(b.data) - new Date(a.data));
+
+    setPosts(feedPosts);
+    setGroupsList(groupsRes);
+    setFollowing(followingRes);
+    setJoinedGroups(myGroupsRes);
+    setSavedPosts(feedPosts.filter((p) => p.savedByMe).map((p) => p.id));
+    setLoading(false);
+
+    const realPostIds = feedPosts.filter((p) => p.fromPostsTable).map((p) => p.id);
+    if (realPostIds.length) {
+      const { comments: fetchedComments, error } = await fetchComments(realPostIds);
+      if (!error) setComments(fetchedComments);
+    } else {
+      setComments([]);
+    }
+  };
+
+  useEffect(() => {
+    loadFeed();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  const authorFromUser = () => ({ id: user.id, name: user.nickname || user.username || 'Tu', avatar: user.avatar || '' });
+
+  const createPost = async ({ testo, gif, link_esterno, gruppo_id, contentId, mediaUrl, mediaType, tags }) => {
+    if (!user) {
+      onOpenAuth();
+      return;
+    }
+    const { id, createdAt, error } = await createPostApi({
       testo,
-      data: new Date().toISOString(),
+      gif,
+      link_esterno,
+      gruppoId: gruppo_id,
+      contentId,
+      mediaUrl,
+      mediaType,
+      tags,
+    });
+    if (error) {
+      setFeedError(error);
+      return;
+    }
+    const group = gruppo_id ? groupsList.find((g) => g.id === gruppo_id) ?? null : null;
+    const newPost = {
+      id,
+      fromPostsTable: true,
+      autoreId: user.id,
+      author: authorFromUser(),
+      testo,
+      data: createdAt,
       mi_piace: [],
       commenti: [],
       gif,
       link_esterno,
       gruppo_id: gruppo_id ?? null,
-      // Foto/video caricati con autotag (data/contents.js): contentId è
-      // l'id condiviso — i like su questo post si somMANO a quelli dello
-      // stesso contenuto pubblicato anche in altri mondi/categorie, mai un
-      // conteggio separato per ogni posto in cui compare.
+      group,
       contentId: contentId ?? null,
       mediaUrl: mediaUrl ?? null,
       mediaType: mediaType ?? null,
       contentTags: tags ?? [],
       contentLiked: false,
       contentLikeCount: 0,
+      savedByMe: false,
     };
     setPosts((p) => [newPost, ...p]);
   };
 
-  const toggleLike = (postId) => {
+  const toggleLike = async (postId) => {
+    if (!user) {
+      onOpenAuth();
+      return;
+    }
+    const target = posts.find((p) => p.id === postId);
+    if (!target) return;
+    const currentlyLiked = target.mi_piace.includes(user.id);
+    const { liked, error } = await togglePostLikeApi(postId, currentlyLiked);
+    if (error) return;
     setPosts((prev) =>
-      prev.map((p) => {
-        if (p.id !== postId) return p;
-        const has = p.mi_piace.includes('me');
-        return { ...p, mi_piace: has ? p.mi_piace.filter((id) => id !== 'me') : [...p.mi_piace, 'me'] };
-      })
+      prev.map((p) =>
+        p.id === postId
+          ? { ...p, mi_piace: liked ? [...p.mi_piace, user.id] : p.mi_piace.filter((id) => id !== user.id) }
+          : p
+      )
     );
   };
 
   // Like su un post con foto/video autotaggato: passa dalla stessa tabella
   // content_likes condivisa con le altre posizioni dello stesso contenuto
-  // (Arte, Nerd, ecc.), non dall'array locale mi_piace usato per i post di testo.
+  // (Arte, Nerd, ecc.), non dai post_likes usati per i post di testo.
   const toggleContentLike = async (post) => {
     if (!user) {
       onOpenAuth();
@@ -231,45 +276,90 @@ export default function SocialFeed({
     );
   };
 
-  // Modifica/cancellazione: solo sui propri post (autoreId 'me'), verificato
-  // qui oltre che nell'interfaccia. Se il post porta un contenuto condiviso
-  // (foto/video, vedi data/contents.js), l'azione riguarda quel contenuto —
-  // quindi vale ovunque sia stato ripubblicato (Arte, Nerd...), non solo qui.
+  // Modifica/cancellazione: solo sui propri post, verificato qui oltre che
+  // nell'interfaccia. Un post con contenuto condiviso (foto/video) tocca
+  // anche quel contenuto — vale ovunque sia stato ripubblicato, non solo
+  // qui. Le voci unite dal sistema contenuti (fromPostsTable: false) non
+  // hanno una vera riga in posts, quindi si tocca solo il contenuto.
   const editPost = async (postId, newTesto) => {
     const target = posts.find((p) => p.id === postId);
-    if (!target || target.autoreId !== 'me') return;
+    if (!target || target.autoreId !== user?.id) return;
+    if (target.fromPostsTable) {
+      const { error } = await updatePostTextApi(postId, newTesto);
+      if (error) {
+        setFeedError(error);
+        return;
+      }
+    }
     if (target.contentId) {
       const { error } = await updateContentCaption(target.contentId, newTesto);
-      if (error) return;
+      if (error) {
+        setFeedError(error);
+        return;
+      }
     }
     setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, testo: newTesto } : p)));
   };
 
   const deletePost = async (postId) => {
     const target = posts.find((p) => p.id === postId);
-    if (!target || target.autoreId !== 'me') return;
+    if (!target || target.autoreId !== user?.id) return;
     if (target.contentId) {
       const { error } = await deleteContent(target.contentId, target.mediaUrl);
-      if (error) return;
+      if (error) {
+        setFeedError(error);
+        return;
+      }
+    }
+    if (target.fromPostsTable) {
+      const { error } = await softDeletePostApi(postId);
+      if (error) {
+        setFeedError(error);
+        return;
+      }
     }
     setPosts((prev) => prev.filter((p) => p.id !== postId));
     setComments((prev) => prev.filter((c) => c.post_id !== postId));
   };
 
-  const addComment = (postId, { testo, gif }) => {
+  const addComment = async (postId, { testo, gif }) => {
+    if (!user) {
+      onOpenAuth();
+      return;
+    }
+    const { id, createdAt, error } = await addCommentApi({ postId, testo, gif });
+    if (error) {
+      setFeedError(error);
+      return;
+    }
     const newComment = {
-      id: makeId('c'),
+      id,
       post_id: postId,
-      autoreId: 'me',
+      autoreId: user.id,
+      author: authorFromUser(),
       testo,
-      data: new Date().toISOString(),
-      gif,
+      data: createdAt,
+      gif: gif ?? null,
       reazioni: {},
     };
     setComments((c) => [...c, newComment]);
-    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, commenti: [...p.commenti, newComment.id] } : p)));
   };
 
+  const removeComment = async (commentId) => {
+    const target = comments.find((c) => c.id === commentId);
+    if (!target || target.autoreId !== user?.id) return;
+    const { error } = await deleteCommentApi(commentId);
+    if (error) {
+      setFeedError(error);
+      return;
+    }
+    setComments((prev) => prev.filter((c) => c.id !== commentId));
+  };
+
+  // Le reazioni emoji ai commenti restano solo un contatore locale a questa
+  // sessione (non c'è una tabella per salvarle condivise tra utenti/
+  // dispositivi): si azzerano ricaricando la pagina, invariato rispetto a
+  // prima per il resto dell'interazione.
   const reactToComment = (commentId, emoji) => {
     setComments((prev) =>
       prev.map((c) => {
@@ -280,16 +370,55 @@ export default function SocialFeed({
     );
   };
 
-  const toggleFollow = (userId) => {
-    setFollowing((prev) => (prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]));
+  const toggleFollow = async (userId) => {
+    if (!user) {
+      onOpenAuth();
+      return;
+    }
+    const isFollowing = following.includes(userId);
+    const { error } = isFollowing ? await unfollowUser(userId) : await followUser(userId);
+    if (error) return;
+    setFollowing((prev) => (isFollowing ? prev.filter((id) => id !== userId) : [...prev, userId]));
   };
 
-  const toggleJoinGroup = (groupId) => {
-    setJoinedGroups((prev) => (prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId]));
+  const toggleJoinGroup = async (groupId) => {
+    if (!user) {
+      onOpenAuth();
+      return;
+    }
+    const isJoined = joinedGroups.includes(groupId);
+    const { error } = isJoined ? await leaveGroup(groupId) : await joinGroup(groupId);
+    if (error) {
+      setFeedError(error);
+      return;
+    }
+    setJoinedGroups((prev) => (isJoined ? prev.filter((id) => id !== groupId) : [...prev, groupId]));
+    setGroupsList((prev) =>
+      prev.map((g) => (g.id === groupId ? { ...g, memberCount: g.memberCount + (isJoined ? -1 : 1) } : g))
+    );
   };
 
-  const toggleSavePost = (postId) => {
-    setSavedPosts((prev) => (prev.includes(postId) ? prev.filter((id) => id !== postId) : [...prev, postId]));
+  const createGroupHandler = async ({ nome, descrizione, icona, colore }) => {
+    if (!user) {
+      onOpenAuth();
+      return { error: 'Devi essere loggato.' };
+    }
+    const { group, error } = await createGroupApi({ nome, descrizione, icona, colore });
+    if (error) return { error };
+    setGroupsList((prev) => [...prev, group]);
+    setJoinedGroups((prev) => [...prev, group.id]);
+    return {};
+  };
+
+  const toggleSavePost = async (postId) => {
+    if (!user) {
+      onOpenAuth();
+      return;
+    }
+    const currentlySaved = savedPosts.includes(postId);
+    const { saved, error } = await toggleSavedPostApi(postId, currentlySaved);
+    if (error) return;
+    setSavedPosts((prev) => (saved ? [...prev, postId] : prev.filter((id) => id !== postId)));
   };
 
   // Apre il feed di un gruppo da qualunque punto dell'app (badge su un post,
@@ -301,30 +430,25 @@ export default function SocialFeed({
   };
 
   const isGroupView = Boolean(activeGroupId);
-  const activeGroup = isGroupView ? getGroupById(activeGroupId) : null;
+  const activeGroup = isGroupView ? groupsList.find((g) => g.id === activeGroupId) ?? null : null;
 
-  // Feed "Per te": i post curati/scritti dagli utenti restano ordinati per
-  // pertinenza tra loro; quelli generati per lo scroll infinito si
-  // aggiungono in coda (anch'essi ordinati per pertinenza tra loro) così
-  // l'ordine di ciò che si è già visto non "salta" mentre se ne carica altro.
+  // Feed "Per te": i post restano ordinati per pertinenza tra loro.
   const forYouList = useMemo(() => {
-    const curated = posts.filter((p) => !p.isFiller);
-    const filler = posts.filter((p) => p.isFiller);
     const byRelevance = (a, b) => computeRelevance(b, comments) - computeRelevance(a, comments);
-    return [...curated.sort(byRelevance), ...filler.sort(byRelevance)];
+    return [...posts].sort(byRelevance);
   }, [posts, comments]);
 
   const hasLocationFilter = Boolean(locationFilters.city || locationFilters.region || locationFilters.continent);
 
   const regionalForYou = useMemo(() => {
     if (!hasLocationFilter) return [];
-    return forYouList.filter((p) => matchesLocation(p, user, locationFilters));
+    return forYouList.filter((p) => matchesLocation(p, locationFilters));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [forYouList, user, locationFilters.city, locationFilters.region, locationFilters.continent, hasLocationFilter]);
+  }, [forYouList, locationFilters.city, locationFilters.region, locationFilters.continent, hasLocationFilter]);
 
   // Con un filtro di zona attivo, il tab "Per te" mostra i post della zona
   // con i più popolari di tutto il mondo Social intercalati ogni 3; senza
-  // filtro resta il feed per pertinenza di sempre (+ scroll infinito).
+  // filtro resta il feed per pertinenza di sempre.
   const forYouItems = useMemo(() => {
     if (!hasLocationFilter) return forYouList.map((post) => ({ post, trendingRank: null }));
     return interleaveTrending(regionalForYou, posts);
@@ -353,20 +477,23 @@ export default function SocialFeed({
     [posts, comments, activeGroupId]
   );
 
+  // Calcolato dal feed già in stato (non dallo snapshot di listGroups):
+  // così un post appena pubblicato in un gruppo aggiorna subito il
+  // conteggio, senza dover ricaricare tutto.
   const groupPostCounts = useMemo(() => {
     const counts = {};
     posts.forEach((p) => {
-      if (!p.isFiller && p.gruppo_id) counts[p.gruppo_id] = (counts[p.gruppo_id] ?? 0) + 1;
+      if (p.gruppo_id) counts[p.gruppo_id] = (counts[p.gruppo_id] ?? 0) + 1;
     });
     return counts;
   }, [posts]);
 
-  const suggestedUsers = useMemo(
-    () => usersForWorld('social').filter((u) => !following.includes(u.id)).slice(0, 4),
-    [following]
-  );
+  const [suggestedUsers, setSuggestedUsers] = useState([]);
+  useEffect(() => {
+    listSuggestedProfiles(following, 4).then(setSuggestedUsers);
+  }, [following]);
 
-  const trendingGroups = useMemo(() => [...GROUPS].sort((a, b) => b.memberCount - a.memberCount).slice(0, 4), []);
+  const trendingGroups = useMemo(() => [...groupsList].sort((a, b) => b.memberCount - a.memberCount).slice(0, 4), [groupsList]);
 
   // Eventi in ordine di data/ora più vicina, quelli di oggi prima di domani.
   const eventsSorted = useMemo(
@@ -394,8 +521,8 @@ export default function SocialFeed({
 
   // Solo i post pubblicati dall'utente loggato.
   const myPosts = useMemo(
-    () => posts.filter((p) => p.autoreId === 'me').sort((a, b) => new Date(b.data) - new Date(a.data)),
-    [posts]
+    () => posts.filter((p) => p.autoreId === user?.id).sort((a, b) => new Date(b.data) - new Date(a.data)),
+    [posts, user?.id]
   );
 
   const feedSubtitle =
@@ -409,6 +536,15 @@ export default function SocialFeed({
         <h3>Feed</h3>
         <p>{feedSubtitle}</p>
       </div>
+
+      {feedError && (
+        <p className="rb-social-error">
+          ⚠️ {feedError}{' '}
+          <button type="button" className="rb-social-retry-btn" onClick={loadFeed}>
+            Riprova
+          </button>
+        </p>
+      )}
 
       <div className="rb-feed-tabs">
         {FEED_TABS.map((t) => (
@@ -434,9 +570,7 @@ export default function SocialFeed({
           <span className="rb-group-feed-icon">{activeGroup.icon}</span>
           <div className="rb-group-feed-info">
             <strong>{activeGroup.name}</strong>
-            <span>
-              {(activeGroup.memberCount + (joinedGroups.includes(activeGroup.id) ? 1 : 0)).toLocaleString('it-IT')} membri
-            </span>
+            <span>{activeGroup.memberCount.toLocaleString('it-IT')} membri</span>
           </div>
           <button
             type="button"
@@ -450,13 +584,14 @@ export default function SocialFeed({
 
       {feedTab === 'groups' && !isGroupView ? (
         <GroupsDirectory
-          groups={GROUPS}
+          groups={groupsList}
           joinedGroups={joinedGroups}
           postCounts={groupPostCounts}
           user={user}
           onOpenAuth={onOpenAuth}
           onToggleJoin={toggleJoinGroup}
           onOpenGroup={openGroup}
+          onCreateGroup={createGroupHandler}
         />
       ) : feedTab === 'mondi' && !isGroupView ? (
         <CategoryHub onNavigateToCategory={onNavigateToCategory} />
@@ -499,9 +634,10 @@ export default function SocialFeed({
       ) : (
         <>
           {feedTab !== 'saved' && (
-            <PostComposer user={user} onOpenAuth={onOpenAuth} onSubmit={createPost} groups={GROUPS} defaultGroupId={activeGroupId} />
+            <PostComposer user={user} onOpenAuth={onOpenAuth} onSubmit={createPost} groups={groupsList} defaultGroupId={activeGroupId} />
           )}
 
+          {loading && posts.length === 0 && <p className="rb-social-empty">Caricamento del feed...</p>}
           {hasLocationFilter && feedTab === 'foryou' && !isGroupView && regionalForYou.length === 0 && (
             <p className="rb-social-empty">Nessun post ancora da questa zona.</p>
           )}
@@ -521,6 +657,7 @@ export default function SocialFeed({
                 onDeletePost={deletePost}
                 onAddComment={addComment}
                 onReactToComment={reactToComment}
+                onDeleteComment={removeComment}
                 trendingRank={trendingRank}
                 following={following}
                 onToggleFollow={toggleFollow}
@@ -572,6 +709,7 @@ export default function SocialFeed({
               onDeletePost={deletePost}
               onAddComment={addComment}
               onReactToComment={reactToComment}
+              onDeleteComment={removeComment}
               following={following}
               onToggleFollow={toggleFollow}
               saved={savedPosts.includes(post.id)}

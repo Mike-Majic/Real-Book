@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import MediaEditor from './social/MediaEditor';
 import { MOCK_USERS } from '../data/mockUsers';
-import { GROUPS } from '../data/groups';
+import { GROUPS } from '../data/groupsCategories';
 import { publishContent, listContentsForPlacement, toggleContentLike } from '../data/contents';
 import { analyzeImageElement } from '../data/localVision';
 import './FotografiaColumn.css';
