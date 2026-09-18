@@ -1,5 +1,18 @@
 import { supabase } from './supabaseClient';
 
+// Il bucket "attachments" accetta solo certi tipi di file e una dimensione
+// massima (vedi accept sull'input allegati in AuthModal): un upload respinto
+// per questo arriva come un errore tecnico di Supabase Storage, qui diventa
+// un messaggio comprensibile.
+function translateUploadError(error) {
+  const msg = error?.message ?? '';
+  const status = String(error?.statusCode ?? error?.status ?? '');
+  if (status === '400' || status === '413' || /mime type|not supported|exceeded the maximum allowed size|payload too large/i.test(msg)) {
+    return 'File non supportato o troppo grande.';
+  }
+  return msg || 'Errore durante il caricamento del file.';
+}
+
 const NICKNAME_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 1 settimana
 const NAME_COOLDOWN_MS = 90 * 24 * 60 * 60 * 1000; // 3 mesi
 
@@ -172,14 +185,16 @@ export async function registerAccount({
   const avatar = `https://i.pravatar.cc/150?u=${encodeURIComponent(cleanEmail)}`;
   await supabase.rpc('update_own_avatar', { p_avatar_url: avatar });
 
+  let attachmentError = '';
   if (attachments?.length) {
     for (const att of attachments) {
-      await uploadAttachment(data.user.id, att);
+      const { error: attError } = await uploadAttachment(data.user.id, att);
+      if (attError) attachmentError = attError;
     }
   }
 
   const account = await fetchOwnProfile();
-  return { account };
+  return { account, attachmentError: attachmentError || undefined };
 }
 
 export async function loginAccount(email, password) {
@@ -224,7 +239,7 @@ export async function resendConfirmationEmail(email) {
 export async function uploadAttachment(userId, file) {
   const path = `${userId}/${Date.now()}-${file.name}`;
   const { error: uploadError } = await supabase.storage.from('attachments').upload(path, file);
-  if (uploadError) return { error: uploadError.message };
+  if (uploadError) return { error: translateUploadError(uploadError) };
   const { error: rpcError } = await supabase.rpc('add_own_attachment', { p_name: file.name, p_path: path });
   if (rpcError) return { error: rpcError.message };
   return { attachment: { name: file.name, path } };

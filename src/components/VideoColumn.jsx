@@ -142,7 +142,7 @@ export default function VideoColumn({ user, onOpenAuth }) {
 
   return (
     <div className="rb-video-column">
-      <input ref={fileInputRef} type="file" accept="video/*" hidden onChange={onFileChosen} />
+      <input ref={fileInputRef} type="file" accept="video/mp4,video/webm,video/quicktime" hidden onChange={onFileChosen} />
 
       <div className="rb-video-header">
         <div>

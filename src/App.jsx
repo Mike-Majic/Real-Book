@@ -119,6 +119,10 @@ export default function App() {
   // coerente anche se scade o cambia altrove.
   const [user, setUser] = useState(null);
   const [justConfirmedEmail, setJustConfirmedEmail] = useState(false);
+  // Avviso non bloccante dopo la registrazione (es. un allegato respinto
+  // dallo storage): il modale di login/registrazione si chiude comunque,
+  // altrimenti non ci sarebbe più dove mostrarlo.
+  const [signupNotice, setSignupNotice] = useState('');
   const [authOpen, setAuthOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -237,6 +241,12 @@ export default function App() {
     const timer = setTimeout(() => setJustConfirmedEmail(false), 6000);
     return () => clearTimeout(timer);
   }, [justConfirmedEmail]);
+
+  useEffect(() => {
+    if (!signupNotice) return undefined;
+    const timer = setTimeout(() => setSignupNotice(''), 6000);
+    return () => clearTimeout(timer);
+  }, [signupNotice]);
 
   useEffect(() => localStorage.setItem('rb-filters', JSON.stringify(filters)), [filters]);
   useEffect(() => localStorage.setItem('rb-location-filters', JSON.stringify(locationFilters)), [locationFilters]);
@@ -542,6 +552,10 @@ export default function App() {
         <div className="rb-email-confirmed-banner">✅ Mail confermata, bentornato su Versemove!</div>
       )}
 
+      {signupNotice && (
+        <div className="rb-email-confirmed-banner rb-app-banner-warning">⚠️ {signupNotice}</div>
+      )}
+
       <WorldGlobe
         world={world}
         users={globeUsers}
@@ -747,9 +761,10 @@ export default function App() {
       <AuthModal
         open={authOpen}
         onClose={() => setAuthOpen(false)}
-        onLogin={(u) => {
+        onLogin={(u, notice) => {
           setUser(u);
           setAuthOpen(false);
+          if (notice) setSignupNotice(notice);
         }}
       />
     </div>

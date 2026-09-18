@@ -290,7 +290,12 @@ export default function PostComposer({
               }}
             >
               📷
-              <input type="file" accept="image/*,video/*" className="rb-composer-media-input" onChange={handleMediaChange} />
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+                className="rb-composer-media-input"
+                onChange={handleMediaChange}
+              />
             </label>
           )}
         </div>

@@ -1,5 +1,18 @@
 import { supabase } from './supabaseClient';
 
+// I bucket di storage accettano solo certi tipi di file e una dimensione
+// massima (vedi accept sugli <input type="file">): un upload respinto per
+// questo arriva come un errore tecnico di Supabase Storage, qui diventa un
+// messaggio comprensibile.
+function translateUploadError(error) {
+  const msg = error?.message ?? '';
+  const status = String(error?.statusCode ?? error?.status ?? '');
+  if (status === '400' || status === '413' || /mime type|not supported|exceeded the maximum allowed size|payload too large/i.test(msg)) {
+    return 'File non supportato o troppo grande.';
+  }
+  return msg || 'Errore durante il caricamento del file.';
+}
+
 // Modello unico foto/video: un contenuto (contents) può comparire in più
 // "posizionamenti" (content_placements: mondo + categoria + sottofamiglia),
 // con UN SOLO conteggio di like condiviso (content_likes) — la stessa foto
@@ -17,7 +30,7 @@ export async function publishContent({ file, type, caption, tags, placements }) 
 
     const path = `${auth.user.id}/${Date.now()}-${file.name}`;
     const { error: uploadError } = await supabase.storage.from('content-media').upload(path, file);
-    if (uploadError) return { error: uploadError.message };
+    if (uploadError) return { error: translateUploadError(uploadError) };
 
     const { data: content, error: contentError } = await supabase
       .from('contents')

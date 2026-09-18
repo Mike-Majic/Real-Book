@@ -205,7 +205,7 @@ export default function FotografiaColumn({ user, onOpenAuth }) {
 
   return (
     <div className="rb-foto-column">
-      <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={onFileChosen} />
+      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={onFileChosen} />
 
       <div className="rb-foto-header">
         <div>

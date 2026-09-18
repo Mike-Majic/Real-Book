@@ -93,12 +93,12 @@ export default function AuthModal({ open, onClose, onLogin }) {
     setInfo('');
   };
 
-  const finishAuth = (account) => {
+  const finishAuth = (account, notice) => {
     // user.name resta popolato (dal nickname) per compatibilità con tutto
     // il resto dell'app, che già lo usa ovunque. Niente password nello
     // stato "user": qui arriva già il profilo (senza password, Supabase
     // Auth la tiene per conto suo, non passa mai dal client in chiaro).
-    onLogin({ ...account, name: account.nickname });
+    onLogin({ ...account, name: account.nickname }, notice);
     setError('');
     setInfo('');
   };
@@ -186,7 +186,7 @@ export default function AuthModal({ open, onClose, onLogin }) {
       : PRONOMI_PRESETS.find((p) => p.value === pronomiPreset)?.label ?? '';
 
     setBusy(true);
-    const { account, error: err, needsEmailConfirmation } = await registerAccount({
+    const { account, error: err, needsEmailConfirmation, attachmentError } = await registerAccount({
       username,
       nickname,
       email,
@@ -219,7 +219,7 @@ export default function AuthModal({ open, onClose, onLogin }) {
       setMode('login');
       return;
     }
-    finishAuth(account);
+    finishAuth(account, attachmentError);
   };
 
   return (
@@ -316,7 +316,7 @@ export default function AuthModal({ open, onClose, onLogin }) {
             </label>
             <label className="rb-field">
               <span>Allegati (facoltativi)</span>
-              <input type="file" multiple onChange={onFilesChosen} />
+              <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" multiple onChange={onFilesChosen} />
               {attachments.length > 0 && (
                 <span className="rb-auth-attachments-count">{attachments.length} file selezionati</span>
               )}

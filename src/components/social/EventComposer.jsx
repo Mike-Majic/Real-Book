@@ -106,7 +106,7 @@ export default function EventComposer({ user, onOpenAuth, onSubmit, onClose }) {
           📷 Aggiungi una foto
         </button>
       )}
-      <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={onFileChosen} />
+      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={onFileChosen} />
 
       <button type="submit" className="rb-event-composer-submit" disabled={!canSubmit}>
         Pubblica evento
