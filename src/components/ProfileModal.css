@@ -18,6 +18,25 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
+.rb-profile-report-btn {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f5f5f7;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.rb-profile-report-btn:hover {
+  border-color: #ff8080;
+  color: #ff8080;
+}
+
 .rb-profile-head {
   display: flex;
   align-items: center;

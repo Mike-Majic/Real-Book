@@ -34,10 +34,19 @@ export async function getReports() {
 
 // Crea una segnalazione: qualunque utente autenticato può segnalare un
 // contenuto o un profilo (post, commento, profilo, gruppo, live, evento).
+// targetId resta testo: i contenuti mostrati nell'app hanno spesso ancora
+// id generati lato client (non veri UUID Supabase), esattamente come già
+// successo per blocked_contacts.contact_id.
 export async function createReport({ targetType, targetId, motivo, dettagli }) {
-  const { error } = await supabase
-    .from('reports')
-    .insert({ target_type: targetType, target_id: targetId, motivo, dettagli: dettagli ?? null });
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth?.user) return { error: 'Devi essere loggato per segnalare.' };
+  const { error } = await supabase.from('reports').insert({
+    reporter_id: auth.user.id,
+    target_type: targetType,
+    target_id: String(targetId),
+    motivo,
+    dettagli: dettagli ?? null,
+  });
   if (error) return { error: error.message };
   return {};
 }

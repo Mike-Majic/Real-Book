@@ -1,13 +1,32 @@
+import { useState } from 'react';
 import ModalOverlay from './ModalOverlay';
+import ReportModal from './shared/ReportModal';
 import './ProfileModal.css';
 
-export default function ProfileModal({ user, world, onClose }) {
+// "user" qui è il profilo che si sta guardando (non chi è loggato: quello
+// arriva come "viewer", serve solo per sapere se mostrare/abilitare il
+// pulsante Segnala oppure aprire il login).
+export default function ProfileModal({ user, world, onClose, viewer, onOpenAuth }) {
+  const [reporting, setReporting] = useState(false);
   if (!user) return null;
+
+  const handleReport = () => {
+    if (!viewer) {
+      onOpenAuth?.();
+      return;
+    }
+    setReporting(true);
+  };
 
   return (
     <ModalOverlay onClose={onClose}>
       <div className="rb-profile-card" style={{ '--accent': world.color }} onClick={(e) => e.stopPropagation()}>
         <button className="rb-close-btn" onClick={onClose} aria-label="Chiudi">✕</button>
+        {onOpenAuth && (
+          <button type="button" className="rb-profile-report-btn" title="Segnala profilo" onClick={handleReport}>
+            🚩 Segnala
+          </button>
+        )}
 
         <div className="rb-profile-head">
           <img src={user.avatar} alt={user.name} className="rb-profile-avatar" />
@@ -49,6 +68,15 @@ export default function ProfileModal({ user, world, onClose }) {
           </div>
         )}
       </div>
+
+      {reporting && (
+        <ReportModal
+          targetType="profilo"
+          targetId={user.id}
+          targetLabel={`il profilo di ${user.name}`}
+          onClose={() => setReporting(false)}
+        />
+      )}
     </ModalOverlay>
   );
 }

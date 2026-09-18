@@ -3,6 +3,7 @@ import { resolveAuthor, formatRelativeDate } from './resolveAuthor';
 import { getGroupById } from '../../data/groups';
 import LinkPreview from './LinkPreview';
 import PostComposer from './PostComposer';
+import ReportModal from '../shared/ReportModal';
 import './PostCard.css';
 
 const REACTION_EMOJIS = ['❤️', '😂', '👍'];
@@ -23,7 +24,7 @@ function MediaImage({ src, alt, errorText, className }) {
   return <img className={className} src={src} alt={alt} onError={() => setFailed(true)} />;
 }
 
-function Comment({ comment, user, onReact }) {
+function Comment({ comment, user, onReact, onReport }) {
   const author = resolveAuthor(comment.autoreId, user);
   return (
     <li className="rb-comment">
@@ -46,6 +47,16 @@ function Comment({ comment, user, onReact }) {
               </button>
             );
           })}
+          {onReport && (
+            <button
+              type="button"
+              className="rb-comment-react-btn"
+              title="Segnala commento"
+              onClick={() => onReport(comment.id)}
+            >
+              🚩
+            </button>
+          )}
         </div>
       </div>
     </li>
@@ -71,10 +82,17 @@ export default function PostCard({
   saved = false,
   onToggleSave,
   onOpenGroup,
+  onEditPost,
+  onDeletePost,
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [report, setReport] = useState(null); // { targetType, targetId, targetLabel } | null
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(post.testo);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const author = resolveAuthor(post.autoreId, user);
   const myId = 'me';
+  const isOwn = post.autoreId === 'me';
   // I post con foto/video autotaggato hanno un contentId condiviso con le
   // altre posizioni dello stesso contenuto (Arte, Nerd, ecc): il like passa
   // dal conteggio comune (content_likes), non dall'array locale mi_piace.
@@ -113,6 +131,39 @@ export default function PostCard({
     onToggleSave(post.id);
   };
 
+  const startEdit = () => {
+    setEditText(post.testo);
+    setEditing(true);
+  };
+
+  const saveEdit = () => {
+    const trimmed = editText.trim();
+    if (!trimmed && !post.gif && !post.mediaUrl) return;
+    onEditPost(post.id, trimmed);
+    setEditing(false);
+  };
+
+  const confirmDeletePost = () => {
+    onDeletePost(post.id);
+    setConfirmDelete(false);
+  };
+
+  const openReportPost = () => {
+    if (!user) {
+      onOpenAuth();
+      return;
+    }
+    setReport({ targetType: 'post', targetId: post.id, targetLabel: 'post' });
+  };
+
+  const openReportComment = (commentId) => {
+    if (!user) {
+      onOpenAuth();
+      return;
+    }
+    setReport({ targetType: 'commento', targetId: commentId, targetLabel: 'commento' });
+  };
+
   return (
     <li className="rb-post-card">
       {trendingRank !== null && (
@@ -142,7 +193,22 @@ export default function PostCard({
         </button>
       )}
 
-      <p className="rb-post-text">{post.testo}</p>
+      {editing ? (
+        <div className="rb-post-edit-box">
+          <textarea
+            className="rb-post-edit-textarea"
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            rows={3}
+          />
+          <div className="rb-post-edit-actions">
+            <button type="button" className="rb-post-edit-cancel" onClick={() => setEditing(false)}>Annulla</button>
+            <button type="button" className="rb-post-edit-save" onClick={saveEdit}>Salva</button>
+          </div>
+        </div>
+      ) : (
+        <p className="rb-post-text">{post.testo}</p>
+      )}
       {post.gif && (
         <MediaImage className="rb-post-gif" src={post.gif} alt="GIF" errorText="GIF non disponibile (il link non si è caricato)" />
       )}
@@ -177,6 +243,26 @@ export default function PostCard({
             {saved ? '🔖 Salvato' : '🔖 Salva'}
           </button>
         )}
+        {isOwn && onEditPost && (
+          <button type="button" className="rb-post-action-btn" title="Modifica post" onClick={startEdit}>
+            ✏️
+          </button>
+        )}
+        {isOwn && onDeletePost && !confirmDelete && (
+          <button type="button" className="rb-post-action-btn" title="Elimina post" onClick={() => setConfirmDelete(true)}>
+            🗑️
+          </button>
+        )}
+        {isOwn && onDeletePost && confirmDelete && (
+          <span className="rb-post-delete-confirm">
+            Eliminare?
+            <button type="button" className="rb-post-delete-confirm-yes" onClick={confirmDeletePost}>Sì</button>
+            <button type="button" className="rb-post-delete-confirm-no" onClick={() => setConfirmDelete(false)}>No</button>
+          </span>
+        )}
+        <button type="button" className="rb-post-action-btn" title="Segnala post" onClick={openReportPost}>
+          🚩
+        </button>
       </div>
 
       {expanded && (
@@ -184,7 +270,7 @@ export default function PostCard({
           {postComments.length > 0 && (
             <ul className="rb-comment-list">
               {postComments.map((c) => (
-                <Comment key={c.id} comment={c} user={user} onReact={onReactToComment} />
+                <Comment key={c.id} comment={c} user={user} onReact={onReactToComment} onReport={openReportComment} />
               ))}
             </ul>
           )}
@@ -197,6 +283,15 @@ export default function PostCard({
             compact
           />
         </div>
+      )}
+
+      {report && (
+        <ReportModal
+          targetType={report.targetType}
+          targetId={report.targetId}
+          targetLabel={report.targetLabel}
+          onClose={() => setReport(null)}
+        />
       )}
     </li>
   );

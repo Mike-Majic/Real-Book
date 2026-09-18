@@ -97,6 +97,40 @@ export async function listContentsForPlacement({ world, category }) {
   }
 }
 
+// Cancella un contenuto (foto/video) di cui si è proprietari: elimina la
+// riga in "contents" (RLS owner_id = auth.uid()), che per cascata porta via
+// anche tutti i suoi posizionamenti e like ovunque compaia — non solo dal
+// mondo dove lo si è cancellato. Il file resta nello storage solo se non si
+// riesce a ricavarne il percorso dall'URL pubblico: non blocca la cancellazione.
+export async function deleteContent(contentId, mediaUrl) {
+  try {
+    const { error } = await supabase.from('contents').delete().eq('id', contentId);
+    if (error) return { error: error.message };
+    const marker = '/content-media/';
+    const idx = mediaUrl?.indexOf(marker) ?? -1;
+    if (idx !== -1) {
+      const path = decodeURIComponent(mediaUrl.slice(idx + marker.length));
+      await supabase.storage.from('content-media').remove([path]);
+    }
+    return {};
+  } catch (err) {
+    return { error: err?.message ?? 'Errore di rete.' };
+  }
+}
+
+// Modifica la didascalia di un contenuto di cui si è proprietari: essendo
+// condiviso tra tutti i suoi posizionamenti, l'aggiornamento vale ovunque
+// compaia (Social, Arte, Nerd...), non solo dove lo si è modificato.
+export async function updateContentCaption(contentId, caption) {
+  try {
+    const { error } = await supabase.from('contents').update({ caption }).eq('id', contentId);
+    if (error) return { error: error.message };
+    return {};
+  } catch (err) {
+    return { error: err?.message ?? 'Errore di rete.' };
+  }
+}
+
 export async function toggleContentLike(contentId, currentlyLiked) {
   try {
     const { data: auth } = await supabase.auth.getUser();

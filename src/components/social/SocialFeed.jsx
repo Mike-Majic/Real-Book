@@ -13,7 +13,12 @@ import { getCityInfo } from '../../data/geo';
 import { INITIAL_POSTS, INITIAL_COMMENTS, computeRelevance } from '../../data/socialPosts';
 import { GROUPS, getGroupById } from '../../data/groups';
 import { usersForWorld } from '../../data/mockUsers';
-import { listContentsForPlacement, toggleContentLike as toggleContentLikeApi } from '../../data/contents';
+import {
+  listContentsForPlacement,
+  toggleContentLike as toggleContentLikeApi,
+  deleteContent,
+  updateContentCaption,
+} from '../../data/contents';
 import './SocialFeed.css';
 
 // Ogni tot post "di zona" (tab Per te, con un filtro Dove attivo), si
@@ -108,8 +113,17 @@ export default function SocialFeed({
   onOpenEventLikers,
 }) {
   const [showEventComposer, setShowEventComposer] = useState(false);
-  const [posts, setPosts] = useState(() => loadStored('rb-social-posts', INITIAL_POSTS));
-  const [comments, setComments] = useState(() => loadStored('rb-social-comments', INITIAL_COMMENTS));
+  // Un post "reale" è o mio (autoreId 'me') o un contenuto condiviso vero
+  // (contentId, da data/contents.js). Filtra fuori qui, una volta per
+  // tutte, eventuali post/commenti finti rimasti nel localStorage di chi
+  // aveva già usato l'app prima che i dati demo venissero azzerati — quel
+  // che resta viene poi risalvato "pulito" dagli effetti qui sotto.
+  const [posts, setPosts] = useState(() =>
+    loadStored('rb-social-posts', INITIAL_POSTS).filter((p) => p.autoreId === 'me' || p.contentId)
+  );
+  const [comments, setComments] = useState(() =>
+    loadStored('rb-social-comments', INITIAL_COMMENTS).filter((c) => c.autoreId === 'me')
+  );
   const [following, setFollowing] = useState(() => loadStored('rb-social-following', []));
   const [joinedGroups, setJoinedGroups] = useState(() => loadStored('rb-social-joined-groups', []));
   const [savedPosts, setSavedPosts] = useState(() => loadStored('rb-social-saved', []));
@@ -215,6 +229,31 @@ export default function SocialFeed({
         p.id === post.id ? { ...p, contentLiked: liked, contentLikeCount: p.contentLikeCount + (liked ? 1 : -1) } : p
       )
     );
+  };
+
+  // Modifica/cancellazione: solo sui propri post (autoreId 'me'), verificato
+  // qui oltre che nell'interfaccia. Se il post porta un contenuto condiviso
+  // (foto/video, vedi data/contents.js), l'azione riguarda quel contenuto —
+  // quindi vale ovunque sia stato ripubblicato (Arte, Nerd...), non solo qui.
+  const editPost = async (postId, newTesto) => {
+    const target = posts.find((p) => p.id === postId);
+    if (!target || target.autoreId !== 'me') return;
+    if (target.contentId) {
+      const { error } = await updateContentCaption(target.contentId, newTesto);
+      if (error) return;
+    }
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, testo: newTesto } : p)));
+  };
+
+  const deletePost = async (postId) => {
+    const target = posts.find((p) => p.id === postId);
+    if (!target || target.autoreId !== 'me') return;
+    if (target.contentId) {
+      const { error } = await deleteContent(target.contentId, target.mediaUrl);
+      if (error) return;
+    }
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+    setComments((prev) => prev.filter((c) => c.post_id !== postId));
   };
 
   const addComment = (postId, { testo, gif }) => {
@@ -478,6 +517,8 @@ export default function SocialFeed({
                 onOpenAuth={onOpenAuth}
                 onToggleLike={toggleLike}
                 onToggleContentLike={toggleContentLike}
+                onEditPost={editPost}
+                onDeletePost={deletePost}
                 onAddComment={addComment}
                 onReactToComment={reactToComment}
                 trendingRank={trendingRank}

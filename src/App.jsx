@@ -614,7 +614,13 @@ export default function App() {
         onUnfriend={(id) => setFriends((prev) => prev.filter((f) => f !== id))}
       />
 
-      <ProfileModal user={selectedUser} world={world} onClose={() => setSelectedUser(null)} />
+      <ProfileModal
+        user={selectedUser}
+        world={world}
+        onClose={() => setSelectedUser(null)}
+        viewer={user}
+        onOpenAuth={() => setAuthOpen(true)}
+      />
 
       <EventLikersModal
         event={visibleEvents.find((e) => e.id === eventLikersId) ?? null}
