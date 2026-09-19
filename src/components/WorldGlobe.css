@@ -68,7 +68,6 @@
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
   transition: transform 0.15s ease;
 }
 

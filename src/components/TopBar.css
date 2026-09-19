@@ -8,8 +8,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 22px;
-  background: linear-gradient(180deg, rgba(6, 6, 10, 0.75), transparent);
-  backdrop-filter: blur(6px);
+  background: linear-gradient(180deg, rgba(6, 6, 10, 0.85), transparent);
   transition: color 0.4s ease;
 }
 

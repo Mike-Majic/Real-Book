@@ -100,6 +100,12 @@ function makeClusterEl(cluster, world, onExpand) {
 // di profili sarebbe di nuovo il problema di partenza (e anche lento).
 const NEARBY_DEGREES = 1;
 
+// Quanto dura al massimo la rotazione automatica del globo prima di fermarsi.
+const AUTO_ROTATE_MS = 10000;
+// Dopo quanto tempo senza interazioni il globo smette di essere ridisegnato
+// (serve anche a far finire le transizioni/inerzie della camera).
+const IDLE_MS = 3000;
+
 // Raggruppa gli utenti secondo il livello adatto all'altitudine attuale:
 // per nazione se sei molto lontano, per città a media/vicina distanza. Solo
 // il gruppo (città) su cui la camera è effettivamente centrata si apre nei
@@ -197,6 +203,86 @@ export default function WorldGlobe({
   // passa sopra.
   const isTouchDevice = useMemo(() => window.matchMedia('(pointer: coarse)').matches, []);
   const isHoveringRef = useRef(false);
+
+  // Risparmio CPU: react-globe.gl ridisegna la scena (e riposiziona tutti i
+  // marker HTML) ad ogni frame, per sempre, anche col globo fermo. Qui il
+  // disegno si mette in pausa quando nessuno interagisce e riparte al primo
+  // segno di attività (mouse, rotellina, tocco, voli della camera, dati
+  // nuovi). La rotazione automatica dura al massimo AUTO_ROTATE_MS, poi il
+  // globo si ferma e, dopo IDLE_MS, smette del tutto di essere ridisegnato.
+  const globeActivity = useMemo(() => {
+    let idleTimer = null;
+    let rotateTimer = null;
+    let paused = false;
+
+    const sleep = () => {
+      const g = globeRef.current;
+      if (!g || paused) return;
+      // Mentre ruota da solo deve continuare a disegnare: sarà la fine della
+      // rotazione (vedi stopAutoRotate) a rimandare qui.
+      if (g.controls().autoRotate) return;
+      g.pauseAnimation();
+      paused = true;
+    };
+
+    const wake = (ms = IDLE_MS) => {
+      const g = globeRef.current;
+      if (!g) return;
+      if (paused) {
+        g.resumeAnimation();
+        paused = false;
+      }
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(sleep, ms);
+    };
+
+    const stopAutoRotate = () => {
+      clearTimeout(rotateTimer);
+      const g = globeRef.current;
+      if (g) g.controls().autoRotate = false;
+      wake();
+    };
+
+    const startAutoRotate = () => {
+      const g = globeRef.current;
+      if (!g || isTouchDevice) return;
+      g.controls().autoRotate = true;
+      clearTimeout(rotateTimer);
+      rotateTimer = setTimeout(stopAutoRotate, AUTO_ROTATE_MS);
+      wake(AUTO_ROTATE_MS);
+    };
+
+    const dispose = () => {
+      clearTimeout(idleTimer);
+      clearTimeout(rotateTimer);
+    };
+
+    return { wake, startAutoRotate, stopAutoRotate, dispose };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => globeActivity.dispose, [globeActivity]);
+
+  // Qualsiasi interazione dentro al globo (anche sui marker HTML, che stanno
+  // sopra al canvas) lo risveglia per qualche secondo.
+  useEffect(() => {
+    const g = globeRef.current;
+    const target = containerRef?.current ?? g?.renderer().domElement;
+    if (!target) return undefined;
+    const onActivity = () => globeActivity.wake();
+    const opts = { passive: true };
+    target.addEventListener('pointermove', onActivity, opts);
+    target.addEventListener('pointerdown', onActivity, opts);
+    target.addEventListener('wheel', onActivity, opts);
+    target.addEventListener('touchstart', onActivity, opts);
+    return () => {
+      target.removeEventListener('pointermove', onActivity, opts);
+      target.removeEventListener('pointerdown', onActivity, opts);
+      target.removeEventListener('wheel', onActivity, opts);
+      target.removeEventListener('touchstart', onActivity, opts);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globeActivity]);
 
   useEffect(() => {
     const onResize = () => setSize({ width: window.innerWidth, height: window.innerHeight });
@@ -374,29 +460,36 @@ export default function WorldGlobe({
   useEffect(() => {
     const g = globeRef.current;
     if (!g) return;
-    g.controls().autoRotate = !isTouchDevice;
     g.controls().autoRotateSpeed = 0.35;
     g.controls().enableZoom = true;
     g.pointOfView({ altitude: 2.4 }, 0);
+    if (isTouchDevice) globeActivity.wake();
+    else globeActivity.startAutoRotate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Quando cambia ciò che si vede (marker, continenti, mondo, categorie,
+  // dimensioni) il globo va ridisegnato anche se era in pausa.
+  useEffect(() => {
+    globeActivity.wake();
+  }, [globeActivity, displayItems, landPolygons, world, categories, activeCategory, size]);
+
   // Solo su desktop: passando il mouse sopra il globo, la rotazione automatica
-  // si ferma; togliendolo, riparte. Su mobile non c'e' mai auto-rotazione, quindi
-  // non serve gestire l'hover (il touch non "passa sopra", tocca e basta).
+  // si ferma; togliendolo, riparte (sempre per al massimo AUTO_ROTATE_MS). Su
+  // mobile non c'e' mai auto-rotazione, quindi non serve gestire l'hover (il
+  // touch non "passa sopra", tocca e basta).
   useEffect(() => {
     if (isTouchDevice) return undefined;
     const g = globeRef.current;
     if (!g) return undefined;
     const canvas = g.renderer().domElement;
-    const controls = g.controls();
     const onEnter = () => {
       isHoveringRef.current = true;
-      controls.autoRotate = false;
+      globeActivity.stopAutoRotate();
     };
     const onLeave = () => {
       isHoveringRef.current = false;
-      controls.autoRotate = true;
+      globeActivity.startAutoRotate();
     };
     canvas.addEventListener('pointerenter', onEnter);
     canvas.addEventListener('pointerleave', onLeave);
@@ -413,8 +506,9 @@ export default function WorldGlobe({
     const g = globeRef.current;
     if (!g || !flyTo) return undefined;
 
-    const controls = g.controls();
-    controls.autoRotate = false;
+    globeActivity.stopAutoRotate();
+    // Il volo è animato dal ciclo di disegno: deve restare attivo finché dura.
+    globeActivity.wake(CATEGORY_FLY_MS + IDLE_MS);
     const pov = { altitude: flyTo.altitude ?? 1.3 };
     if (flyTo.lat !== undefined) pov.lat = flyTo.lat;
     if (flyTo.lng !== undefined) pov.lng = flyTo.lng;
@@ -425,7 +519,7 @@ export default function WorldGlobe({
     if (isTouchDevice) return undefined;
 
     const resumeTimer = setTimeout(() => {
-      if (!isHoveringRef.current) controls.autoRotate = true;
+      if (!isHoveringRef.current) globeActivity.startAutoRotate();
     }, 4000);
 
     return () => clearTimeout(resumeTimer);

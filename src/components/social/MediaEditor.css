@@ -1,8 +1,7 @@
 .rb-media-editor-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(4, 3, 8, 0.78);
-  backdrop-filter: blur(4px);
+  background: rgba(4, 3, 8, 0.88);
   display: flex;
   align-items: center;
   justify-content: center;
